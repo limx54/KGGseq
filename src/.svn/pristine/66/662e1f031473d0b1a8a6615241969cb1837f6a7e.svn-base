@@ -1,0 +1,1151 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package org.cobi.kggseq.controller;
+
+import cern.colt.list.IntArrayList;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import org.cobi.kggseq.Constants;
+import org.cobi.kggseq.entity.Genome;
+import org.cobi.kggseq.entity.Individual;
+import org.cobi.kggseq.entity.IntSet;
+import org.cobi.kggseq.entity.Variant;
+import org.cobi.util.text.Util;
+import org.cobi.util.thread.Task;
+
+/**
+ *
+ * @author mxli
+ */
+public class VCFParseTask0 extends Task implements Callable<String>, Constants {
+
+    Map<String, Byte> chromNameIndexMap = new HashMap<String, Byte>();
+    final String UNKNOWN_CHROM_NAME0 = "Un";
+    final String UNKNOWN_CHROM_NAME1 = "GL";
+    List<Variant>[] varChroms = null;
+    List<IntSet>[] cords = null;
+    List<String> rowList;
+
+    IntArrayList caeSetID;
+    IntArrayList controlSetID;
+
+    int indexCHROM;
+    int indexPOS;
+    int indexID;
+    int indexREF;
+    int indexALT;
+    int indexQUAL;
+    int indexFILTER;
+    int indexFORMAT;
+    int indexINFO;
+
+    double avgSeqQualityThrehsold;
+    double minMappingQual;
+    double maxStrandBias;
+    double maxFisherStrandBias;
+    double gtyQualityThrehsold;
+    int minGtySeqDepth;
+    int minSeqDepth;
+    double altAlleleFracRefHomThrehsold;
+    double altAlleleFractHetThrehsold;
+    double altAlleleFractAltHomThrehsold;
+    int minSecondPL;
+    double minBestGP;
+    int minOBS;
+    double sampleMaf;
+
+    Set<String> vcfLabelSet;
+
+    boolean considerSNP;
+    boolean considerIndel;
+    boolean needGty;
+    boolean needReadsInfor;
+
+    public void setBooleanFilter(boolean considerSNP, boolean considerIndel, boolean needGty, boolean needReadsInfor) {
+        this.considerSNP = considerSNP;
+        this.considerIndel = considerIndel;
+        this.needGty = needGty;
+        this.needReadsInfor = needReadsInfor;
+    }
+
+    IntArrayList effectIndivIDInVCF;
+    int[] pedVCFIDMap;
+    List<Individual> subjectList;
+    boolean isPhased = false;
+    Genome orgGenome;
+
+    public List<Variant>[] getVarChroms() {
+        return varChroms;
+    }
+
+    public List<IntSet>[] getCords() {
+        return cords;
+    }
+
+    public List<Individual> getSubjectList() {
+        return subjectList;
+    }
+
+    public void setOrgGenome(Genome orgGenome) {
+        this.orgGenome = orgGenome;
+    }
+
+    public void setGenotypesAndSubjects(List<String> rowList, IntArrayList effectIndivID, List<Individual> subjectList1, int[] pedVCFIDMap,
+            boolean isPhased) {
+        this.rowList = rowList;
+        this.effectIndivIDInVCF = effectIndivID;
+        this.isPhased = isPhased;
+        this.subjectList = new ArrayList<Individual>();
+        int sizeIndiv = subjectList1.size();
+        for (int s = 0; s < sizeIndiv; s++) {
+            Individual indiv0 = subjectList1.get(s);
+            Individual indiv = new Individual();
+            indiv.setLabelInChip(indiv0.getLabelInChip());
+            indiv.setFamilyID(indiv0.getFamilyID());
+            indiv.setIndividualID(indiv0.getIndividualID());
+            indiv.setDadID(indiv0.getDadID());
+            indiv.setMomID(indiv0.getMomID());
+            indiv.setAffectedStatus(indiv0.getAffectedStatus());
+            subjectList.add(indiv);
+        }
+
+        caeSetID = new IntArrayList();
+        controlSetID = new IntArrayList();
+        for (int i = 0; i < sizeIndiv; i++) {
+            if (subjectList.get(i).getAffectedStatus() == 2) {
+                caeSetID.add(i);
+            } else if (subjectList.get(i).getAffectedStatus() == 1) {
+                controlSetID.add(i);
+            }
+        }
+        this.pedVCFIDMap = pedVCFIDMap;
+    }
+
+    public VCFParseTask0() {
+        varChroms = new ArrayList[STAND_CHROM_NAMES.length];
+        cords = new ArrayList[STAND_CHROM_NAMES.length];
+        for (int i = 0; i < STAND_CHROM_NAMES.length; i++) {
+            varChroms[i] = new ArrayList<>();
+            cords[i] = new ArrayList<>();
+        }
+        for (byte i = 0; i < STAND_CHROM_NAMES.length; i++) {
+            chromNameIndexMap.put(STAND_CHROM_NAMES[i], i);
+        }
+    }
+
+    public void setVcfLabelSet(Set<String> vcfLabelSet) {
+        this.vcfLabelSet = vcfLabelSet;
+    }
+
+    public void setQuantitativeQCParams(double avgSeqQualityThrehsold, double minMappingQual, double maxStrandBias, double maxFisherStrandBias, double gtyQualityThrehsold, int minGtySeqDepth, int minSeqDepth, double altAlleleFracRefHomThrehsold, double altAlleleFractHetThrehsold, double altAlleleFractAltHomThrehsold, int minSecondPL, double minBestGP, int minOBS, double sampleMaf) {
+        this.avgSeqQualityThrehsold = avgSeqQualityThrehsold;
+        this.minMappingQual = minMappingQual;
+        this.maxStrandBias = maxStrandBias;
+        this.maxFisherStrandBias = maxFisherStrandBias;
+        this.gtyQualityThrehsold = gtyQualityThrehsold;
+        this.minGtySeqDepth = minGtySeqDepth;
+        this.minSeqDepth = minSeqDepth;
+        this.altAlleleFracRefHomThrehsold = altAlleleFracRefHomThrehsold;
+        this.altAlleleFractHetThrehsold = altAlleleFractHetThrehsold;
+        this.altAlleleFractAltHomThrehsold = altAlleleFractAltHomThrehsold;
+        this.minSecondPL = minSecondPL;
+        this.minBestGP = minBestGP;
+        this.minOBS = minOBS;
+        this.sampleMaf = sampleMaf;
+    }
+
+    public void setColIndex(int indexCHROM, int indexPOS, int indexID, int indexREF, int indexALT, int indexQUAL, int indexFILTER, int indexINFO, int indexFORMAT) {
+        this.indexCHROM = indexCHROM;
+        this.indexPOS = indexPOS;
+        this.indexID = indexID;
+        this.indexREF = indexREF;
+        this.indexALT = indexALT;
+        this.indexQUAL = indexQUAL;
+        this.indexFILTER = indexFILTER;
+        this.indexFORMAT = indexFORMAT;
+        this.indexINFO = indexINFO;
+    }
+
+    @Override
+    public String call() throws Exception {
+        long startTime = System.currentTimeMillis();
+//by default
+        readVariantsInFileOnlyFastToken();
+        fireTaskComplete();
+        String info = "Finished Elapsed time: " + (System.currentTimeMillis() - startTime) / 1000 + " seconds.";
+        //  System.out.println(info);
+        //return info;
+        return info;
+        // 
+
+    }
+
+    public int readVariantsInFileOnlyFastToken() throws Exception {
+
+        int ignoredLineNumNullCase = 0;
+        int ignoredLineNumMinOBS = 0;
+        int ignoredLineNumMinMAF = 0;
+        int ignoredLineNumNoVar = 0;
+
+        boolean checkVCFfilter = false;
+        if (vcfLabelSet != null) {
+            checkVCFfilter = true;
+        }
+        double sampleMafC = 1 - sampleMaf;
+
+        String currChr = null;
+        StringBuilder tmpBuffer = new StringBuilder(100);
+        int nonRSVariantNum = 0;
+
+        int makerPostion = 0;
+        String varLabel = null;
+
+        int obsS;
+        String ref = null;
+        String alt = null;
+        boolean incomplete = true;
+
+        int filterOutLowQualNum = 0;
+        int vcfFilterOutNum = 0;
+        int acceptVarNum = 0;
+        int vcfIndivNum = 0;
+        int[] gtyQuality = null;
+        String[] gtys = null;
+        int[] gtyDepth = null;
+        String[] readCounts = null;
+        float[] readFractions = null;
+        int[] secondMostGtyPL = null;
+        int[] bestGtyGP = null;
+        int ignoredLowQualGtyNum = 0;
+        int ignoredLowDepthGtyNum = 0;
+        int ignoredBadAltFracGtyNum = 0;
+        int ignoredLowPLGtyNum = 0;
+        int ignoredLowGPGtyNum = 0;
+        int ignoreStrandBiasSBNum = 0;
+        int missingGtyNum = 0;
+        int formatProbVarNum = 0;
+        double avgSeqQuality = 0;
+        double mappingQual;
+        double strandBias;
+        int ignoreMappingQualNum = 0;
+        int ignoreStrandBiasFSNum = 0;
+
+        int gtyIndexInInfor = -1;
+        int gtyQualIndexInInfor = -1;
+        int gtyDepthIndexInInfor = -1;
+        int gtyAlleleDepthIndexInInfor = -1;
+        int gtyAltAlleleFracIndexInInfor = -1;
+        int gtyPLIndexInInfor = -1;
+        int gtyGPIndexInInfor = -1;
+
+        boolean hasIndexGT = false;
+        boolean hasIndexGQ = false;
+        boolean hasIndexDP = false;
+        boolean hasIndexAD = false;
+        boolean hasIndexFA = false;
+        boolean hasIndexPL = false;
+        boolean hasIndexGP = false;
+        //temp variables
+        int iGty = 0;
+        int index1 = 0;
+        int index2 = 0;
+
+        int t = 0;
+        int pl = 0;
+        int p = 0;
+
+        boolean needAccoundAffect = false;
+        if (!caeSetID.isEmpty()) {
+            needAccoundAffect = true;
+        }
+        boolean needAccoundUnaffect = false;
+
+        if (!controlSetID.isEmpty()) {
+            needAccoundUnaffect = true;
+        }
+        int controlSize = controlSetID.size();
+        int caseSize = caeSetID.size();
+
+        int index = 0;
+
+        int g11 = 0, g12 = 0, g22 = 0;
+
+        int indexA, indexB;
+
+        //at most use 5 bits represent a genotype
+        /*
+         2 bits for an unphased -genotype of a bi-allelic sequence variants
+         3 bits for a phased -genotype of a bi-allelic sequence variants
+         3 bits for an unphased -genotype of a tri-allelic sequence variants
+         4 bits for a phased -genotype of a tri-allelic sequence variants
+         4 bits for an unphased -genotype of a quad-allelic sequence variants
+         5 bits for a phased -genotype of a quad-allelic sequence variants        
+         */
+        //always start from zeor
+        int genotypeBitIndexes = 0;
+        
+        boolean isLowQualBreak = false;
+
+        boolean isIndel = false;
+        boolean isInvalid = false;
+        StringBuilder subInfo = new StringBuilder();
+        String delimiter = "\t";
+
+        int indelNum = 0, snvNum = 0;
+        StringBuilder ignoredVCFIndivLables = new StringBuilder();
+        StringBuilder ignoredPedIndivLables = new StringBuilder();
+        int maxColNum = 0;
+        int alleleNum = 0;
+        int effectiveIndivNum = 0;
+        int totalPedSubjectNum = 0;
+        int ignoredPedIndivNum = 0;
+        int ignoredVCFIndivNum = 0;
+        int ignoredInproperChromNum = 0;
+        boolean matched = false;
+        int maxIndex2 = -1;
+        int ii = 0;
+
+        boolean hasOrginalGenome = false;
+        if (orgGenome != null) {
+            hasOrginalGenome = true;
+        }
+        boolean needMAFQC = false;
+        double maf = 0;
+        if (sampleMaf >= 0) {
+            needMAFQC = true;
+        }
+        vcfIndivNum = effectIndivIDInVCF.size();
+        effectiveIndivNum = vcfIndivNum;
+        totalPedSubjectNum = pedVCFIDMap.length;
+        
+        String currentLine = null;
+        int maxEffectiveColVCF = -1;
+        for (int i = 0; i < effectIndivIDInVCF.size(); i++) {
+            if (maxEffectiveColVCF < effectIndivIDInVCF.getQuick(i) + indexFORMAT + 1) {
+                maxEffectiveColVCF = effectIndivIDInVCF.getQuick(i) + indexFORMAT + 1;
+            }
+        }
+        try {
+            maxColNum = indexCHROM;
+            maxColNum = Math.max(maxColNum, indexPOS);
+            maxColNum = Math.max(maxColNum, indexID);
+            maxColNum = Math.max(maxColNum, indexREF);
+            maxColNum = Math.max(maxColNum, indexALT);
+            maxColNum = Math.max(maxColNum, indexQUAL);
+            maxColNum = Math.max(maxColNum, indexFILTER);
+            maxColNum = Math.max(maxColNum, indexFORMAT);
+            maxColNum = Math.max(maxColNum, indexINFO);
+
+            String tmpStr = null;
+            String depA = null;
+            String depB = null;
+
+            /*
+             if (caseIDSet.isEmpty()) {
+             throw new Exception("It seems that you have no specified patients (labeled with \'2\') in your sample!"
+             + " You need patient samples to proceed on KGGSeq!");
+             }
+             * 
+             */
+            if (vcfIndivNum > 0) {
+                gtyQuality = new int[vcfIndivNum];
+                gtys = new String[vcfIndivNum];
+                gtyDepth = new int[vcfIndivNum];
+                //read counts 0, 1,2,3
+                readCounts = new String[vcfIndivNum];
+                secondMostGtyPL = new int[vcfIndivNum];
+                readFractions = new float[vcfIndivNum];
+                bestGtyGP = new int[vcfIndivNum];
+            }
+            StringBuilder tmpSB = new StringBuilder();
+            int varLineCounter = 0;
+
+            int size = rowList.size();
+            for (varLineCounter = 0; varLineCounter < size; varLineCounter++) {
+                currentLine = rowList.get(varLineCounter);
+                // System.out.println(currentLine); 
+                if (currentLine.isEmpty()) {
+                    continue;
+                }
+
+                // st = new StringTokenizer(currentLine, delimiter);
+                String[] cells = Util.tokenize(currentLine, '\t', maxEffectiveColVCF);
+                if (cells.length < 2) {
+                    cells = Util.tokenizeIngoreConsec(currentLine, ' ', maxEffectiveColVCF);
+                }
+
+                currChr = cells[indexCHROM];
+                if (currChr.startsWith(UNKNOWN_CHROM_NAME0) || currChr.startsWith(UNKNOWN_CHROM_NAME1)) {
+                    ignoredInproperChromNum++;
+                    break;
+                }
+
+                //Mitochondrion
+                if (currChr.contains("T") || currChr.contains("t")) {
+                    currChr = "M";
+                } else {
+                    if (currChr.charAt(0) == 'c' || currChr.charAt(0) == 'C') {
+                        currChr = currChr.substring(3);
+                    }
+                }
+
+                makerPostion = Util.parseInt(cells[indexPOS]);
+
+                varLabel = cells[indexID];
+                if (varLabel.charAt(0) != 'r') {
+                    nonRSVariantNum++;
+                }
+                ref = cells[indexREF];
+                alt = cells[indexALT];
+                //for reference data, sometimes we do not have alternative alleles
+                if (alt.equals(".")) {
+                    continue;
+                }
+
+                String[] altAlleles = Util.tokenize(alt, ',');
+                isIndel = false;
+                for (int ss = 0; ss < altAlleles.length; ss++) {
+                    alt = altAlleles[ss];
+                    //only one alternative alleles; the most common  scenario
+                    if (ref.length() == alt.length()) {
+                        //substitution
+                        //now it can sonsider double polymorphsom
+                        altAlleles[ss] = alt;
+                    } else if (ref.length() < alt.length()) {
+                        //insertion
+                                /*examples 
+                         insertion1
+                         chr1 1900106 . TCT TCTCCT 217 . INDEL;DP=62;AF1=0.5;CI95=0.5,0.5;DP4=17,9,18,12;MQ=60;FQ=217;PV4=0.78,1,1,0.1 GT:PL:DP:SP:GQ 0/1:255,0,255:56:-991149567:99
+                        
+                         insertion2
+                         chr1 109883576 . C CAT 214 . INDEL;DP=15;AF1=1;CI95=1,1;DP4=0,0,1,11;MQ=60;FQ=-70.5 GT:PL:DP:SP:GQ 1/1:255,36,0:12:-991149568:69
+                         * 
+                         */
+                        //for Indel TTCC TT--
+                        //for Insertion T +TTTT
+                        tmpSB.delete(0, tmpSB.length());
+                        if (alt.startsWith(ref)) {
+                            for (t = ref.length(); t > 0; t--) {
+                                tmpSB.append('+');
+                            }
+                            tmpSB.append(alt.substring(ref.length()));
+                        } else {
+                            tmpSB.append(alt.substring(0, alt.length() - ref.length()));
+                            for (t = ref.length(); t > 0; t--) {
+                                tmpSB.append('+');
+                            }
+                        }
+
+                        altAlleles[ss] = tmpSB.toString();
+
+                        isIndel = true;
+                    } else if (ref.length() > alt.length()) {
+                        //deletion     
+                                /*examples
+                         deletion1
+                         chr1 113659065 . ACTCT ACT 214 . INDEL;DP=61;AF1=1;CI95=1,1;DP4=0,0,22,34;MQ=60;FQ=-204 GT:PL:DP:SP:GQ 1/1:255,169,0:56:-991149568:99
+                         deletion2
+                         chr1 1289367 . CTG C 101 . INDEL;DP=14;AF1=0.5;CI95=0.5,0.5;DP4=5,2,5,1;MQ=60;FQ=104;PV4=1,0.4,1,1 GT:PL:DP:SP:GQ 0/1:139,0,168:13:-991149568:99
+                         */
+                        //Note it can work for multiple deletion alleles like:chr1	158164305	.	TAA	TA,T
+
+                        //for Indel TTCC TT--
+                        //for Insertion T +TTTT
+                        tmpSB.delete(0, tmpSB.length());
+                        if (ref.startsWith(alt)) {
+                            tmpSB.append(alt);
+                            for (t = ref.length() - alt.length(); t > 0; t--) {
+                                tmpSB.append('-');
+                            }
+                        } else {
+                            for (t = ref.length() - alt.length(); t > 0; t--) {
+                                tmpSB.append('-');
+                            }
+                            tmpSB.append(alt);
+                        }
+
+                        altAlleles[ss] = tmpSB.toString();
+                        isIndel = true;
+                    } else {
+                        String info = "Unexpected (REF	ALT) format when parsing line : " + currentLine;
+                        // LOG.info(info);
+                        isInvalid = true;
+                        //throw new Exception(info);
+                    }
+                }
+                if (isInvalid) {
+                    continue;
+                }
+
+                if (isIndel) {
+                    indelNum++;
+                } else {
+                    snvNum++;
+                }
+
+                if (!considerSNP || !considerIndel) {
+                    //a lazy point 
+                    incomplete = true;
+
+                    //only consider Indel
+                    if (!considerSNP && isIndel) {
+                        incomplete = false;
+                    } else if (!considerIndel && !isIndel) {
+                        incomplete = false;
+                    }
+
+                    if (incomplete) {
+                        continue;
+                    }
+                }
+
+                if (hasOrginalGenome) {
+                    Variant[] vars = orgGenome.lookupVariants(currChr, makerPostion, isIndel, ref, altAlleles);
+                    if (vars == null) {
+                        continue;
+                    }
+                }
+
+                //initialize varaibles
+                incomplete = true;
+                obsS = 0;
+                hasIndexGT = false;
+                hasIndexGQ = false;
+                hasIndexDP = false;
+                hasIndexAD = false;
+                hasIndexFA = false;
+                isLowQualBreak = false;
+                isInvalid = false;
+                hasIndexPL = false;
+                hasIndexGP = false;
+                gtyPLIndexInInfor = -1;
+                gtyGPIndexInInfor = -1;
+                gtyIndexInInfor = -1;
+                gtyQualIndexInInfor = -1;
+                gtyDepthIndexInInfor = -1;
+                gtyAlleleDepthIndexInInfor = -1;
+                gtyAltAlleleFracIndexInInfor = -1;
+                mappingQual = Integer.MAX_VALUE;
+                strandBias = Integer.MIN_VALUE;
+
+                if (vcfIndivNum > 0) {
+                    Arrays.fill(gtys, null);
+                    Arrays.fill(gtyQuality, 0);
+                    Arrays.fill(readFractions, Float.NaN);
+                    Arrays.fill(bestGtyGP, 0);
+
+                    Arrays.fill(gtyDepth, 0);
+                    Arrays.fill(readCounts, null);
+                    Arrays.fill(secondMostGtyPL, 0);
+                }
+
+//#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  
+//chr1    109     .       A       T       237.97  PASS    AC=21;AF=0.328;AN=64;DP=47;Dels=0.02;HRun=0;HaplotypeScore=1.9147;MQ=44.81;MQ0=48;QD=5.53;SB=-28.76;sumGLbyD=9.00       GT:AD:DP:GQ:PL  0/1:6,1:3:15.67:16,0,64 0/0:3,0:1:3.01:0,3,33 
+//chr1	53598	.	CCTA	C	447.88	PASS	AC=2;AF=1.00;AN=2;DP=0;Dels=0.50;HRun=0;HaplotypeScore=0.0000;MQ=20.50;MQ0=5;QD=40.72;SB=-138.61;sumGLbyD=46.54	GT:AD:DP:GQ:PL	./.	1/1:2,1:0:3.01:66,3,0
+                if (checkVCFfilter && cells[indexFILTER].length() > 1 && !vcfLabelSet.contains(cells[indexFILTER])) {
+                    vcfFilterOutNum++;
+                    isLowQualBreak = true;
+                    continue;
+                }
+
+                if (avgSeqQualityThrehsold > 0) {
+                    if (Util.isNumeric(cells[indexQUAL])) {
+                        avgSeqQuality = Double.parseDouble(cells[indexQUAL]);
+                    } else {
+                        //sometimes . denotes for ignored sequence qaulity information
+                        avgSeqQuality = Integer.MAX_VALUE;
+                    }
+
+                    if (avgSeqQuality < avgSeqQualityThrehsold) {
+                        filterOutLowQualNum++;
+                        isLowQualBreak = true;
+                        continue;
+                    }
+                }
+
+                if (minMappingQual > 0) {
+                    index1 = cells[indexINFO].indexOf("MQ=");
+                    if (index1 >= 0) {
+                        index1 += 3;
+                        index2 = index1 + 1;
+                        while (index2 < cells[indexINFO].length() && cells[indexINFO].charAt(index2) != ';') {
+                            index2++;
+                        }
+                        if (Util.isNumeric(cells[indexINFO].substring(index1, index2))) {
+                            mappingQual = Util.parseInt(cells[indexINFO].substring(index1, index2));
+                        }
+                        if (mappingQual < minMappingQual) {
+                            ignoreMappingQualNum++;
+                            isLowQualBreak = true;
+                            continue;
+                        }
+                    }
+                }
+                //I do notknow the minimun threshold for this 
+                //  if (maxStrandBias > 0)
+                {
+                    index1 = cells[indexINFO].indexOf("SB=");
+                    if (index1 >= 0) {
+                        index1 += 3;
+                        index2 = index1 + 1;
+                        while (index2 < cells[indexINFO].length() && cells[indexINFO].charAt(index2) != ';') {
+                            index2++;
+                        }
+                        if (Util.isNumeric(cells[indexINFO].substring(index1, index2))) {
+                            strandBias = Util.parseFloat(cells[indexINFO].substring(index1, index2));
+                        }
+
+                        if (strandBias > maxStrandBias) {
+                            ignoreStrandBiasSBNum++;
+                            isLowQualBreak = true;
+                            continue;
+                        }
+                    }
+                }
+
+                if (maxFisherStrandBias > 0) {
+                    index1 = cells[indexINFO].indexOf("FS=");
+                    if (index1 >= 0) {
+                        index1 += 3;
+                        index2 = index1 + 1;
+                        while (index2 < cells[indexINFO].length() && cells[indexINFO].charAt(index2) != ';') {
+                            index2++;
+                        }
+                        if (Util.isNumeric(cells[indexINFO].substring(index1, index2))) {
+                            strandBias = Util.parseFloat(cells[indexINFO].substring(index1, index2));
+                        }
+
+                        if (strandBias > maxFisherStrandBias) {
+                            ignoreStrandBiasFSNum++;
+                            isLowQualBreak = true;
+                            continue;
+                        }
+                    }
+                }
+                //System.out.println(currentLine);
+                //StringTokenizer st1 = new StringTokenizer(tmpBuffer.toString(), ":");
+                String[] cells1 = Util.tokenize(cells[indexFORMAT], ':');
+                ii = 0;
+                maxIndex2 = 0;
+                for (ii = 0; ii < cells1.length; ii++) {
+                    if (cells1[ii].equals("GT")) {
+                        gtyIndexInInfor = ii;
+                        hasIndexGT = true;
+                        maxIndex2 = ii;
+                    } else if (cells1[ii].equals("GQ")) {
+                        if (gtyQualityThrehsold > 0) {
+                            gtyQualIndexInInfor = ii;
+                            hasIndexGQ = true;
+                            maxIndex2 = ii;
+                        }
+                    } else if (cells1[ii].equals("DP")) {
+                        if (minGtySeqDepth > 0) {
+                            gtyDepthIndexInInfor = ii;
+                            hasIndexDP = true;
+                            maxIndex2 = ii;
+                        }
+                    } else if (cells1[ii].equals("AD")) {
+                        if (altAlleleFracRefHomThrehsold < 1 || altAlleleFractHetThrehsold > 0 || altAlleleFractAltHomThrehsold > 0) {
+                            gtyAlleleDepthIndexInInfor = ii;
+                            hasIndexAD = true;
+                            maxIndex2 = ii;
+                        }
+                    } else if (cells1[ii].equals("FA")) {
+                        if (altAlleleFracRefHomThrehsold < 1 || altAlleleFractHetThrehsold > 0 || altAlleleFractAltHomThrehsold > 0) {
+                            gtyAltAlleleFracIndexInInfor = ii;
+                            hasIndexFA = true;
+                            maxIndex2 = ii;
+                        }
+                    } else if (cells1[ii].equals("PL")) {
+                        if (minSecondPL > 0) {
+                            gtyPLIndexInInfor = ii;
+                            hasIndexPL = true;
+                            maxIndex2 = ii;
+                        }
+                    } else if (cells1[ii].equals("GP")) {
+                        if (minBestGP > 0) {
+                            gtyGPIndexInInfor = ii;
+                            hasIndexGP = true;
+                            maxIndex2 = ii;
+                        }
+                    }
+                }
+
+                if (vcfIndivNum <= 0) {
+                    //remaining counts
+                    vcfIndivNum = cells.length - 9;
+                    gtyQuality = new int[vcfIndivNum];
+                    gtys = new String[vcfIndivNum];
+                    gtyDepth = new int[vcfIndivNum];
+                    readCounts = new String[vcfIndivNum];
+                    readFractions = new float[vcfIndivNum];
+                    secondMostGtyPL = new int[vcfIndivNum];
+                    bestGtyGP = new int[vcfIndivNum];
+                    Arrays.fill(gtys, null);
+
+                    Arrays.fill(gtyDepth, 0);
+                    Arrays.fill(readCounts, null);
+                    Arrays.fill(secondMostGtyPL, 0);
+                    Arrays.fill(gtyQuality, 0);
+                    Arrays.fill(readFractions, Float.NaN);
+                    Arrays.fill(bestGtyGP, 0);
+                    pedVCFIDMap = new int[vcfIndivNum];
+
+                    totalPedSubjectNum = vcfIndivNum;
+                    effectiveIndivNum = vcfIndivNum;
+                }
+
+                //1/1:0,2:2:6.02:70,6,0	./.
+                indexA = -1;
+                int s = 0;
+                for (int k = 0; k < effectiveIndivNum; k++) {
+                    iGty = effectIndivIDInVCF.getQuick(k);
+                    s = iGty + indexFORMAT + 1;
+                    if (cells[s].charAt(0) == '"') {
+                        cells[s] = cells[s].substring(1, cells[s].length() - 1);
+                    }
+                    if (cells[s].equals("./.") || cells[s].equals(".") || cells[s].equals(".|.")) {
+                        gtys[iGty] = null;
+                        continue;
+                    }
+
+                    String[] cellsB = Util.tokenize(cells[s], ':', maxIndex2);
+
+                    if (gtyIndexInInfor >= 0) {
+                        gtys[iGty] = cellsB[gtyIndexInInfor];
+                        if (gtys[iGty].length() == 1) {
+                            gtys[iGty] = gtys[iGty] + "/" + gtys[iGty];
+                        }
+                    }
+                    if (gtys[iGty].equals("./.") || gtys[iGty].equals(".|.")) {
+                        gtys[iGty] = null;
+                        continue;
+                    }
+                    if (gtyQualIndexInInfor >= 0) {
+                        if (cellsB[gtyQualIndexInInfor].charAt(0) == '.') {
+                            gtyQuality[iGty] = 0;
+                        } else {
+                            gtyQuality[iGty] = Util.parseInt(cellsB[gtyQualIndexInInfor]);
+                        }
+                    }
+                    if (gtyDepthIndexInInfor >= 0) {
+                        if (cellsB[gtyDepthIndexInInfor].charAt(0) == '.') {
+                            gtyDepth[iGty] = 0;
+                        } else {
+                            gtyDepth[iGty] = Util.parseInt(cellsB[gtyDepthIndexInInfor]);
+
+                            if (indexA == -1 && depB != null && gtyAlleleDepthIndexInInfor != -1 && gtyDepthIndexInInfor > gtyAlleleDepthIndexInInfor) {
+                                readCounts[iGty] = String.valueOf(gtyDepth[iGty] - Util.parseInt(depB)) + "," + depB;
+                            }
+                        }
+                    }
+                    if (gtyAlleleDepthIndexInInfor >= 0) {
+                        if (cellsB[gtyAlleleDepthIndexInInfor].charAt(0) == '.') {
+                            readCounts[iGty] = null;
+                        } else {
+                            String allRead = cellsB[gtyAlleleDepthIndexInInfor];
+                            indexA = allRead.indexOf(',');
+                            //sometimes AD only has alternative allele counts; we just ignore this case
+                            if (indexA == -1) {
+                                depB = allRead;
+                                if (gtyDepthIndexInInfor < gtyAlleleDepthIndexInInfor) {
+                                    readCounts[iGty] = String.valueOf(gtyDepth[iGty] - Util.parseInt(depB)) + "," + depB;
+                                }
+                            } else {
+                                indexB = allRead.lastIndexOf(',');
+                                //when more than 2 alleles only consider the first ahd the last allele                                                    
+                                depA = allRead.substring(0, indexA);
+                                depB = allRead.substring(indexB + 1);
+                                if (depA.equals(".")) {
+                                    depA = "0";
+                                }
+                                if (depB.equals(".")) {
+                                    depB = "0";
+                                }
+                                readCounts[iGty] = depA + "," + depB;
+                            }
+
+                        }
+                    }
+
+                    if (gtyAltAlleleFracIndexInInfor >= 0) {
+                        if (cellsB[gtyAltAlleleFracIndexInInfor].charAt(0) == '.') {
+                            readFractions[iGty] = Float.NaN;
+                        } else {
+                            tmpStr = cellsB[gtyAltAlleleFracIndexInInfor];
+                            if (tmpStr.indexOf(',') >= 0) {
+                                index2 = index1 + tmpStr.indexOf(',');
+                            }
+                            readFractions[iGty] = Util.parseFloat(cellsB[gtyAltAlleleFracIndexInInfor]);
+                        }
+                    }
+                    if (gtyPLIndexInInfor >= 0) {
+                        String val = cellsB[gtyPLIndexInInfor];
+                        if (val.charAt(0) != '.') {
+                            String[] pls = val.split(",");
+                            t = 0;
+                            pl = 0;
+                            if (!pls[t].equals(".")) {
+                                secondMostGtyPL[iGty] = Util.parseInt(pls[t]);
+                                if (secondMostGtyPL[iGty] == 0) {
+                                    secondMostGtyPL[iGty] = Integer.MAX_VALUE;
+                                }
+                            } else {
+                                secondMostGtyPL[iGty] = Integer.MAX_VALUE;
+                            }
+                            for (t = 1; t < pls.length; t++) {
+                                if (pls[t].equals(".")) {
+                                    continue;
+                                }
+                                if (pls[t].equals("0")) {
+                                    continue;
+                                }
+                                pl = Util.parseInt(pls[t]);
+                                if (pl < secondMostGtyPL[iGty]) {
+                                    secondMostGtyPL[iGty] = pl;
+                                }
+                            }
+                        }
+                    }
+                    if (gtyGPIndexInInfor >= 0) {
+                        String val = cellsB[gtyGPIndexInInfor];
+                        if (val.charAt(0) != '.') {
+                            String[] pls = val.split(",");
+                            t = 0;
+                            p = 0;
+
+                            if (!pls[t].equals(".")) {
+                                bestGtyGP[iGty] = Util.parseInt(pls[t]);
+                            }
+
+                            for (t = 1; t < pls.length; t++) {
+                                if (pls[t].equals(".")) {
+                                    continue;
+                                }
+                                if (pls[t].equals("0")) {
+                                    continue;
+                                }
+                                p = Util.parseInt(pls[t]);
+                                if (p > bestGtyGP[iGty]) {
+                                    bestGtyGP[iGty] = p;
+                                }
+                            }
+                        }
+                    }
+
+                }
+
+                /*
+                 if (!isLowQualBreak && currChr.indexOf(UNKNOWN_CHROM_NAME0) < 0 && currChr.indexOf(UNKNOWN_CHROM_NAME1) < 0 && hasAlt) {
+                 formatProbVarNum++;
+                 LOG.error("Format error at line " + fileLineCounter + ": " + currentLine);
+                 continue;
+                 }
+                 * 
+                 */
+                //QC
+                for (int k = totalPedSubjectNum - 1; k >= 0; k--) {
+                    index = pedVCFIDMap[k];
+
+                    if (index < 0) {
+                        continue;
+                    }
+
+                    //ignore variants with missing genotypes
+                    if (gtys[index] == null || gtys[index].charAt(0) == '.' || gtys[index].charAt(2) == '.') {
+                        gtys[index] = null;
+                        missingGtyNum++;
+                        continue;
+                    }
+
+                    if (hasIndexGQ && gtyQuality[index] < gtyQualityThrehsold) {
+                        gtys[index] = null;
+                        ignoredLowQualGtyNum++;
+                        continue;
+                    }
+                    if (hasIndexDP && gtyDepth[index] < minGtySeqDepth) {
+                        gtys[index] = null;
+                        ignoredLowDepthGtyNum++;
+                        continue;
+                    }
+                    if (hasIndexPL && secondMostGtyPL[index] < minSecondPL) {
+                        ignoredLowPLGtyNum++;
+                        gtys[index] = null;
+                        continue;
+                    }
+                    if (hasIndexGP && bestGtyGP[index] < minBestGP) {
+                        ignoredLowGPGtyNum++;
+                        gtys[index] = null;
+                        continue;
+                    }
+
+                    if (hasIndexAD || hasIndexFA) {
+                        if (gtys[index].charAt(0) == '0' && gtys[index].charAt(2) == '0') {
+                            if (altAlleleFracRefHomThrehsold < 1) {
+                                //the AD infor may be missing
+                                if (readCounts[index] == null && Float.isNaN(readFractions[index])) {
+                                    continue;
+                                }
+                                if (Float.isNaN(readFractions[index])) {
+                                    String[] counts = readCounts[index].split(",");
+                                    float bac = Util.parseFloat(counts[1]);
+                                    readFractions[index] = bac / (bac + Util.parseFloat(counts[0]));
+                                }
+
+                                if (Float.isNaN(readFractions[index])) {
+                                    gtys[index] = null;
+                                    ignoredBadAltFracGtyNum++;
+                                    continue;
+                                } else if (readFractions[index] > altAlleleFracRefHomThrehsold) {
+                                    gtys[index] = null;
+                                    ignoredBadAltFracGtyNum++;
+                                    continue;
+                                }
+
+                            }
+                        } else if (gtys[index].charAt(0) != gtys[index].charAt(2)) {
+                            if (altAlleleFractHetThrehsold > 0) {
+                                //the AD infor may be missing
+                                if (readCounts[index] == null && Float.isNaN(readFractions[index])) {
+                                    continue;
+                                }
+                                if (Float.isNaN(readFractions[index])) {
+                                    String[] counts = readCounts[index].split(",");
+                                    float bac = Util.parseFloat(counts[1]);
+                                    readFractions[index] = bac / (bac + Util.parseFloat(counts[0]));
+                                }
+                                if (Float.isNaN(readFractions[index])) {
+                                    gtys[index] = null;
+                                    ignoredBadAltFracGtyNum++;
+                                    continue;
+                                } else if (readFractions[index] < altAlleleFractHetThrehsold) {
+                                    gtys[index] = null;
+                                    ignoredBadAltFracGtyNum++;
+                                    continue;
+                                }
+                            }
+
+                        } else {
+                            if (altAlleleFractAltHomThrehsold > 0) {
+                                //the AD infor may be missing
+                                if (readCounts[index] == null && Float.isNaN(readFractions[index])) {
+                                    continue;
+                                }
+                                if (Float.isNaN(readFractions[index])) {
+                                    String[] counts = readCounts[index].split(",");
+                                    float bac = Util.parseFloat(counts[1]);
+                                    readFractions[index] = bac / (bac + Util.parseFloat(counts[0]));
+                                }
+                                if (Float.isNaN(readFractions[index])) {
+                                    gtys[index] = null;
+                                    ignoredBadAltFracGtyNum++;
+                                    continue;
+                                } else if (readFractions[index] < altAlleleFractAltHomThrehsold) {
+                                    gtys[index] = null;
+                                    ignoredBadAltFracGtyNum++;
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                    obsS++;
+                }
+
+
+                /*
+                 if (obsS == 0) {
+                 ignoredLineNumNoVar++;
+                 continue;
+                 }
+                 * 
+                 */
+                if (obsS < minOBS) {
+                    ignoredLineNumMinOBS++;
+                    continue;
+                }
+
+                if ((!needAccoundAffect && !needAccoundUnaffect) || needMAFQC) {
+                    g11 = 0;
+                    g12 = 0;
+                    g22 = 0;
+
+                    for (int i = 0; i < totalPedSubjectNum; i++) {
+                        int idLabel = pedVCFIDMap[i];
+                        if (idLabel < 0) {
+                            continue;
+                        }
+                        if (gtys[idLabel] == null || gtys[idLabel].charAt(0) == '.') {
+                            continue;
+                        }
+
+                        if (gtys[idLabel].charAt(0) != gtys[idLabel].charAt(2)) {
+                            g12++;
+                        } else if (gtys[idLabel].charAt(0) == '0') {
+                            g11++;
+                        } else {
+                            g22++;
+                        }
+                    }
+                }
+                if (needMAFQC) {
+                    maf = (g12 * .05 + g22) / (g11 + g12 + g22);
+                    if (maf <= sampleMaf || maf >= sampleMafC) {
+                        ignoredLineNumMinMAF++;
+                        continue;
+                    }
+                }
+
+                Byte chromID = chromNameIndexMap.get(currChr);
+                if (chromID == null) {
+                    //System.err.println("Unrecognized chromosome name: " + currChr);
+                    continue;
+                }
+
+                alleleNum = altAlleles.length + 1;
+                if (needGty && alleleNum < 5) {
+                    //as the genotypes may be use for other purpose so we need record it before filtering 
+                    genotypeBitIndexes++;
+                    //at most use 5 bits represent a genotype
+                    /*
+                     2 bits for an unphased -genotype of a bi-allelic sequence variants
+                     3 bits for a phased -genotype of a bi-allelic sequence variants
+                     3 bits for an unphased -genotype of a tri-allelic sequence variants
+                     4 bits for a phased -genotype of a tri-allelic sequence variants
+                     4 bits for an unphased -genotype of a quad-allelic sequence variants
+                     5 bits for a phased -genotype of a quad-allelic sequence variants        
+                     */
+
+                    if (!isPhased) {
+                        for (index = 0; index < totalPedSubjectNum; index++) {
+                            int idLabel = pedVCFIDMap[index];
+                            if (idLabel < 0) {
+                                continue;
+                            }
+                            Individual indiv = subjectList.get(index);
+
+                            if (indiv != null) {
+                                //indiv.markerGtySetArray.addUnphasedGtyAt(genotypeBitIndexes, gtys[idLabel], alleleNum);
+                                //System.out.println(idLabel + " " + gtys[index]);
+                            }
+                        }
+                    } else {
+                        for (index = 0; index < totalPedSubjectNum; index++) {
+                            int idLabel = pedVCFIDMap[index];
+                            if (idLabel < 0) {
+                                continue;
+                            }
+                            Individual indiv = subjectList.get(index);
+                            if (indiv != null) {
+
+                                //indiv.markerGtySetArray.addPhasedGtyAt(genotypeBitIndexes, gtys[idLabel], alleleNum);
+                                //byte[] gs= indiv.markerGtySetArray.getPhasedGtyAt(genotypeBitIndexes, alleleNum);
+                                //int sss=0;
+                            }
+                        }
+                    }
+                    cords[chromID].add(new IntSet(makerPostion, genotypeBitIndexes, (byte) alleleNum));
+
+                    if (needReadsInfor) {
+                        for (index = 0; index < totalPedSubjectNum; index++) {
+                            int idLabel = pedVCFIDMap[index];
+                            if (idLabel < 0) {
+                                continue;
+                            }
+                            Individual indiv = subjectList.get(index);
+                            if (indiv != null) {
+                               // indiv.markerGtySetArray.addReadsInforAt(genotypeBitIndexes, readCounts[idLabel]);
+                            }
+                        }
+                    }
+                }
+
+                Variant var = new Variant(makerPostion, ref, altAlleles);
+                var.setIsIndel(isIndel);
+                var.setLabel(varLabel);
+                varChroms[chromID].add(var);
+                if (needGty) {
+                    var.genotypeIndex = genotypeBitIndexes;
+                }
+
+                if (needAccoundAffect) {
+                    g11 = 0;
+                    g12 = 0;
+                    g22 = 0;
+
+                    for (int i = 0; i < caseSize; i++) {
+                        int idLabel = pedVCFIDMap[caeSetID.getQuick(i)];
+                        if (idLabel < 0) {
+                            continue;
+                        }
+                        if (gtys[idLabel] == null || gtys[idLabel].charAt(0) == '.') {
+                            continue;
+                        }
+
+                        if (gtys[idLabel].charAt(0) != gtys[idLabel].charAt(2)) {
+                            g12++;
+                        } else if (gtys[idLabel].charAt(0) == '0') {
+                            g11++;
+                        } else {
+                            g22++;
+                        }
+                    }
+                    var.setAffectedRefHomGtyNum(g11);
+                    var.setAffectedHetGtyNum(g12);
+                    var.setAffectedAltHomGtyNum(g22);
+                }
+                if (needAccoundUnaffect) {
+                    g11 = 0;
+                    g12 = 0;
+                    g22 = 0;
+
+                    for (int i = 0; i < controlSize; i++) {
+                        int idLabel = pedVCFIDMap[controlSetID.getQuick(i)];
+                        if (idLabel < 0) {
+                            continue;
+                        }
+                        if (gtys[idLabel] == null || gtys[idLabel].charAt(0) == '.') {
+                            continue;
+                        }
+
+                        if (gtys[idLabel].charAt(0) != gtys[idLabel].charAt(2)) {
+                            g12++;
+                        } else if (gtys[idLabel].charAt(0) == '0') {
+                            g11++;
+                        } else {
+                            g22++;
+                        }
+                    }
+
+                    var.setUnaffectedRefHomGtyNum(g11);
+                    var.setUnaffectedHetGtyNum(g12);
+                    var.setUnaffectedAltHomGtyNum(g22);
+                }
+
+                if (!needAccoundAffect && !needAccoundUnaffect) {
+                    var.setAffectedRefHomGtyNum(g11);
+                    var.setAffectedHetGtyNum(g12);
+                    var.setAffectedAltHomGtyNum(g22);
+                }
+                acceptVarNum++;
+            }
+
+        } catch (Exception nex) {
+            //nex.printStackTrace();
+            String info = nex.toString() + " when parsing at line : " + currentLine;
+            // LOG.error(nex, info);
+            throw new Exception(info);
+        }
+
+        //change the order to be consisten with the pedigree file
+        // effectIndivIDInVCF.quickSort();
+        return acceptVarNum;
+    }
+}

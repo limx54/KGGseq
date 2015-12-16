@@ -1,0 +1,129 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package org.cobi.kggseq.controller;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import org.apache.log4j.Logger;
+
+import java.util.HashMap;
+
+import static org.cobi.kggseq.GlobalManager.PLUGIN_PATH;
+
+import org.cobi.kggseq.entity.AnnotationSummarySet;
+import org.cobi.kggseq.entity.Chromosome;
+import org.cobi.kggseq.entity.Variant;
+
+/**
+ *
+ * @author JiangLi
+ */
+public class Phenolyzer {
+
+    String strPerlPath;
+    String strCMD;
+    String strPhenolyzerPath = PLUGIN_PATH + "phenolyzer-master/disease_annotation.pl";
+
+    private static final Logger LOG = Logger.getLogger(Phenolyzer.class);
+
+//    File fleTarget=new File(PLUGIN_PATH+"phenolyzer-master/out/sleep/sleep_sleep_gene_scores");
+    File fleTarget = new File("D:\\01WORK\\KGGseq\\software\\KGGseq\\plugin\\phenolyzer-master\\out\\sleep\\sleep_sleep_gene_scores");
+    HashMap<String, double[]> hmpPhenolyzer = null;
+    BufferedReader br = null;
+
+    public Phenolyzer(String strPerlPath, String strPhenolyzerPath) {
+        this.strPerlPath = strPerlPath;
+        this.strPhenolyzerPath = strPhenolyzerPath;
+    }
+
+    public Phenolyzer() {
+        this.strPerlPath = "perl";
+        this.strPhenolyzerPath = PLUGIN_PATH + "phenolyzer-master/disease_annotation.pl";
+    }
+
+    public void runPhenolyzer() {
+        try {
+            Runtime.getRuntime().exec(strCMD);
+        } catch (IOException ex) {
+            LOG.error(ex);
+        }
+    }
+
+    public void parseResult() {
+        try {
+            if (fleTarget == null || !fleTarget.exists()) {
+                return;
+            }
+            hmpPhenolyzer = new HashMap<String, double[]>();
+            br = new BufferedReader(new FileReader(fleTarget));
+            String strLine;
+            while ((strLine = br.readLine()) != null) {
+                if (strLine.contains("Normalized score")) {
+                    String[] strItems = strLine.split("\t");
+                    double[] dblScore = new double[2];
+                    dblScore[0] = Double.parseDouble(strItems[1].substring(18));
+                    dblScore[1] = Double.parseDouble(strItems[2].substring(11));
+                    hmpPhenolyzer.put(strItems[0], dblScore);
+                }
+            }
+            br.close();
+        } catch (FileNotFoundException ex) {
+            LOG.info(ex);
+
+        } catch (IOException ex) {
+            LOG.info(ex);
+        }
+    }
+
+    public HashMap<String, double[]> getHashMap() {
+        return this.hmpPhenolyzer;
+    }
+
+    public void addScore(Chromosome chromosome, AnnotationSummarySet ass, HashMap<String, double[]> hmpPhenolyzer) {
+        int intNum = 0;
+        if (chromosome == null) {
+            return;
+        }
+//        for(mRNA mrna:chromosome.mRNAList){
+//            if(hmpPhenolyzer.containsKey(mrna.geneSymb.toUpperCase())){
+//                double[] dblValues=hmpPhenolyzer.get(mrna.geneSymb.toUpperCase());
+//                mrna.addFeatureValue(String.valueOf(dblValues[0]));
+//                mrna.addFeatureValue(String.valueOf(dblValues[1]));
+//             
+//                intNum++;
+//            }else{
+//                mrna.addFeatureValue(null);
+//                mrna.addFeatureValue(null);               
+//            }
+//        }
+
+        for (Variant var : chromosome.variantList) {
+            if (var.geneSymb == null) {
+                var.setFeatureValue(ass.getAvailableFeatureIndex(), null);
+                var.setFeatureValue(ass.getAvailableFeatureIndex() + 1, null);
+                continue;
+            }
+            if (hmpPhenolyzer.containsKey(var.geneSymb.toUpperCase())) {
+                double[] dblValues = hmpPhenolyzer.get(var.geneSymb.toUpperCase());
+                var.setFeatureValue(ass.getAvailableFeatureIndex(), String.valueOf(dblValues[0]));
+                var.setFeatureValue(ass.getAvailableFeatureIndex() + 1, String.valueOf(dblValues[1]));
+                intNum++;
+            } else {
+                var.setFeatureValue(ass.getAvailableFeatureIndex(), "lj1");
+                var.setFeatureValue(ass.getAvailableFeatureIndex() + 1, "lj2");
+            }
+        }
+
+        ass.setAnnotNum(ass.getAnnotNum() + intNum);
+        ass.setTotalNum(ass.getTotalNum() + chromosome.mRNAList.size());
+        ass.setLeftNum(ass.getLeftNum() + chromosome.mRNAList.size() - intNum);
+    }
+
+ 
+}

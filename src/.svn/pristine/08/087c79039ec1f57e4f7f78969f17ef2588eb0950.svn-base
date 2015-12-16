@@ -1,0 +1,289 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package org.cobi.kggseq.controller;
+
+import cern.colt.list.DoubleArrayList;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.zip.GZIPOutputStream;
+import org.apache.log4j.Logger;
+import org.cobi.kggseq.Constants;
+import static org.cobi.kggseq.Constants.STAND_CHROM_NAMES;
+import org.cobi.kggseq.GlobalManager;
+import static org.cobi.kggseq.GlobalManager.PLUGIN_PATH;
+import org.cobi.kggseq.entity.Chromosome;
+import org.cobi.kggseq.entity.GeneSet;
+import org.cobi.kggseq.entity.Individual;
+import org.cobi.kggseq.entity.Variant;
+import org.cobi.util.file.LocalFileFunc;
+import org.cobi.util.thread.Task;
+
+/**
+ *
+ * @author mxli
+ */
+public class RVTest {
+
+    private static final Logger LOG = Logger.getLogger(RVTest.class);
+    String rvtestFolder;
+    String inputFileFolder;
+    String outputFileFolder;
+
+    public RVTest(String inputFileFolder) throws Exception {
+        this.rvtestFolder = PLUGIN_PATH + "/rvtests-master/executable/rvtest";
+        File f1 = new File(inputFileFolder);
+        File f = new File(f1.getCanonicalPath());
+        if (!f.getParentFile().exists()) {
+            f.getParentFile().mkdir();
+        }
+        this.inputFileFolder = f1.getCanonicalPath();
+        outputFileFolder = f1.getCanonicalPath() + ".rvtestTMP" + (int) (Math.random() * 10000);
+    }
+
+    public void runBGzip() {
+        try {
+            String bgizpFolder = PLUGIN_PATH + "/tabix-master/";
+            LocalFileFunc.gunzipFile(inputFileFolder + ".flt.vcf.gz", inputFileFolder + ".flt.vcf");
+            String line;
+
+            String cmd = bgizpFolder + "bgzip -f " + inputFileFolder + ".flt.vcf";
+            Process pr = Runtime.getRuntime().exec(cmd);
+            try {
+                BufferedReader inputError = new BufferedReader(new InputStreamReader(pr.getErrorStream()));
+                while (((line = inputError.readLine()) != null)) {
+                    //  System.out.println(line);
+                }
+                int exitVal = pr.waitFor();
+                pr.destroy();
+                inputError.close();
+                if (exitVal != 0) {
+                    LOG.info("Failed to run the command:" + cmd);
+                }
+            } catch (Exception ex) {
+                LOG.error(ex + "\nbgzip failed to run.");
+            }
+
+            cmd = bgizpFolder + "tabix -f " + inputFileFolder + ".flt.vcf.gz";
+            pr = Runtime.getRuntime().exec(cmd);
+            try {
+                BufferedReader inputError = new BufferedReader(new InputStreamReader(pr.getErrorStream()));
+                while (((line = inputError.readLine()) != null)) {
+                    //  System.out.println(line);
+                }
+                int exitVal = pr.waitFor();
+                pr.destroy();
+                inputError.close();
+                if (exitVal != 0) {
+                    LOG.info("Failed to run the command:" + cmd);
+                }
+            } catch (Exception ex) {
+                LOG.error(ex + "\nFailed to run the command:" + cmd);
+            }
+        } catch (IOException ex) {
+            LOG.error(ex);
+        } catch (Exception ex) {
+            LOG.error(ex);
+        }
+
+    }
+
+    public class CallRVTestTask extends Task implements Callable<String>, Constants {
+
+        String phenoFilePath;
+        String chrName;
+
+        public CallRVTestTask(String phenoFilePath, String chrName) {
+            this.phenoFilePath = phenoFilePath;
+            this.chrName = chrName;
+        }
+
+        @Override
+        public String call() throws Exception {
+            try {
+                File f1 = new File(phenoFilePath);
+                phenoFilePath = f1.getCanonicalPath();
+                String[] params = new String[13];
+                params[0] = rvtestFolder;
+                params[1] = " --inVcf";
+                params[2] = inputFileFolder + ".flt.vcf.gz";
+                params[3] = "--pheno";
+                params[4] = phenoFilePath;
+                params[5] = "--setFile";
+                params[6] = inputFileFolder + ".chr" + chrName + ".gene.rvtest.grp.gz";
+                params[7] = "--out";
+                params[8] = outputFileFolder + ".chr" + chrName;
+                params[9] = "--burden";
+                params[10] = "cmc";
+                params[11] = "--kernel";
+                params[12] = "skat[nPerm=100:alpha=0.001:beta1=1:beta2=20],kbac";
+                StringBuilder comInfor = new StringBuilder();
+                for (String param : params) {
+                    comInfor.append(param);
+                    comInfor.append(" ");
+                }
+                //example command
+                //plugin/rvtests/executable/rvtest --inVcf test1.flt.vcf.gz --pheno assoc.ped --out output --setFile test1.gene.rvtest.grp.gz --burden cmc --vt price --kernel skat[nPerm=100:alpha=0.001:beta1=1:beta2=20],kbac
+                Process pr = Runtime.getRuntime().exec(comInfor.toString());
+
+                String line;
+
+                try {
+                    BufferedReader inputOut = new BufferedReader(new InputStreamReader(pr.getInputStream()));
+                    while (((line = inputOut.readLine()) != null)) {
+                        //  System.out.println(line);
+                    }
+
+                    BufferedReader inputError = new BufferedReader(new InputStreamReader(pr.getErrorStream()));
+                    while (((line = inputError.readLine()) != null)) {
+                        //System.out.println(line);
+                    }
+
+                    int exitVal = pr.waitFor();
+                    pr.destroy();
+                    inputError.close();
+
+                    if (exitVal != 0) {
+
+                        LOG.info("Rvtest failed to run by the command: " + comInfor.toString());
+                    }
+                } catch (Exception ex) {
+                    LOG.error(ex + "\nRvtest failed to run!");
+                }
+
+            } catch (IOException ex) {
+                LOG.error(ex);
+            } catch (Exception ex) {
+                LOG.error(ex);
+            }
+            return "";
+        }
+
+    }
+
+    public void runGeneAssoc(String phenoFilePath, int maxThreadNum) throws Exception {
+        ExecutorService exec = Executors.newFixedThreadPool(maxThreadNum);
+        final CompletionService<String> serv = new ExecutorCompletionService<String>(exec);
+        int runningThread = 0;
+        for (int i = 0; i < STAND_CHROM_NAMES.length; i++) {
+            File f = new File(inputFileFolder + ".chr" + STAND_CHROM_NAMES[i] + ".gene.rvtest.grp.gz");
+            if (!f.exists()) {
+                continue;
+            }
+            CallRVTestTask task = new CallRVTestTask(phenoFilePath, STAND_CHROM_NAMES[i]);
+            serv.submit(task);
+            runningThread++;
+        }
+        for (int s = 0; s < runningThread; s++) {
+            Future<String> task = serv.take();
+            String infor = task.get();
+            //  System.out.println(infor);
+        }
+        exec.shutdown();
+        //collect data
+    }
+
+    public void runGenesetAssoc(Map<String, List<Variant>> geneVars, List<Individual> subjectList, int[] pedEncodeGytIDMap, boolean isPhased, int intNT, DoubleArrayList[] pvList) {
+
+    }
+
+    public void summarizeVarCountsBySubject(Map<String, List<Variant>> geneVars, List<Individual> subjectList, int[] pedEncodeGytIDMap, boolean isPhasedGty,
+            Map<String, Integer> phenotypeColID, String exportPath, boolean outGZ) throws Exception {
+        BufferedWriter bwPed = null;
+        if (geneVars == null) {
+            return;
+        }
+        if (outGZ) {
+            bwPed = new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(exportPath + ".grp.sum.gz"))));
+        } else {
+            bwPed = new BufferedWriter(new FileWriter(exportPath + ".grp.sum"));
+        }
+
+        int[] gtys = null;
+        int alleleNum, base = 2;
+        int subID = -1;
+        int gtyID = 0;
+        int count;
+        bwPed.write("SubjectID");
+        String[] traitNames = new String[phenotypeColID.size()];
+        for (Map.Entry<String, Integer> items : phenotypeColID.entrySet()) {
+            traitNames[items.getValue()] = items.getKey();
+        }
+        for (int i = 0; i < traitNames.length; i++) {
+            bwPed.write("\t");
+            bwPed.write(traitNames[i]);
+        }
+        for (Map.Entry<String, List<Variant>> items : geneVars.entrySet()) {
+            bwPed.write("\t");
+            bwPed.write(items.getKey());
+        }
+        bwPed.write("\n");
+        for (Individual indiv : subjectList) {
+            if (indiv == null) {
+                continue;
+            }
+
+            subID++;
+            gtyID = pedEncodeGytIDMap[subID];
+            if (gtyID < 0) {
+                continue;
+            }
+
+            bwPed.write(indiv.getLabelInChip());
+            double[] traits = indiv.getTraits();
+            for (int i = 0; i < traits.length; i++) {
+                bwPed.write("\t");
+                bwPed.write(String.valueOf(traits[i]));
+            }
+
+            for (Map.Entry<String, List<Variant>> items : geneVars.entrySet()) {
+                bwPed.write("\t");
+                List<Variant> vars = items.getValue();
+                if (vars == null || vars.isEmpty()) {
+                    bwPed.write("0");
+                    continue;
+                }
+                count = 0;
+                for (Variant var : vars) {
+                    alleleNum = var.getAltAlleles().length + 1;
+                    if (isPhasedGty) {
+                        base = GlobalManager.phasedAlleleBitMap.get(alleleNum);
+                        gtys = BinaryGtyProcessor.getPhasedGtyAt(var.encodedGty, alleleNum, base, gtyID);
+                    } else {
+                        base = GlobalManager.unphasedAlleleBitMap.get(alleleNum);
+                        gtys = BinaryGtyProcessor.getUnphasedGtyAt(var.encodedGty, alleleNum, base, gtyID);
+                    }
+
+                    if (gtys != null) {
+                        if (gtys[0] != 0) {
+                            count++;
+                        }
+                        if (gtys[1] != 0) {
+                            count++;
+                        }
+                    }
+                }
+                bwPed.write(String.valueOf(count));
+            }
+            bwPed.write("\n");
+        }
+        bwPed.close();
+    }
+}

@@ -1,0 +1,1967 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package org.cobi.kggseq.controller;
+
+import cern.colt.list.DoubleArrayList;
+import java.io.BufferedReader;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import org.apache.log4j.Logger;
+import org.cobi.kggseq.Constants;
+import org.cobi.kggseq.entity.AnnotationSummarySet;
+import org.cobi.kggseq.entity.Chromosome;
+import org.cobi.kggseq.entity.CombOrders;
+import org.cobi.kggseq.entity.FiltrationSummarySet;
+import org.cobi.kggseq.entity.Gene;
+import org.cobi.kggseq.entity.GeneFeature;
+import org.cobi.kggseq.entity.Genome;
+import org.cobi.kggseq.entity.Individual;
+import org.cobi.kggseq.entity.ReferenceGenome;
+import org.cobi.kggseq.entity.RegressionParams;
+import org.cobi.kggseq.entity.Variant;
+import org.cobi.kggseq.entity.mRNA;
+import org.cobi.randomforests.MyRandomForest;
+import org.cobi.util.file.LocalFileFunc;
+import org.cobi.util.text.LocalFile;
+import org.cobi.util.text.StringArrayStringComparator;
+import org.cobi.util.text.Util;
+import org.cobi.util.thread.Task;
+
+/**
+ *
+ * @author mxli
+ */
+public class VariantAnnotator implements Constants {
+
+    private static final Logger LOG = Logger.getLogger(VariantAnnotator.class);
+    private int indexChrom = 0;
+    private int indexPosition = 1;
+    private int indexREF = 2;
+    private int indexALT = 3;
+    Map<String, Integer> chromNameIndexMap = new HashMap<String, Integer>();
+
+    public VariantAnnotator() {
+        for (int i = 0; i < STAND_CHROM_NAMES.length; i++) {
+            chromNameIndexMap.put(STAND_CHROM_NAMES[i], i);
+            //variantPositionIndexMap[i] = new OpenIntIntHashMap();
+        }
+    }
+
+    public Map<String, String[]> readGeneNames(String dbPath) throws Exception {
+        List<String[]> geneItems = new ArrayList<String[]>();
+        int[] indices = new int[3];
+        /*
+         * indices[0] = 1;//Approved\tSymbol indices[1] = 2;//Approved Name
+         * indices[2] = 4;//Previous Symbols // indices[3] = 5; //Synonyms
+         * indices[3] = 7; //Accession Numbers indices[4] = 8; //RefSeq IDs
+         */
+
+        indices[0] = 1;// Approved\tSymbol
+        indices[1] = 7;// Approved Name
+        indices[2] = 8;// Previous Symbols
+        // indices[3] = 5; //Synonyms
+        // indices[3] = 7; //Accession Numbers
+        // indices[4] = 8; //RefSeq IDs
+
+        LocalFile.retrieveData(dbPath, geneItems, indices, "\t");
+        Map<String, String[]> geneSymMap = new HashMap<String, String[]>();
+        List<String> tempList = new ArrayList<String>();
+
+        for (String[] item : geneItems) {
+            // ignore the full name of genes
+            // tempList.add(item[1]);
+            for (int i = 2; i < item.length; i++) {
+                if (item[i].trim().isEmpty()) {
+                    continue;
+                }
+                String[] cells = item[i].split(",");
+                for (int t = 0; t < cells.length; t++) {
+                    tempList.add(cells[t].trim());
+                }
+            }
+            geneSymMap.put(item[0], tempList.toArray(new String[tempList.size()]));
+            tempList.clear();
+        }
+        return geneSymMap;
+    }
+
+    public void readExonicScoreNSFPNucleotideMerge(Chromosome chromosome, String resourcePath, String refGenomeVer,
+            int[] scoreIndexes, int[] predicIndex, FiltrationSummarySet ass, boolean needProgressionIndicator) {
+        int indexPos = 0;
+        int indexref = 1;
+        int indexalt = 2;
+        int indexaaref = 6;
+        int indexaaalt = 7;
+
+        int maxColNum = indexPos;
+        maxColNum = Math.max(maxColNum, indexPos);
+        maxColNum = Math.max(maxColNum, indexref);
+        maxColNum = Math.max(maxColNum, indexalt);
+        int varFeatureNum = ass.getAvailableFeatureIndex();
+
+        String currentLine = null;
+        // String currChr = null;
+        int currFilePostion = 0;
+
+        char ref, alt;
+
+        float[] scores = new float[scoreIndexes.length];
+        String[] predicResults = new String[predicIndex.length];
+        String missingLabel = ".";
+        StringBuilder tmpBuffer = new StringBuilder();
+        Variant[] vars = null;
+        long lineCounter = 0;
+        int varAssignedScore = 0;
+
+        int unmatchedAlleleVarNum = 0;
+
+        boolean atLeastANaN = false;
+        boolean atLeastANonNa = false;
+
+        // for development of new method
+        DoubleArrayList[] scoreLists = new DoubleArrayList[5];
+        for (int i = 0; i < scoreLists.length; i++) {
+            scoreLists[i] = new DoubleArrayList();
+        }
+        boolean fullMatch;
+
+        // int varFeatureNum = genome.getVariantFeatureLabels().size();
+        File rsFile = null;
+        int unmatchedNum = 0;
+        try {
+            String chrName = chromosome.getName();
+            if (chromosome == null || chromosome.variantList == null || chromosome.variantList.isEmpty()) {
+                return;
+            }
+
+            rsFile = new File(resourcePath + chrName + ".gz");
+            if (!rsFile.exists()) {
+                LOG.warn(rsFile.getCanonicalPath() + " does not exist! Scores on this chromosome are ignored!");
+                return;
+            }
+            // System.out.print(" Chromosome " +
+            // Options.REF_CHROM_NAMES[i]);
+
+            BufferedReader br = LocalFileFunc.getBufferedReader(rsFile.getCanonicalPath());
+
+            lineCounter++;
+            // skip to the head line
+            currentLine = br.readLine();
+
+            atLeastANaN = false;
+            atLeastANonNa = false;
+            String[] tmpStrs;
+
+            boolean hasNoScore;
+
+            int varIndex = 0;
+            // ensure all variants are sorted according to the
+            // refStartPosition; otherwise itwil get stucked.
+            Variant var = null;
+            int varListSize = chromosome.variantList.size();
+            int varPos = -1;
+            boolean needNewRow = true;
+            String[] cells = null;
+            int varIndex1 = 0;
+            int varPos1 = 0;
+            var = chromosome.variantList.get(varIndex);
+            varPos = var.refStartPosition;
+            while (varIndex < varListSize) {
+                // System.out.println(currentLine);
+                if (needNewRow) {
+                    // StringTokenizer st = new
+                    // StringTokenizer(currentLine.trim(), "\t");
+                    currentLine = br.readLine();
+                    if (currentLine == null) {
+                        break;
+                    }
+                    cells = Util.tokenize(currentLine, '\t', maxColNum);
+                    if (cells[indexPos].equals(missingLabel)) {
+                        currFilePostion = -1;
+                        continue;
+                    } else {
+                        currFilePostion = Util.parseInt(cells[indexPos]);
+                    }
+                    lineCounter++;
+                    if (needProgressionIndicator && lineCounter % 50000 == 0) {
+                        String prog = String.valueOf(lineCounter);
+                        System.out.print(prog);
+                        char[] backSpaces = new char[prog.length()];
+                        Arrays.fill(backSpaces, '\b');
+                        System.out.print(backSpaces);
+                    }
+                    needNewRow = false;
+                }
+                if (varPos > currFilePostion) {
+                    needNewRow = true;
+                    continue;
+                } else if (varPos < currFilePostion) {
+                    varIndex++;
+                    if (varIndex >= varListSize) {
+                        break;
+                    }
+                    var = chromosome.variantList.get(varIndex);
+                    varPos = var.refStartPosition;
+                    continue;
+                }
+                //ingore indel
+                if (var.isIndel) {
+                    varIndex++;
+                    if (varIndex >= varListSize) {
+                        break;
+                    }
+                    var = chromosome.variantList.get(varIndex);
+                    varPos = var.refStartPosition;
+                    continue;
+                }
+
+                // in the variant genome, there is only one unique variant
+                varIndex1 = varIndex;
+
+                //this alogrithm does not work for indels
+                //it must be equal and there may be multiple positions equal
+                atLeastANaN = false;
+                ref = cells[indexref].charAt(0);
+                alt = cells[indexalt].charAt(0);
+                unmatchedNum = 0;
+                do {
+                    var = chromosome.variantList.get(varIndex1);
+                    varPos1 = var.refStartPosition;
+                    if (varPos1 > currFilePostion) {
+                        break;
+                    }
+                    fullMatch = false;
+                    String[] altAlleles = var.getAltAlleles();
+                    for (String altA : altAlleles) {
+                        if (altA == null) {
+                            continue;
+                        }
+                        // assum there is ony one alternative allele Note
+                        // the second condition is not safe
+                        if (var.getRefAllele().charAt(0) == ref && altA.charAt(0) == alt
+                                || var.getRefAllele().charAt(0) == alt && altA.charAt(0) == ref) {
+                            fullMatch = true;
+                            break;
+                        }
+                    }
+                    if (fullMatch && var.scores == null) {
+                        cells = Util.tokenize(currentLine, '\t');
+                        Arrays.fill(scores, Float.NaN);
+                        Arrays.fill(predicResults, null);
+
+                        for (int iCol = 0; iCol < scoreIndexes.length; iCol++) {
+                            if (cells[scoreIndexes[iCol]].equals(missingLabel)) {
+                                atLeastANaN = true;
+                                scores[iCol] = Float.NaN;
+                            } else {
+                                atLeastANonNa = true;
+                                if (!cells[scoreIndexes[iCol]].contains(";")) {
+                                    scores[iCol] = Util.parseFloat(cells[scoreIndexes[iCol]]);
+                                } else {
+                                    // just use the first one
+                                    // System.out.println(tmpBuffer.toString());
+                                    tmpStrs = cells[scoreIndexes[iCol]].split(";");
+                                    hasNoScore = true;
+                                    for (String tmpStr : tmpStrs) {
+                                        if (!tmpStr.equals(missingLabel)) {
+                                            scores[iCol] = Util.parseFloat(tmpStr);
+                                            hasNoScore = false;
+                                            break;
+                                        }
+                                    }
+                                    if (hasNoScore) {
+                                        atLeastANaN = true;
+                                        scores[iCol] = Float.NaN;
+                                    }
+                                }
+                            }
+                        }
+                        for (int iCol = 0; iCol < predicIndex.length; iCol++) {
+                            if (cells[predicIndex[iCol]].equals(missingLabel)) {
+                                atLeastANaN = true;
+                                predicResults[iCol] = ".";
+                            } else {
+                                atLeastANonNa = true;
+                                predicResults[iCol] = cells[predicIndex[iCol]];
+                            }
+                        }
+                        var.scores = new float[scores.length];
+                        System.arraycopy(scores, 0, var.scores, 0, scores.length);
+                        varAssignedScore++;
+                        for (int k = 0; k < predicResults.length; k++) {
+                            var.addFeatureValue(varFeatureNum + k, predicResults[k]);
+                        }
+                    } else {
+                        unmatchedNum++;
+                    }
+                    varIndex1++;
+                } while (varIndex1 < varListSize);
+
+                if (unmatchedNum == 0) {
+                    varIndex++;
+                }
+                //otherwise only move file's index
+                needNewRow = true;
+            }
+            br.close();
+            ass.increaseCount(0, varAssignedScore);
+        } catch (Exception e) {
+            LOG.error("Exception at line \"" + currentLine + "\" of file " + rsFile.getName());
+            e.printStackTrace();
+        }
+    }
+
+    //Important comments: Acually, the postitions of variants cannot be retreived by a positions because 1) a variant may be splitted into multiple ones according
+    //to their alternative alleles and 2) the flexible annotation of Indels. This the the reason why we cannot use merged searching alogrithm to speeed up (Sadly!).
+    //The good news is that there is a very fast hashmap OpenIntIntHashMap from Colt and I used it
+    public int hardFilterByANNOVARefFormat(Chromosome chromosome, int chrID, AnnotationSummarySet ass, boolean needProgressionIndicator) {
+        indexChrom = 0;
+        indexPosition = 1;
+        indexREF = 2;
+        indexALT = 3;
+        List<Variant> varList = chromosome.variantList;
+        BufferedReader br = ass.getBr();
+        StringBuilder newLine = ass.getLastLine();
+
+        //No matched SNPs means null 
+        Set<Integer> excludeIndexes = new HashSet<Integer>();
+        String currentLine = null;
+        try {
+            int maxColNum = indexChrom;
+            maxColNum = Math.max(maxColNum, indexPosition);
+            maxColNum = Math.max(maxColNum, indexREF);
+            maxColNum = Math.max(maxColNum, indexALT);
+
+            int lineCounter = 0;
+            boolean incomplete = true;
+
+            int filePosition = -1;
+            StringBuilder tmpBuffer = new StringBuilder();
+            String ref;
+            String alt;
+            String mafStr = null;
+
+            String[] alts;
+            //  String[] mafStrs;
+            int[] varIndexes = null;
+            boolean isDeleion = false;
+            boolean isInsertion = false;
+
+            char[] backSpaces = null;
+            int delNum = 0;
+            StringBuilder sb = new StringBuilder();
+
+            String[] cells = null;
+            if (newLine.length() == 0) {
+                currentLine = br.readLine();
+                if (currentLine == null) {
+                    return 0;
+                }
+            } else {
+                currentLine = newLine.toString();
+                newLine.delete(0, newLine.length());
+            }
+            int fileChrID = 0;
+            do {
+                /*
+                 if (currentLine.indexOf("BP") >= 0 || currentLine.indexOf("bp") >= 0) {
+                 continue;
+                 }
+                 */
+                lineCounter++;
+                if (needProgressionIndicator && lineCounter % 50000 == 0) {
+                    String prog = String.valueOf(lineCounter);
+                    System.out.print(prog);
+                    backSpaces = new char[prog.length()];
+                    Arrays.fill(backSpaces, '\b');
+                    System.out.print(backSpaces);
+                }
+
+                //StringTokenizer st = new StringTokenizer(currentLine.trim());
+                cells = Util.tokenize(currentLine, '\t');
+                if (cells.length < 2) {
+                    cells = Util.tokenizeIngoreConsec(currentLine, ' ');
+                }
+
+                fileChrID = chromNameIndexMap.get(cells[indexChrom]);
+                if (chrID < fileChrID) {
+                    newLine.append(currentLine);
+                    break;
+                } else if (chrID > fileChrID) {
+                    continue;
+                }
+
+                filePosition = Util.parseInt(cells[indexPosition]);
+                //initialize varaibles
+                incomplete = true;
+                ref = cells[indexREF];
+                alt = cells[indexALT];
+
+                alts = alt.split(",");
+                int tmpPos = 0;
+
+                //once the variant is in db, it at least has a zero freq
+                for (int s = 0; s < alts.length; s++) {
+                    if (alts[s] == null || alts[s].isEmpty()) {
+                        continue;
+                    }
+
+                    isDeleion = false;
+                    isInsertion = false;
+                    tmpPos = filePosition;
+                    alt = alts[s];
+                    //deletion
+                    //format:1	45113	-	0TATGG	0.715732
+///1	53599	CTA	3	0.890916
+//1	223450	CT	1	0.207385
+                    //1	229450	C	T,G	0.207385,0.1
+                    //1	229450	C	T,G	0.207385,
+                    if (alt.charAt(0) == '0') {
+                        isInsertion = true;
+                    } else if (alt.charAt(0) - '0' <= 9 && alt.charAt(0) - '0' > 0) {
+                        isDeleion = true;
+                        tmpPos--;
+                    }
+
+                    varIndexes = chromosome.lookupVariantIndexes(tmpPos);
+                    if (varIndexes == null) {
+                        continue;
+                    }
+
+                    // System.out.println(fileChr);
+
+                    /*
+                     if (chrID == null) {
+                     //System.out.println("Unrecognized chromosome name: " + fileChr + " at line " + lineCounter + ": " + currentLine);
+                     } else {
+                     }
+                     * 
+                     */
+                    for (int index : varIndexes) {
+                        Variant var = varList.get(index);
+                        if (isDeleion || isInsertion) {
+                            if (var.isIndel) {
+                                String varRef = var.getRefAllele();
+                                String[] altAlleles = var.getAltAlleles();
+                                //keep variants with score less than minAlleleFreq
+                                for (String varAlt : altAlleles) {
+                                    //insertion in 1KG
+                                    if (isInsertion) {
+                                        if (varAlt.substring(1).equals(alt.substring(1))) {
+                                            //record the maximal allele frequencies 
+                                            excludeIndexes.add(index);
+                                            break;
+                                        }
+                                    } else if (alt.charAt(0) != '0') {
+                                        //deletion in 1KG
+                                        sb.delete(0, sb.length());
+                                        for (int t = 0; t < varAlt.length(); t++) {
+                                            if (varAlt.charAt(t) == '-') {
+                                                sb.append(varRef.charAt(t));
+                                            }
+                                        }
+
+                                        delNum = Util.parseInt(alt);
+                                        if (sb.toString().equals(ref.substring(ref.length() - delNum))) {
+                                            excludeIndexes.add(index);
+                                            break;
+                                        }
+                                    }
+                                }
+                            } else {
+                                continue;
+                            }
+                        } else {
+                            if (var.isIndel) {
+                                continue;
+                            } else {
+                                String[] altAlleles = var.getAltAlleles();
+                                for (String str : altAlleles) {
+                                    if (str.charAt(0) == alt.charAt(0)) {
+                                        excludeIndexes.add(index);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } while ((currentLine = br.readLine()) != null);
+
+            int leftVarNum = varList.size();
+            List<Variant> tmpVariantList = new ArrayList<Variant>();
+            for (int j = 0; j < leftVarNum; j++) {
+                if (!excludeIndexes.contains(j)) {
+                    tmpVariantList.add(varList.get(j));
+                }
+            }
+            ass.setAnnotNum(excludeIndexes.size() + ass.getAnnotNum());
+
+            varList.clear();
+            varList.addAll(tmpVariantList);
+            tmpVariantList.clear();
+            leftVarNum = varList.size();
+            ass.setLeftNum(leftVarNum + ass.getLeftNum());
+
+            ass.setTotalNum(lineCounter + ass.getTotalNum());
+            // String info = leftVarNum + " variant(s) are left after hard filtering in database " + dbName + "!";
+            //   LOG.info(info);
+            if (needProgressionIndicator) {
+                backSpaces = new char[7];
+                Arrays.fill(backSpaces, '\b');
+                System.out.print(backSpaces);
+            }
+
+            return leftVarNum;
+        } catch (Exception ex) {
+            if (currentLine != null) {
+                System.err.println("Errors in a row: " + currentLine);
+            }
+            ex.printStackTrace();
+        }
+        return 0;
+    }
+
+    public void markByANNOVARefFormat(Chromosome chromosome, int chrID, AnnotationSummarySet ass, boolean needProgressionIndicator) {
+        indexChrom = 0;
+        indexPosition = 1;
+        indexREF = 2;
+        indexALT = 3;
+        int indexMAF = 4;
+        List<Variant> varList = chromosome.variantList;
+        BufferedReader br = ass.getBr();
+        StringBuilder newLine = ass.getLastLine();
+
+        if (varList.isEmpty()) {
+            return;
+        }
+        int feautreNum = ass.getAvailableFeatureIndex();
+
+        //No matched SNPs means null 
+        String missingVal = "N";
+        for (Variant var : varList) {
+            var.addFeatureValue(feautreNum, missingVal);
+        }
+        String currentLine = null;
+        try {
+            String varChrom = chromosome.getName();
+            int maxColNum = indexChrom;
+            maxColNum = Math.max(maxColNum, indexPosition);
+            maxColNum = Math.max(maxColNum, indexREF);
+            maxColNum = Math.max(maxColNum, indexALT);
+            maxColNum = Math.max(maxColNum, indexMAF);
+
+            int lineCounter = 0;
+
+            int filePosition = -1;
+            StringBuilder tmpBuffer = new StringBuilder();
+            String ref;
+            String alt;
+            String mafStr = null;
+            float maf;
+            String[] alts;
+            String[] mafStrs;
+            int[] varIndex = null;
+            boolean isDeleion = false;
+            boolean isInsertion = false;
+
+            /*
+             File CHAIN_FILE = new File("./resources/hg19ToHg18.over.chain");
+             LiftOver liftOver = new LiftOver(CHAIN_FILE);
+             int failtedMapVarNum = 0;
+             * 
+             */
+            if (needProgressionIndicator) {
+
+            }
+            char[] backSpaces = null;
+            int delNum = 0;
+            int existVarNum = 0;
+            StringBuilder sb = new StringBuilder();
+            boolean hitOnce = false;
+
+            String[] cells = null;
+            if (newLine.length() == 0) {
+                currentLine = br.readLine();
+                if (currentLine == null) {
+                    return;
+                }
+            } else {
+                currentLine = newLine.toString();
+                newLine.delete(0, newLine.length());
+            }
+            int fileChrID;
+            do {
+                /*
+                 if (currentLine.indexOf("BP") >= 0 || currentLine.indexOf("bp") >= 0) {
+                 continue;
+                 }*/
+                lineCounter++;
+                if (needProgressionIndicator && lineCounter % 50000 == 0) {
+                    String prog = String.valueOf(lineCounter);
+                    System.out.print(prog);
+                    backSpaces = new char[prog.length()];
+                    Arrays.fill(backSpaces, '\b');
+                    System.out.print(backSpaces);
+                }
+
+                //StringTokenizer st = new StringTokenizer(currentLine.trim());
+                cells = Util.tokenize(currentLine, '\t');
+                if (cells.length < 2) {
+                    cells = Util.tokenizeIngoreConsec(currentLine, ' ');
+                }
+                //initialize varaibles
+
+                mafStrs = null;
+
+                fileChrID = chromNameIndexMap.get(cells[indexChrom]);
+                if (chrID < fileChrID) {
+                    newLine.append(currentLine);
+                    break;
+                } else if (chrID > fileChrID) {
+                    continue;
+                }
+                filePosition = Util.parseInt(cells[indexPosition]);
+                ref = cells[indexREF];
+                alt = cells[indexALT];
+                if (cells.length > indexMAF) {
+                    mafStr = cells[indexMAF];
+                }
+
+                alts = alt.split(",");
+                if (mafStr != null) {
+                    mafStrs = mafStr.split(",", -1);
+                }
+
+                //  System.err.println(currentLine);
+                hitOnce = false;
+                int tmpPos = 0;
+                //once the variant is in db, it at least has a zero freq
+                for (int s = 0; s < alts.length; s++) {
+                    if (alts[s] == null || alts[s].isEmpty()) {
+                        continue;
+                    }
+                    maf = Float.NaN;
+                    if (mafStrs != null && s < mafStrs.length) {
+                        //this missing score is denoted by .
+                        if (mafStrs[s] != null && !mafStrs[s].isEmpty() && !mafStrs[s].equals(".")) {
+                            maf = Util.parseFloat(mafStrs[s]);
+                        }
+                    }
+                    tmpPos = filePosition;
+                    isDeleion = false;
+                    isInsertion = false;
+
+                    alt = alts[s];
+                    //deletion
+                    //format:1	45113	-	0TATGG	0.715732
+///1	53599	CTA	3	0.890916
+//1	223450	CT	1	0.207385
+                    //1	229450	C	T,G	0.207385,0.1
+                    //1	229450	C	T,G	0.207385,
+
+                    if (alt.charAt(0) == '0') {
+                        isInsertion = true;
+                    } else if (alt.charAt(0) - '0' <= 9 && alt.charAt(0) - '0' > 0) {
+                        isDeleion = true;
+                        tmpPos--;
+                    }
+
+                    varIndex = chromosome.lookupVariantIndexes(tmpPos);
+                    if (varIndex == null) {
+                        continue;
+                    }
+
+                    // System.out.println(fileChr);
+                    for (int index : varIndex) {
+                        Variant var = varList.get(index);
+                        if (isDeleion || isInsertion) {
+                            if (var.isIndel) {
+                                String varRef = var.getRefAllele();
+                                String[] altAlleles = var.getAltAlleles();
+                                //keep variants with score less than minAlleleFreq
+                                for (String varAlt : altAlleles) {
+                                    //insertion in 1KG
+                                    if (isInsertion) {
+                                        if (varAlt.substring(1).equals(alt.substring(1))) {
+                                            //record the maximal allele frequencies
+                                            if (var.altAF == -1 || Float.isNaN(var.altAF) || (maf > var.altAF)) {
+                                                var.altAF = maf;
+                                            }
+                                            hitOnce = true;
+                                            if (Float.isNaN(maf)) {
+                                                var.addFeatureValue(feautreNum, ".");
+                                            } else {
+                                                var.addFeatureValue(feautreNum, String.valueOf(maf));
+                                            }
+                                            break;
+                                        }
+                                    } else if (alt.charAt(0) != '0') {
+                                        //deletion in 1KG
+                                        sb.delete(0, sb.length());
+                                        for (int t = 0; t < varAlt.length(); t++) {
+                                            if (varAlt.charAt(t) == '-') {
+                                                sb.append(varRef.charAt(t));
+                                            }
+                                        }
+
+                                        delNum = Util.parseInt(alt);
+                                        if (sb.toString().equals(ref.substring(ref.length() - delNum))) {
+                                            //record the maximal allele frequencies
+                                            if (var.altAF == -1 || Float.isNaN(var.altAF) || (maf > var.altAF)) {
+                                                // if (Float.isNaN(var.altAF) || (!Float.isNaN(score) && score > var.altAF)) {
+                                                var.altAF = maf;
+                                            }
+                                            hitOnce = true;
+                                            if (Float.isNaN(maf)) {
+                                                var.addFeatureValue(feautreNum, ".");
+                                            } else {
+                                                var.addFeatureValue(feautreNum, String.valueOf(maf));
+                                            }
+                                            break;
+                                        }
+                                    }
+                                }
+                            } else {
+                                continue;
+                            }
+                        } else {
+                            if (var.isIndel) {
+                                continue;
+                            } else {
+                                String[] altAlleles = var.getAltAlleles();
+                                for (String str : altAlleles) {
+                                    if (str.charAt(0) == alt.charAt(0)) {
+                                        //record treadVariantsInFileOnlyFastTokenhe maximal allele frequencies
+                                        if (var.altAF == -1 || Float.isNaN(var.altAF) || (maf > var.altAF)) {
+                                            //if (Float.isNaN(var.altAF) || (!Float.isNaN(score) && score > var.altAF)) {
+                                            var.altAF = maf;
+                                        }
+                                        hitOnce = true;
+                                        if (Float.isNaN(maf)) {
+                                            var.addFeatureValue(feautreNum, ".");
+                                        } else {
+                                            var.addFeatureValue(feautreNum, String.valueOf(maf));
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                    }
+                }
+                if (hitOnce) {
+                    existVarNum++;
+                }
+            } while ((currentLine = br.readLine()) != null);
+
+            ass.setLeftNum(existVarNum + ass.getLeftNum());
+            ass.setAnnotNum(existVarNum + ass.getAnnotNum());
+            ass.setTotalNum(lineCounter + ass.getTotalNum());
+            if (needProgressionIndicator) {
+                backSpaces = new char[7];
+                Arrays.fill(backSpaces, '\b');
+                System.out.print(backSpaces);
+            }
+        } catch (Exception ex) {
+            if (currentLine != null) {
+                System.err.println("Errors in a row: " + currentLine);
+            }
+            ex.printStackTrace();
+        }
+    }
+
+    public void riskPredictionRareDiseaseBest(Chromosome chromosome, List<CombOrders> combOrderList, boolean filterNonDisMut, List<String> names,
+            FiltrationSummarySet dbNSFPMendelPred) throws Exception {
+
+        int triedTime = 0;
+        int maxTriedTime = 1;
+        StringBuilder tmpStrB = new StringBuilder();
+
+        // humvar predict
+        double[] priors = new double[]{0.05, 0.01, 0};
+        double[] mafBins = new double[]{0.01, 0.02, 0.03};
+        double prior;
+
+        List<Integer> paramIndexes = new ArrayList<Integer>();
+        Set<Integer> dataIndexes = new HashSet<Integer>();
+        int combListSize = combOrderList.size();
+        List<Variant> tempVarList = new ArrayList<Variant>();
+        int totalVarNum = 0;
+        Set<String> geneSymbSet = new HashSet<String>();
+
+        int counterDis = 0;
+        int counterCon = 0;
+
+        double sum = 0;
+        RegressionParams tmpRP = null;
+        RegressionParams bestRP = null;
+
+        double tmpP, bestP;
+        List<Integer> bestPParamIndexes = new ArrayList<Integer>();
+
+        boolean isDeleteriousness = false;
+        int featureNum = dbNSFPMendelPred.getAvailableFeatureIndex();
+        for (Variant var : chromosome.variantList) {
+            if (var.scores != null) {
+                dataIndexes.clear();
+                for (int j = 0; j < var.scores.length; j++) {
+                    if (!Float.isNaN(var.scores[j])) {
+                        dataIndexes.add(j);
+                    }
+                }
+
+                bestRP = null;
+                tmpRP = null;
+                bestP = 0;
+                isDeleteriousness = false;
+                tmpStrB.delete(0, tmpStrB.length());
+                triedTime = 0;
+
+                for (int t = combListSize - 1; t >= 0; t--) {
+                    CombOrders cmbOrder = combOrderList.get(t);
+                    paramIndexes.clear();
+                    if (dataIndexes.containsAll(cmbOrder.indexes)) {
+                        paramIndexes.addAll(cmbOrder.indexes);
+
+                        tmpRP = cmbOrder.rp;
+                        sum = tmpRP.coef[0];
+                        for (int j = 1; j < tmpRP.coef.length; j++) {
+                            sum += (tmpRP.coef[j] * var.scores[paramIndexes.get(j - 1)]);
+                        }
+                        // calculate the conditional probablity with MAF
+                        // if (Float.isNaN(var.altAF) || var.altAF <= 0.01)
+                        {
+                            prior = ((1 - priors[0]) / priors[0]) * tmpRP.sampleCase2CtrRatio;
+                            tmpP = 1 + prior * Math.exp(-sum);
+                            tmpP = 1 / tmpP;
+                        } /*
+                         * else if (var.altAF <= 0.03) { prior = ((1 -
+                         * priors[1]) / priors[1]) *
+                         * tmpRP.sampleCase2CtrRatio; tmpP = 1 + prior *
+                         * Math.exp(-sum); tmpP = 1 / tmpP; } else { tmpP =
+                         * 0; }
+                         */
+
+                        if (bestP <= tmpP) {
+                            bestP = tmpP;
+                            bestRP = tmpRP;
+                            bestPParamIndexes.clear();
+                            bestPParamIndexes.addAll(combOrderList.get(t).indexes);
+                        }
+
+                        if (tmpP >= tmpRP.optimalCutoff) {
+                            var.addFeatureValue(featureNum, String.valueOf(tmpP));
+                            var.addFeatureValue(featureNum + 1, "Y");
+                            for (Integer ind : paramIndexes) {
+                                tmpStrB.append(names.get(ind));
+                                tmpStrB.append(';');
+                            }
+                            tmpStrB.deleteCharAt(tmpStrB.length() - 1);
+                            tmpStrB.append(':');
+                            tmpStrB.append(Util.doubleToString(tmpRP.optimalCutoff, 4));
+                            tmpStrB.append(':');
+                            tmpStrB.append(Util.doubleToString(tmpRP.truePositiveRate, 3));
+                            tmpStrB.append(':');
+                            tmpStrB.append(Util.doubleToString(tmpRP.trueNegativeRate, 3));
+                            var.addFeatureValue(featureNum + 2, tmpStrB.toString());
+                            counterDis += 1;
+                            if (filterNonDisMut) {
+                                tempVarList.add(var);
+                            }
+                            if (var.geneSymb != null) {
+                                geneSymbSet.add(var.geneSymb);
+                            }
+
+                            isDeleteriousness = true;
+                            // to reduce false positive only test once
+                            break;
+                        } else {
+                            triedTime++;
+                        }
+
+                        if (triedTime >= maxTriedTime) {
+                            // to reduce false positive only test once
+                            break;
+                        }
+                    }
+                }
+
+                if (!isDeleteriousness) {
+                    if (tmpRP == null) {
+                        // keep varaint have no risk scores which may be
+                        // safer
+                        tempVarList.add(var);
+                        var.addFeatureValue(featureNum, null);
+                        var.addFeatureValue(featureNum + 1, null);
+                        var.addFeatureValue(featureNum + 2, null);
+
+                    } else {
+                        // noly filter it for missense variants
+                        if (var.smallestFeatureID != 6) {
+                            tempVarList.add(var);
+                        }
+                        var.addFeatureValue(featureNum, String.valueOf(bestP));
+                        var.addFeatureValue(featureNum + 1, "N");
+                        if (!bestPParamIndexes.isEmpty()) {
+                            for (Integer ind : bestPParamIndexes) {
+                                tmpStrB.append(names.get(ind));
+                                tmpStrB.append(';');
+                            }
+                            tmpStrB.deleteCharAt(tmpStrB.length() - 1);
+                        }
+                        tmpStrB.append(':');
+                        tmpStrB.append(Util.doubleToString(bestRP.optimalCutoff, 4));
+                        tmpStrB.append(':');
+                        tmpStrB.append(Util.doubleToString(bestRP.truePositiveRate, 3));
+                        tmpStrB.append(':');
+                        tmpStrB.append(Util.doubleToString(bestRP.trueNegativeRate, 3));
+                        var.addFeatureValue(featureNum + 2, tmpStrB.toString());
+                        counterCon += 1;
+                    }
+                }
+            } else {
+                // keep varaint have no risk scores which may be safer
+                tempVarList.add(var);
+                var.addFeatureValue(featureNum, null);
+                var.addFeatureValue(featureNum + 1, null);
+                var.addFeatureValue(featureNum + 2, null);
+            }
+        }
+
+        if (filterNonDisMut) {
+            chromosome.variantList.clear();
+            chromosome.variantList.addAll(tempVarList);
+            totalVarNum += tempVarList.size();
+            tempVarList.clear();
+
+        }
+
+        chromosome.buildVariantIndexMap();
+        dbNSFPMendelPred.increaseCount(0, counterDis);
+        dbNSFPMendelPred.increaseCount(1, geneSymbSet.size());
+        dbNSFPMendelPred.increaseCount(2, counterCon);
+        dbNSFPMendelPred.increaseCount(3, totalVarNum);
+    }
+
+    public void riskPredictionRareDiseaseFixParam(Chromosome chromosome, CombOrders cmbOrder, boolean filterNonDisMut, List<String> names, FiltrationSummarySet dbNSFPMendelPred) throws Exception {
+        // humvar predict
+        double[] priors = new double[]{0.05, 0.01, 0.0001};
+        double[] mafBins = new double[]{0.01, 0.02, 0.03};
+        double prior;
+
+        List<Integer> paramIndexes = new ArrayList<Integer>();
+        Set<Integer> dataIndexes = new HashSet<Integer>();
+
+        List<Variant> tempVarList = new ArrayList<Variant>();
+        int totalVarNum = 0;
+        Set<String> geneSymbSet = new HashSet<String>();
+
+        int counterDis = 0;
+        int counterCon = 0;
+
+        double sum = 0;
+        RegressionParams tmpRP = null;
+        RegressionParams bestRP = null;
+
+        double tmpP, bestP;
+        List<Integer> bestPParamIndexes = new ArrayList<Integer>();
+        int featureNum = dbNSFPMendelPred.getAvailableFeatureIndex();
+        boolean isDeleteriousness = false;
+        StringBuilder tmpStrB = new StringBuilder();
+        if (chromosome == null) {
+            return;
+        }
+        for (Variant var : chromosome.variantList) {
+            if (var.scores != null) {
+                dataIndexes.clear();
+                for (int j = 0; j < var.scores.length; j++) {
+                    if (!Float.isNaN(var.scores[j])) {
+                        dataIndexes.add(j);
+                    }
+                }
+
+                tmpRP = null;
+                bestRP = null;
+                bestP = 0;
+                isDeleteriousness = false;
+                tmpStrB.delete(0, tmpStrB.length());
+
+                paramIndexes.clear();
+                if (dataIndexes.containsAll(cmbOrder.indexes)) {
+                    paramIndexes.addAll(cmbOrder.indexes);
+                    tmpRP = cmbOrder.rp;
+                    sum = tmpRP.coef[0];
+                    for (int j = 1; j < tmpRP.coef.length; j++) {
+                        sum += (tmpRP.coef[j] * var.scores[paramIndexes.get(j - 1)]);
+                    }
+                    // calculate the conditional probablity with MAF
+                    // if (Float.isNaN(var.altAF) || var.altAF <= 0.01)
+                    {
+                        prior = ((1 - priors[0]) / priors[0]) * tmpRP.sampleCase2CtrRatio;
+                        tmpP = 1 + prior * Math.exp(-sum);
+                        tmpP = 1 / tmpP;
+                    } /*
+                     * else if (var.altAF <= 0.03) { prior = ((1 -
+                     * priors[1]) / priors[1]) *
+                     * tmpRP.sampleCase2CtrRatio; tmpP = 1 + prior *
+                     * Math.exp(-sum); tmpP = 1 / tmpP; } else { tmpP =
+                     * 0; }
+                     */
+
+                    if (bestP <= tmpP) {
+                        bestP = tmpP;
+                        bestRP = tmpRP;
+                        bestPParamIndexes.clear();
+                        bestPParamIndexes.addAll(cmbOrder.indexes);
+                    }
+
+                    if (tmpP >= tmpRP.optimalCutoff) {
+                        var.addFeatureValue(featureNum, String.valueOf(tmpP));
+                        var.addFeatureValue(featureNum + 1, "Y");
+                        for (Integer ind : paramIndexes) {
+                            tmpStrB.append(names.get(ind));
+                            tmpStrB.append(';');
+                        }
+                        tmpStrB.deleteCharAt(tmpStrB.length() - 1);
+                        tmpStrB.append(':');
+                        tmpStrB.append(Util.doubleToString(tmpRP.optimalCutoff, 4));
+                        tmpStrB.append(':');
+                        tmpStrB.append(Util.doubleToString(tmpRP.truePositiveRate, 3));
+                        tmpStrB.append(':');
+                        tmpStrB.append(Util.doubleToString(tmpRP.trueNegativeRate, 3));
+                        var.addFeatureValue(featureNum + 2, tmpStrB.toString());
+                        counterDis += 1;
+                        if (filterNonDisMut) {
+                            tempVarList.add(var);
+                        }
+                        if (var.geneSymb != null) {
+                            geneSymbSet.add(var.geneSymb);
+                        }
+                        isDeleteriousness = true;
+                    }
+                }
+
+                if (!isDeleteriousness) {
+                    if (tmpRP == null) {
+                        // keep varaint have no risk scores which may be
+                        // safer
+                        tempVarList.add(var);
+                        var.addFeatureValue(featureNum, null);
+                        var.addFeatureValue(featureNum + 1, null);
+                        var.addFeatureValue(featureNum + 2, null);
+                    } else {
+                        // noly filter it for missense variants
+                        if (var.smallestFeatureID != 6) {
+                            tempVarList.add(var);
+                        }
+                        var.addFeatureValue(featureNum, String.valueOf(bestP));
+                        var.addFeatureValue(featureNum + 1, "N");
+                        if (!bestPParamIndexes.isEmpty()) {
+                            for (Integer ind : bestPParamIndexes) {
+                                tmpStrB.append(names.get(ind));
+                                tmpStrB.append(';');
+                            }
+                            tmpStrB.deleteCharAt(tmpStrB.length() - 1);
+                        }
+                        tmpStrB.append(':');
+                        tmpStrB.append(Util.doubleToString(bestRP.optimalCutoff, 4));
+                        tmpStrB.append(':');
+                        tmpStrB.append(Util.doubleToString(bestRP.truePositiveRate, 3));
+                        tmpStrB.append(':');
+                        tmpStrB.append(Util.doubleToString(bestRP.trueNegativeRate, 3));
+                        var.addFeatureValue(featureNum + 2, tmpStrB.toString());
+                        counterCon += 1;
+                    }
+                }
+            } else {
+                // keep varaint have no risk scores which may be safer
+                tempVarList.add(var);
+                var.addFeatureValue(featureNum, null);
+                var.addFeatureValue(featureNum + 1, null);
+                var.addFeatureValue(featureNum + 2, null);
+            }
+        }
+
+        if (filterNonDisMut) {
+            chromosome.variantList.clear();
+            chromosome.variantList.addAll(tempVarList);
+            totalVarNum += tempVarList.size();
+            tempVarList.clear();
+        }
+
+        chromosome.buildVariantIndexMap();
+        dbNSFPMendelPred.increaseCount(0, counterDis);
+        dbNSFPMendelPred.increaseCount(1, geneSymbSet.size());
+        dbNSFPMendelPred.increaseCount(2, counterCon);
+        dbNSFPMendelPred.increaseCount(3, totalVarNum);
+
+    }
+
+    public void pseudogeneAnnotationGene(Chromosome chromosome, AnnotationSummarySet ass, String dbPath) throws Exception {
+//        genome.addmRNAFeatureLabel("GeneDescription");
+//        genome.addmRNAFeatureLabel("Pseudogenes");
+
+        List<String[]> geneItems = new ArrayList<String[]>();
+        int[] indices = new int[3];
+        indices[0] = 1;
+        indices[1] = 2;
+        indices[2] = 3;
+        LocalFile.retrieveData(dbPath, geneItems, indices, "\t");
+        StringArrayStringComparator sacmp = new StringArrayStringComparator(0);
+        Collections.sort(geneItems, sacmp);
+        String lastGeneSymb = null;
+        String[] lastGeneFeature = null;
+        String[] keys = new String[3];
+        int intCount = 0;
+
+//        Chromosome[] chroms = genome.getChromosomes();
+//        for (int i = 0; i < chroms.length; i++) {
+        if (chromosome == null) {
+            return;
+        }
+        lastGeneSymb = null;
+        lastGeneFeature = null;
+        for (mRNA mrna : chromosome.mRNAList) {
+            if (mrna.geneSymb != null) {
+                if (lastGeneSymb != null && mrna.geneSymb.equals(lastGeneSymb)) {
+                    mrna.addFeatureValue(lastGeneFeature[0]);
+                    mrna.addFeatureValue(lastGeneFeature[1]);
+                } else {
+                    keys[0] = mrna.geneSymb;
+                    lastGeneFeature = searchRelevantGeneSymbols(geneItems, sacmp, keys, 0);
+                    lastGeneSymb = mrna.geneSymb;
+                    mrna.addFeatureValue(lastGeneFeature[0]);
+                    mrna.addFeatureValue(lastGeneFeature[1]);
+                }
+                intCount++;
+            } else {
+                mrna.addFeatureValue(".");
+                mrna.addFeatureValue(".");
+            }
+        }
+        ass.setAnnotNum(ass.getAnnotNum() + intCount);
+        ass.setTotalNum(ass.getTotalNum() + chromosome.mRNAList.size());
+        ass.setLeftNum(ass.getLeftNum() + chromosome.mRNAList.size() - intCount);
+        //       }
+    }
+
+    public String[] searchRelevantGeneSymbols(List<String[]> geneItems, StringArrayStringComparator sacmp, String[] key, int keyIndex) throws Exception {
+        String[] geneDescrip = new String[2];
+        StringBuilder sb = new StringBuilder();
+        int index = Collections.binarySearch(geneItems, key, sacmp);
+        if (index < 0) {
+            return geneDescrip;
+        } else {
+            int startIndex = index - 1;
+            while (startIndex >= 0 && geneItems.get(startIndex)[keyIndex].startsWith(key[keyIndex])) {
+                startIndex--;
+            }
+            startIndex++;
+            int endIndex = index + 1;
+            while (endIndex < geneItems.size() && geneItems.get(endIndex)[keyIndex].startsWith(key[keyIndex])) {
+                endIndex++;
+            }
+            for (int i = startIndex; i < endIndex; i++) {
+                if (geneItems.get(i)[1].contains("pseudogene")) {
+                    sb.append(geneItems.get(i)[0]);
+                    sb.append(", ");
+                }
+            }
+            geneDescrip[0] = geneItems.get(index)[1] + " (" + geneItems.get(index)[2] + ")";
+            if (sb.length() > 0) {
+                geneDescrip[1] = sb.substring(0, sb.length() - 2);
+            } else {
+                geneDescrip[1] = ".";
+            }
+            return geneDescrip;
+        }
+
+    }
+
+    public void pseudogeneAnnotationVar(Chromosome chromosome, AnnotationSummarySet ass, String dbPath) throws Exception {
+//        genome.addVariantFeatureLabel("GeneDescription");
+//        genome.addVariantFeatureLabel("Pseudogenes");
+
+        List<String[]> geneItems = new ArrayList<String[]>();
+        int[] indices = new int[3];
+        indices[0] = 1;
+        indices[1] = 2;
+        indices[2] = 3;
+        LocalFile.retrieveData(dbPath, geneItems, indices, "\t");
+        StringArrayStringComparator sacmp = new StringArrayStringComparator(0);
+        Collections.sort(geneItems, sacmp);
+        String lastGeneSymb = null;
+        String[] lastGeneFeature = null;
+        String[] keys = new String[3];
+        int intCount = 0;
+
+        if (chromosome == null) {
+            return;
+        }
+        lastGeneSymb = null;
+        lastGeneFeature = null;
+        for (Variant var : chromosome.variantList) {
+            if (var.geneSymb != null) {
+                if (lastGeneSymb != null && var.geneSymb.equals(lastGeneSymb)) {
+                    var.addFeatureValue(ass.getAvailableFeatureIndex(), lastGeneFeature[0]);
+                    var.addFeatureValue(ass.getAvailableFeatureIndex(), lastGeneFeature[1]);
+                } else {
+                    keys[0] = var.geneSymb;
+                    lastGeneFeature = searchRelevantGeneSymbols(geneItems, sacmp, keys, 0);
+                    lastGeneSymb = var.geneSymb;
+                    var.addFeatureValue(ass.getAvailableFeatureIndex(), lastGeneFeature[0]);
+                    var.addFeatureValue(ass.getAvailableFeatureIndex(), lastGeneFeature[1]);
+                }
+                intCount++;
+            } else {
+                var.addFeatureValue(ass.getAvailableFeatureIndex(), ".");
+                var.addFeatureValue(ass.getAvailableFeatureIndex(), ".");
+            }
+        }
+        ass.setAnnotNum(ass.getAnnotNum() + intCount);
+        ass.setTotalNum(ass.getTotalNum() + chromosome.variantList.size());
+        ass.setLeftNum(ass.getLeftNum() + chromosome.variantList.size() - intCount);
+
+    }
+
+    class RiskPredictionRandomForestTask extends Task implements Callable<String> {
+
+        MyRandomForest myRandomForest;
+        List<Variant> varList;
+        int featureNum;
+
+        public RiskPredictionRandomForestTask(MyRandomForest myRandomForest, List<Variant> varList, int featureNum) {
+            this.myRandomForest = myRandomForest;
+            this.varList = varList;
+            this.featureNum = featureNum;
+        }
+
+        @Override
+        public String call() throws Exception {
+            double tmpP[];
+            String[] predictors = myRandomForest.getName().split("-");
+            double[] scores = new double[predictors.length];
+
+            for (Variant var : varList) {
+                if (var.scores != null) {
+                    Arrays.fill(scores, Double.NaN);
+
+                    for (int j = 0; j < scores.length; j++) {
+                        if (!Float.isNaN(var.scores[j])) {
+                            scores[j] = var.scores[j];
+                        }
+                    }
+                    tmpP = myRandomForest.getClassifyDistribution(scores);
+
+                    if (tmpP[0] == 1) {
+                        var.addFeatureValue(featureNum, "Y");
+                        var.addFeatureValue(featureNum + 1, String.valueOf(tmpP[1]));
+                    } else {
+                        var.addFeatureValue(featureNum, "N");
+                        var.addFeatureValue(featureNum + 1, String.valueOf(tmpP[1]));
+                    }
+                } else {
+                    // keep varaint have no risk scores which may be safer                
+                    var.addFeatureValue(featureNum, null);
+                    var.addFeatureValue(featureNum + 1, null);
+                }
+            }
+            return "";
+        }
+    }
+
+    public void riskPredictionRandomForest(Chromosome chromosome, MyRandomForest myRandomForest, int maxThreadNum,
+            boolean filterNonDisMut, FiltrationSummarySet dbNSFPMendelPred) throws Exception {
+        int totalVarNum = 0;
+        int counterDis = 0;
+        int counterCon = 0;
+
+        // zhicheng
+        // System.out.println(myRandomForest.getName());
+        List<Variant> keptVarList = new ArrayList<Variant>();
+        int featureNum = dbNSFPMendelPred.getAvailableFeatureIndex();
+        if (chromosome == null) {
+            return;
+        }
+
+        ExecutorService exec = Executors.newFixedThreadPool(maxThreadNum);
+        final CompletionService<String> serv = new ExecutorCompletionService<String>(exec);
+        int runningThread = 0;
+        int varNum = chromosome.variantList.size();
+
+        int[] blocks = org.cobi.util.thread.Util.partitionEvenBlock(maxThreadNum, 0, varNum);
+        int blockNum = blocks.length - 1;
+        runningThread = 0;
+        for (int s = 0; s < blockNum; s++) {
+            RiskPredictionRandomForestTask task = new RiskPredictionRandomForestTask(myRandomForest, chromosome.variantList.subList(blocks[s], blocks[s + 1]), featureNum);
+            serv.submit(task);
+            runningThread++;
+        }
+
+        for (int s = 0; s < runningThread; s++) {
+            Future<String> task = serv.take();
+            String infor = task.get();
+            //  System.out.println(infor);
+        }
+
+        exec.shutdown();
+
+        Set<String> geneSymbSet = new HashSet<String>();
+        for (Variant var : chromosome.variantList) {
+            if (var.featureValues[featureNum] == null) {
+                if (filterNonDisMut) {
+                    keptVarList.add(var);
+                }
+                continue;
+            } else if (var.featureValues[featureNum].equals("Y")) {
+                if (filterNonDisMut) {
+                    keptVarList.add(var);
+                }
+                if (var.geneSymb != null) {
+                    geneSymbSet.add(var.geneSymb);
+                }
+                counterDis += 1;
+            } else {
+                counterCon += 1;
+                if (var.smallestFeatureID != 6) {
+                    keptVarList.add(var);
+                }
+
+            }
+        }
+
+        if (filterNonDisMut) {
+            chromosome.variantList.clear();
+            chromosome.variantList.addAll(keptVarList);
+            totalVarNum += keptVarList.size();
+            keptVarList.clear();
+        }
+        chromosome.buildVariantIndexMap();
+        dbNSFPMendelPred.increaseCount(0, counterDis);
+        dbNSFPMendelPred.increaseCount(1, geneSymbSet.size());
+        dbNSFPMendelPred.increaseCount(2, counterCon);
+        dbNSFPMendelPred.increaseCount(3, totalVarNum);
+    }
+
+    public void matchTrioSet(List<Individual> subjectIDList, List<int[]> triosIDList) throws Exception {
+        for (int i = 0; i < subjectIDList.size(); i++) {
+            Individual indiv0 = subjectIDList.get(i);
+            if (indiv0.getDadID().equals("0") && indiv0.getMomID().equals("0")) {
+                continue;
+            }
+
+            int[] setIDs = new int[3];
+            setIDs[0] = i;
+            setIDs[1] = -9;
+            setIDs[2] = -9;
+
+            for (int t = 0; t < subjectIDList.size(); t++) {
+                // child father mother ids
+                if (!subjectIDList.get(t).getFamilyID().equals(indiv0.getFamilyID())) {
+                    continue;
+                }
+                if (subjectIDList.get(t).getIndividualID().equals(indiv0.getDadID())) {
+                    setIDs[1] = t;
+                } else if (subjectIDList.get(t).getIndividualID().equals(indiv0.getMomID())) {
+                    setIDs[2] = t;
+                }
+                if (setIDs[0] != -9 && setIDs[1] != -9 && setIDs[2] != -9) {
+                    break;
+                }
+            }
+
+            // at least one parent is needed
+            if (setIDs[0] != -9 && (setIDs[1] != -9 || setIDs[2] != -9)) {
+                triosIDList.add(setIDs);
+            }
+        }
+    }
+
+    public void summarizeVarPerGene(Chromosome chromosome, int somatNumIndex, int readInfoIndex) throws Exception {
+        List<Gene> geneList = chromosome.geneList;
+        String evenInfor;
+        int somatEvents = 0;
+        Map<String, double[]> geneMutNum = new HashMap<String, double[]>();
+        Map<String, StringBuilder> geneReadsTestInfo = new HashMap<String, StringBuilder>();
+        Set<String> availableGeneSet = new HashSet<String>();
+
+        for (Variant var : chromosome.variantList) {
+            if (var.geneSymb != null) {
+                if (somatNumIndex >= 0) {
+                    evenInfor = var.getFeatureValues()[somatNumIndex];
+                    somatEvents = (Util.parseInt(Util.tokenize(evenInfor, ' ')[0]));
+                }
+
+                double[] mutNums = geneMutNum.get(var.geneSymb);
+                if (mutNums == null) {
+                    mutNums = new double[4];
+                    Arrays.fill(mutNums, 0);
+                    geneMutNum.put(var.geneSymb, mutNums);
+                }
+
+                StringBuilder tesInfo = geneReadsTestInfo.get(var.geneSymb);
+                if (tesInfo == null) {
+                    tesInfo = new StringBuilder();
+                    geneReadsTestInfo.put(var.geneSymb, tesInfo);
+                }
+
+                // non-synonemous preidcted as Y, non-synonemous preidcted
+                // as N, synonemous
+                if (var.smallestFeatureID <= 6) {
+                    // only do it for missense variants; many stop loss
+                    // variants have no proection at loss of function
+                    // variants
+                    mutNums[0] += somatEvents;
+                } else if (var.smallestFeatureID == 7) {
+                    mutNums[1] += somatEvents;
+                }
+
+                if (readInfoIndex >= 0) {
+                    String readInfo = var.getFeatureValues()[readInfoIndex];
+                    tesInfo.append(readInfo);
+                    tesInfo.append('|');
+                    String[] readInfos = readInfo.split("[|]");
+                    for (String readS : readInfos) {
+                        int index = readS.lastIndexOf(':');
+                        if (index < 0) {
+                            continue;
+                        }
+                        // System.out.println(readS);
+                        double or = Double.parseDouble(readS.substring(index + 1));
+                        // or = Math.log(or);
+                        if (var.smallestFeatureID <= 6) {
+                            mutNums[2] += or;
+                        } else if (var.smallestFeatureID == 7) {
+                            mutNums[3] += or;
+                        }
+                    }
+                }
+                if (!availableGeneSet.contains(var.geneSymb)) {
+                    geneList.add(new Gene(var.geneSymb));
+                    availableGeneSet.add(var.geneSymb);
+                }
+            }
+        }
+        availableGeneSet.clear();
+        for (Gene gene : geneList) {
+            double[] geneScore = geneMutNum.get(gene.geneSymb);
+            if (geneScore == null) {
+                gene.addFeatureValue(".");
+                gene.addFeatureValue(".");
+                gene.addFeatureValue(".");
+                gene.addFeatureValue(".");
+            } else {
+                gene.addFeatureValue(String.valueOf(geneScore[0]));
+                gene.addFeatureValue(String.valueOf(geneScore[1]));
+                gene.addFeatureValue(String.valueOf(geneScore[2]));
+                gene.addFeatureValue(String.valueOf(geneScore[3]));
+            }
+            StringBuilder sb = geneReadsTestInfo.get(gene.geneSymb);
+            if (sb == null) {
+                gene.addFeatureValue("");
+            } else {
+                gene.addFeatureValue(sb.toString());
+            }
+        }
+
+    }
+
+    class RiskPredictionLogisticTask extends Task implements Callable<String> {
+
+        List<Variant> variantList;
+        List<CombOrders> combOrderList;
+        List<String> names;
+        int geneFeatureNum;
+
+        public RiskPredictionLogisticTask(List<CombOrders> combOrderList, List<String> names, List<Variant> variantList, int geneFeatureNum) {
+            this.variantList = variantList;
+            this.combOrderList = combOrderList;
+            this.names = names;
+            this.geneFeatureNum = geneFeatureNum;
+        }
+
+        @Override
+        public String call() throws Exception {
+            RegressionParams tmpRP = null;
+            RegressionParams bestRP = null;
+            List<Integer> paramIndexes = new ArrayList<Integer>();
+            Set<Integer> dataIndexes = new HashSet<Integer>();
+            double tmpP, bestP, prior;
+            StringBuilder tmpStrB = new StringBuilder();
+            boolean isDeleteriousness = false;
+            int combListSize = combOrderList.size();
+            double sum = 0;
+            double[] priors = new double[]{0.05, 0.01, 0.0001};
+            double[] mafBins = new double[]{0.01, 0.02, 0.03};
+
+            List<Integer> bestPParamIndexes = new ArrayList<Integer>();
+            for (Variant var : variantList) {
+                if (var.scores != null) {
+                    dataIndexes.clear();
+                    for (int j = 0; j < var.scores.length; j++) {
+                        if (!Float.isNaN(var.scores[j])) {
+                            dataIndexes.add(j);
+                        }
+                    }
+
+                    tmpRP = null;
+                    bestRP = null;
+                    bestP = 0;
+                    isDeleteriousness = false;
+                    tmpStrB.delete(0, tmpStrB.length());
+
+                    for (int t = combListSize - 1; t >= 0; t--) {
+                        CombOrders cmbOrder = combOrderList.get(t);
+                        /*
+                         * if
+                         * (!testSet.containsAll(combOrderList.get(t).indexes)||
+                         * combOrderList.get(t).indexes.size()!=2) { continue; }
+                         */
+
+                        /*
+                         * //directly use the probability to decide //require
+                         * Pholyph and MuationTast at least logicCount = 0;
+                         * //Polyphen2_HVAR_score
+                         * 
+                         * if (cmbOrder.indexes.contains(3)) { logicCount++; }
+                         * //MutationTaster_score if
+                         * (cmbOrder.indexes.contains(5)) { logicCount++; }
+                         * //MutationAssessor_score if
+                         * (cmbOrder.indexes.contains(6)) { logicCount++; } if
+                         * (logicCount == 0) { continue; }
+                         */
+                        paramIndexes.clear();
+                        if (dataIndexes.containsAll(cmbOrder.indexes)) {
+                            paramIndexes.addAll(cmbOrder.indexes);
+                            tmpRP = cmbOrder.rp;
+                            sum = tmpRP.coef[0];
+                            for (int j = 1; j < tmpRP.coef.length; j++) {
+                                sum += (tmpRP.coef[j] * var.scores[paramIndexes.get(j - 1)]);
+                            }
+                            // calculate the conditional probablity with MAF
+                            // if (Float.isNaN(var.altAF) || var.altAF <= 0.01)
+                            {
+                                prior = ((1 - priors[0]) / priors[0]) * tmpRP.sampleCase2CtrRatio;
+                                tmpP = 1 + prior * Math.exp(-sum);
+                                tmpP = 1 / tmpP;
+                            } /*
+                             * else if (var.altAF <= 0.03) { prior = ((1 -
+                             * priors[1]) / priors[1]) *
+                             * tmpRP.sampleCase2CtrRatio; tmpP = 1 + prior *
+                             * Math.exp(-sum); tmpP = 1 / tmpP; } else { tmpP =
+                             * 0; }
+                             */
+
+                            if (bestP <= tmpP) {
+                                bestP = tmpP;
+                                bestRP = tmpRP;
+                                bestPParamIndexes.clear();
+                                bestPParamIndexes.addAll(combOrderList.get(t).indexes);
+                            }
+
+                            if (tmpP >= tmpRP.optimalCutoff) {
+                                var.addFeatureValue(geneFeatureNum, String.valueOf(tmpP));
+                                var.addFeatureValue(geneFeatureNum + 1, "Y");
+                                for (Integer ind : paramIndexes) {
+                                    tmpStrB.append(names.get(ind));
+                                    tmpStrB.append(';');
+                                }
+                                tmpStrB.deleteCharAt(tmpStrB.length() - 1);
+                                tmpStrB.append(':');
+                                tmpStrB.append(Util.doubleToString(tmpRP.optimalCutoff, 4));
+                                tmpStrB.append(':');
+                                tmpStrB.append(Util.doubleToString(tmpRP.truePositiveRate, 3));
+                                tmpStrB.append(':');
+                                tmpStrB.append(Util.doubleToString(tmpRP.trueNegativeRate, 3));
+                                var.addFeatureValue(geneFeatureNum + 2, tmpStrB.toString());
+
+                                isDeleteriousness = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!isDeleteriousness) {
+                        if (tmpRP == null) {
+                            // keep varaint have no risk scores which may be
+                            // safer
+
+                            var.addFeatureValue(geneFeatureNum, null);
+                            var.addFeatureValue(geneFeatureNum + 1, null);
+                            var.addFeatureValue(geneFeatureNum + 2, null);
+                        } else {
+
+                            var.addFeatureValue(geneFeatureNum, String.valueOf(bestP));
+                            var.addFeatureValue(geneFeatureNum + 1, "N");
+                            if (!bestPParamIndexes.isEmpty()) {
+                                for (Integer ind : bestPParamIndexes) {
+                                    tmpStrB.append(names.get(ind));
+                                    tmpStrB.append(';');
+                                }
+                                tmpStrB.deleteCharAt(tmpStrB.length() - 1);
+                            }
+                            tmpStrB.append(':');
+                            tmpStrB.append(Util.doubleToString(bestRP.optimalCutoff, 4));
+                            tmpStrB.append(':');
+                            tmpStrB.append(Util.doubleToString(bestRP.truePositiveRate, 3));
+                            tmpStrB.append(':');
+                            tmpStrB.append(Util.doubleToString(bestRP.trueNegativeRate, 3));
+                            var.addFeatureValue(geneFeatureNum + 2, tmpStrB.toString());
+
+                        }
+                    }
+                } else {
+                    // keep varaint have no risk scores which may be safer 
+                    var.addFeatureValue(geneFeatureNum, null);
+                    var.addFeatureValue(geneFeatureNum + 1, null);
+                    var.addFeatureValue(geneFeatureNum + 2, null);
+                }
+            }
+            return "";
+        }
+    }
+
+    public void riskPredictionRareDiseaseAll(Chromosome chromosome, List<CombOrders> combOrderList, boolean filterNonDisMut, List<String> names, int maxThreadNum, FiltrationSummarySet dbNSFPMendelPred) throws Exception {
+        // humvar predict
+        double[] priors = new double[]{0.05, 0.01, 0.0001};
+        double[] mafBins = new double[]{0.01, 0.02, 0.03};
+        double prior;
+
+        List<Integer> paramIndexes = new ArrayList<Integer>();
+        Set<Integer> dataIndexes = new HashSet<Integer>();
+        int combListSize = combOrderList.size();
+        List<Variant> keptVarList = new ArrayList<Variant>();
+        int totalVarNum = 0;
+        Set<String> geneSymbSet = new HashSet<String>();
+
+        int counterDis = 0;
+        int counterCon = 0;
+
+        double sum = 0;
+        RegressionParams tmpRP = null;
+        RegressionParams bestRP = null;
+
+        double tmpP, bestP;
+        StringBuilder tmpStrB = new StringBuilder();
+        boolean isDeleteriousness = false;
+        List<Integer> bestPParamIndexes = new ArrayList<Integer>();
+        int geneFeatureNum = dbNSFPMendelPred.getAvailableFeatureIndex();
+
+        if (chromosome == null) {
+            return;
+        }
+        ExecutorService exec = Executors.newFixedThreadPool(maxThreadNum);
+        final CompletionService<String> serv = new ExecutorCompletionService<String>(exec);
+        int varNum = chromosome.variantList.size();
+
+        int[] blocks = org.cobi.util.thread.Util.partitionEvenBlock(maxThreadNum, 0, varNum);
+        int blockNum = blocks.length - 1;
+        int runningThread = 0;
+        for (int s = 0; s < blockNum; s++) {
+            RiskPredictionLogisticTask task = new RiskPredictionLogisticTask(combOrderList, names, chromosome.variantList.subList(blocks[s], blocks[s + 1]), geneFeatureNum);
+            serv.submit(task);
+            runningThread++;
+        }
+
+        for (int s = 0; s < runningThread; s++) {
+            Future<String> task = serv.take();
+            String infor = task.get();
+            //  System.out.println(infor);
+        }
+
+        exec.shutdown();
+
+        for (Variant var : chromosome.variantList) {
+            if (var.featureValues[geneFeatureNum + 1] == null) {
+                if (filterNonDisMut) {
+                    keptVarList.add(var);
+                }
+                continue;
+            } else if (var.featureValues[geneFeatureNum + 1].equals("Y")) {
+                counterDis += 1;
+                if (filterNonDisMut) {
+                    keptVarList.add(var);
+                }
+                if (var.geneSymb != null) {
+                    geneSymbSet.add(var.geneSymb);
+                }
+
+            } else {
+                // noly filter it for missense variants
+                if (var.smallestFeatureID != 6) {
+                    keptVarList.add(var);
+                }
+                counterCon += 1;
+            }
+        }
+
+        if (filterNonDisMut) {
+            chromosome.variantList.clear();
+            chromosome.variantList.addAll(keptVarList);
+            totalVarNum += keptVarList.size();
+            keptVarList.clear();
+        }
+
+        chromosome.buildVariantIndexMap();
+        dbNSFPMendelPred.increaseCount(0, counterDis);
+        dbNSFPMendelPred.increaseCount(1, geneSymbSet.size());
+        dbNSFPMendelPred.increaseCount(2, counterCon);
+        dbNSFPMendelPred.increaseCount(3, totalVarNum);
+
+    }
+
+    public void dbscSNV(Chromosome chromosome, AnnotationSummarySet dbScSNV, boolean needProgressionIndicator) {
+        indexChrom = 0;
+        indexPosition = 1;
+        indexREF = 2;
+        indexALT = 3;
+        int indexAda = 4;
+        List<Variant> varList = chromosome.variantList;
+        int chrID = chromosome.getId();
+        BufferedReader br = dbScSNV.getBr();
+        StringBuilder newLine = dbScSNV.getLastLine();
+
+        if (varList.isEmpty()) {
+            return;
+        }
+        int feautreNum = dbScSNV.getAvailableFeatureIndex();
+
+        //No matched SNPs means null 
+        String missingVal = ".";
+        for (Variant var : varList) {
+            var.addFeatureValue(feautreNum, missingVal);
+        }
+        String currentLine = null;
+        try {
+            String varChrom = chromosome.getName();
+            int maxColNum = indexChrom;
+            maxColNum = Math.max(maxColNum, indexPosition);
+            maxColNum = Math.max(maxColNum, indexREF);
+            maxColNum = Math.max(maxColNum, indexALT);
+            maxColNum = Math.max(maxColNum, indexAda);
+
+            int lineCounter = 0;
+
+            int filePosition = -1;
+            StringBuilder tmpBuffer = new StringBuilder();
+            String ref;
+            String alt;
+            String mafStr = null;
+            float score;
+            String[] alts;
+            String[] mafStrs;
+            int[] varIndex = null;
+
+            char[] backSpaces = null;
+            int delNum = 0;
+            int existVarNum = 0;
+            StringBuilder sb = new StringBuilder();
+            boolean hitOnce = false;
+
+            String[] cells = null;
+            if (newLine.length() == 0) {
+                currentLine = br.readLine();
+                if (currentLine == null) {
+                    return;
+                }
+            } else {
+                currentLine = newLine.toString();
+                newLine.delete(0, newLine.length());
+            }
+            int fileChrID;
+            do {
+                /*
+                 if (currentLine.indexOf("BP") >= 0 || currentLine.indexOf("bp") >= 0) {
+                 continue;
+                 }*/
+                lineCounter++;
+                if (needProgressionIndicator && lineCounter % 50000 == 0) {
+                    String prog = String.valueOf(lineCounter);
+                    System.out.print(prog);
+                    backSpaces = new char[prog.length()];
+                    Arrays.fill(backSpaces, '\b');
+                    System.out.print(backSpaces);
+                }
+
+                //StringTokenizer st = new StringTokenizer(currentLine.trim());
+                cells = Util.tokenize(currentLine, '\t');
+                if (cells.length < 2) {
+                    cells = Util.tokenizeIngoreConsec(currentLine, ' ');
+                }
+                //initialize varaibles
+
+                mafStrs = null;
+
+                fileChrID = chromNameIndexMap.get(cells[indexChrom]);
+                if (chrID < fileChrID) {
+                    newLine.append(currentLine);
+                    break;
+                } else if (chrID > fileChrID) {
+                    continue;
+                }
+                filePosition = Util.parseInt(cells[indexPosition]);
+                ref = cells[indexREF];
+                alt = cells[indexALT];
+                if (cells.length > indexAda) {
+                    mafStr = cells[indexAda];
+                }
+
+                alts = alt.split("N");
+                if (mafStr != null) {
+                    mafStrs = mafStr.split(",", -1);
+                }
+
+                //  System.err.println(currentLine);
+                hitOnce = false;
+                int tmpPos = 0;
+                //once the variant is in db, it at least has a zero freq
+                for (int s = 0; s < alts.length; s++) {
+                    if (alts[s] == null || alts[s].isEmpty()) {
+                        continue;
+                    }
+                    score = Float.NaN;
+                    if (mafStrs != null && s < mafStrs.length) {
+                        //this missing score is denoted by .
+                        if (mafStrs[s] != null && !mafStrs[s].isEmpty() && !mafStrs[s].equals(".")) {
+                            score = Util.parseFloat(mafStrs[s]);
+                        }
+                    }
+                    tmpPos = filePosition;
+
+                    alt = alts[s];
+
+                    varIndex = chromosome.lookupVariantIndexes(tmpPos);
+                    if (varIndex == null) {
+                        continue;
+                    }
+
+                    // System.out.println(fileChr);
+                    for (int index : varIndex) {
+                        Variant var = varList.get(index);
+                        if (var.isIndel) {
+                            continue;
+                        } else {
+                            String[] altAlleles = var.getAltAlleles();
+                            for (String str : altAlleles) {
+                                if (str.charAt(0) == alt.charAt(0)) {
+                                    hitOnce = true;
+                                    if (Float.isNaN(score)) {
+                                        var.addFeatureValue(feautreNum, ".");
+                                    } else {
+                                        var.addFeatureValue(feautreNum, String.valueOf(score));
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+
+                    }
+                }
+                if (hitOnce) {
+                    existVarNum++;
+                }
+            } while ((currentLine = br.readLine()) != null);
+
+            dbScSNV.setLeftNum(existVarNum + dbScSNV.getLeftNum());
+            dbScSNV.setAnnotNum(existVarNum + dbScSNV.getAnnotNum());
+            dbScSNV.setTotalNum(lineCounter + dbScSNV.getTotalNum());
+            if (needProgressionIndicator) {
+                backSpaces = new char[7];
+                Arrays.fill(backSpaces, '\b');
+                System.out.print(backSpaces);
+            }
+        } catch (Exception ex) {
+            if (currentLine != null) {
+                System.err.println("Errors in a row: " + currentLine);
+            }
+            ex.printStackTrace();
+        }
+    }
+
+    public void geneFeatureAnnot(Chromosome chromosome, int chrID, ReferenceGenome refGenome, Set<Byte> featureInSet, int feautreNum) throws Exception {
+
+        if (refGenome.getName().equals("refgene")) {
+            if (chromosome == null) {
+                return;
+            }
+            for (Variant var : chromosome.variantList) {
+                GeneFeature gf = refGenome.getVarFeature(STAND_CHROM_NAMES[chrID], var, true, featureInSet);
+
+                // Feature for UniProtFeature
+                if (gf.getInfor() == null) {
+                    var.addFeatureValue(feautreNum, ".");
+                } else {
+                    var.addFeatureValue(feautreNum, gf.getInfor());
+                }
+                var.setRefGeneAnnot(gf.getName());
+            }
+
+        } else if (refGenome.getName().equals("gencode")) {
+            if (chromosome == null) {
+                return;
+            }
+            for (Variant var : chromosome.variantList) {
+                GeneFeature gf = refGenome.getVarFeature(STAND_CHROM_NAMES[chrID], var, true, featureInSet);
+
+                // Feature for UniProtFeature
+                if (gf.getInfor() == null) {
+                    var.addFeatureValue(feautreNum, ".");
+                } else {
+                    var.addFeatureValue(feautreNum, gf.getInfor());
+                }
+                var.setgEncodeAnnot(gf.getName());
+            }
+
+        } else if (refGenome.getName().equals("knowngene")) {
+            if (chromosome == null) {
+                return;
+            }
+            for (Variant var : chromosome.variantList) {
+                GeneFeature gf = refGenome.getVarFeature(STAND_CHROM_NAMES[chrID], var, true, featureInSet);
+
+                // Feature for UniProtFeature
+                if (gf.getInfor() == null) {
+                    var.addFeatureValue(feautreNum, ".");
+                } else {
+                    var.addFeatureValue(feautreNum, gf.getInfor());
+                }
+                var.setKnownGeneAnnot(gf.getName());
+            }
+
+        } else if (refGenome.getName().equals("ensembl")) {
+            if (chromosome == null) {
+                return;
+            }
+            for (Variant var : chromosome.variantList) {
+                GeneFeature gf = refGenome.getVarFeature(STAND_CHROM_NAMES[chrID], var, true, featureInSet);
+
+                // Feature for UniProtFeature
+                if (gf.getInfor() == null) {
+                    var.addFeatureValue(feautreNum, ".");
+                } else {
+                    var.addFeatureValue(feautreNum, gf.getInfor());
+                }
+                var.setEnsemblGeneAnnot(gf.getName());
+            }
+
+        }
+    }
+}

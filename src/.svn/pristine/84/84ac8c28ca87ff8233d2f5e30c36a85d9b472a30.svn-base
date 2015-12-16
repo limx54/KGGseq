@@ -1,0 +1,880 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package org.cobi.kggseq.entity;
+
+import cern.colt.bitvector.BitVector;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.log4j.Logger;
+import org.cobi.kggseq.GlobalManager;
+
+/**
+ *
+ * @author mxli this class is designed according to the VCF format to store the
+ * genotypes it will be used together the Variant class
+ */
+public class VCFBitGtySet1 implements Serializable {
+
+    private static final Logger LOG = Logger.getLogger(VCFBitGtySet1.class);
+    private static final long serialVersionUID = 5L;
+    //use 2 bits present a genotype 00  missing; 01 homo ref; 01 heter; 11 homo alt
+    private BitVector bitGty;
+
+    //use 3 bits present a genotype 000  missing; 001 homo ref; 010 heter1; 011 homo alt1; 100 heter2; 101 homo alt2;110 heter3; 111 homo alt3
+    //which can consider 3 alternative alleles at most 
+    private BitVector chrom3BitGty;
+    private BitVector chrom4BitGty;
+    private BitVector chrom5BitGty;
+    private int spaceNumBitGty = 0;
+    private int spaceNum3BitGty = 0;
+    private int spaceNum4BitGty = 0;
+    private int spaceNum5BitGty = 0;
+    private static final int SPACE_LOAD_FACTOR = 10000;
+    private List<String> readInfoList;
+
+    public VCFBitGtySet1(int spaceNum) {
+        bitGty = new BitVector(spaceNum);
+        spaceNumBitGty = spaceNum;
+        readInfoList = new ArrayList<String>();
+    }
+
+    public void copyBitGty(VCFBitGtySet1 bgs) {
+        bitGty.and(bgs.bitGty);
+    }
+
+    public boolean addReadsInforAt(int gtyPos, String infor) {
+        boolean succeed = true;
+        if (gtyPos == readInfoList.size()) {
+            readInfoList.add(infor);
+        } else if (gtyPos > readInfoList.size()) {
+            for (int i = readInfoList.size(); i < gtyPos; i++) {
+                readInfoList.add(null);
+            }
+            readInfoList.add(infor);
+        } else {
+            readInfoList.set(gtyPos, infor);
+        }
+        return succeed;
+    }
+
+    public String getReadsInforAt(int gtyPos) {
+        if (gtyPos < readInfoList.size()) {
+            return readInfoList.get(gtyPos);
+        } else {
+            return null;
+        }
+
+    }
+
+    public boolean addPhasedGtyAt(int gtyPos, String gty, int alleleNum) {
+        boolean succeed = true;
+        switch (alleleNum) {
+            case 2:
+                //loci availableIndex from 0
+                if (3 * (gtyPos + 1) > spaceNum3BitGty) {
+                    //adjust the size of bitvectors
+                    spaceNum3BitGty = gtyPos * 3 + SPACE_LOAD_FACTOR;
+                    chrom3BitGty.setSize(spaceNum3BitGty);
+                }
+                /*       
+                 missing	Reference homozygous	Heterozygous 	Heterozygous 	Alternative homozygous
+                 VCF genotype	.|.	0|0	0|1	1|0	1|1
+                 Bits	        000  	001	010	011	100
+                 Order	0	1	2	3	4
+                
+                 */
+                if (gty == null) {
+                    chrom3BitGty.putQuick(3 * gtyPos, false);
+                    chrom3BitGty.putQuick(3 * gtyPos + 1, false);
+                    chrom3BitGty.putQuick(3 * gtyPos + 2, false);
+                } else if (gty.charAt(0) == '0' && gty.charAt(2) == '0') {
+                    chrom3BitGty.putQuick(3 * gtyPos, false);
+                    chrom3BitGty.putQuick(3 * gtyPos + 1, false);
+                    chrom3BitGty.putQuick(3 * gtyPos + 2, true);
+                } else if (gty.charAt(0) == '0' && gty.charAt(2) == '1') {
+                    chrom3BitGty.putQuick(3 * gtyPos, false);
+                    chrom3BitGty.putQuick(3 * gtyPos + 1, true);
+                    chrom3BitGty.putQuick(3 * gtyPos + 2, false);
+                } else if (gty.charAt(0) == '1' && gty.charAt(2) == '0') {
+                    chrom3BitGty.putQuick(3 * gtyPos, false);
+                    chrom3BitGty.putQuick(3 * gtyPos + 1, true);
+                    chrom3BitGty.putQuick(3 * gtyPos + 2, true);
+                } else if (gty.charAt(0) == '1' && gty.charAt(2) == '1') {
+                    chrom3BitGty.putQuick(3 * gtyPos, true);
+                    chrom3BitGty.putQuick(3 * gtyPos + 1, false);
+                    chrom3BitGty.putQuick(3 * gtyPos + 2, false);
+                } else if (gty.charAt(0) == '.' && gty.charAt(2) == '.') {
+                    chrom3BitGty.putQuick(3 * gtyPos, false);
+                    chrom3BitGty.putQuick(3 * gtyPos + 1, false);
+                    chrom3BitGty.putQuick(3 * gtyPos + 2, false);
+                } else {
+                    String infor = "Sorry!!! the genotype " + gty + " at position " + gtyPos + " cannot be stored and will be ingored!";
+                    System.out.println(infor);
+                    chrom3BitGty.putQuick(3 * gtyPos, false);
+                    chrom3BitGty.putQuick(3 * gtyPos + 1, false);
+                    chrom3BitGty.putQuick(3 * gtyPos + 2, false);
+                    return false;
+                }
+                break;
+            case 3:
+                /*
+                 II.II Tri-allelic sequence variant (4 bits)
+                 missing 	Reference homozygous 	Heterozygous 	Heterozygous 	Heterozygous 	Heterozygous 	Alternative homozygous
+                 VCF genotype 	.|. 	0|0 	0|1 	1|0 	0|2 	2|0 	1|1
+                 Bits      	000 	0001 	0010 	0011 	0100 	0101 	0110
+                 Decimal 	0 	1 	2 	3 	4 	5 	6
+                 Heterozygous 	Heterozygous 	Alternative homozygous
+                 VCF genotype 	1|2 	2|1 	2|2
+                 Bits     	0111 	1000 	1001
+                 Decimal 	7 	8 	9                
+                
+                 * 
+                 */
+                //loci availableIndex from 0
+                if (4 * (gtyPos + 1) > spaceNum4BitGty) {
+                    //adjust the size of bitvectors
+                    spaceNum4BitGty = gtyPos * 4 + SPACE_LOAD_FACTOR;
+                    chrom4BitGty.setSize(spaceNum4BitGty);
+                }
+
+                if (gty == null) {
+                    chrom4BitGty.putQuick(4 * gtyPos, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 1, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 2, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 3, false);
+                } else if (gty.charAt(0) == '0' && gty.charAt(2) == '0') {
+                    chrom4BitGty.putQuick(4 * gtyPos, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 1, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 2, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 3, true);
+                } else if (gty.charAt(0) == '0' && gty.charAt(2) == '1') {
+                    chrom4BitGty.putQuick(4 * gtyPos, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 1, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 2, true);
+                    chrom4BitGty.putQuick(4 * gtyPos + 3, false);
+                } else if (gty.charAt(0) == '1' && gty.charAt(2) == '0') {
+                    chrom4BitGty.putQuick(4 * gtyPos, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 1, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 2, true);
+                    chrom4BitGty.putQuick(4 * gtyPos + 3, true);
+                } else if (gty.charAt(0) == '0' && gty.charAt(2) == '2') {
+                    chrom4BitGty.putQuick(4 * gtyPos, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 1, true);
+                    chrom4BitGty.putQuick(4 * gtyPos + 2, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 3, false);
+                } else if (gty.charAt(0) == '2' && gty.charAt(2) == '0') {
+                    chrom4BitGty.putQuick(4 * gtyPos, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 1, true);
+                    chrom4BitGty.putQuick(4 * gtyPos + 2, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 3, true);
+                } else if (gty.charAt(0) == '1' && gty.charAt(2) == '1') {
+                    chrom4BitGty.putQuick(4 * gtyPos, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 1, true);
+                    chrom4BitGty.putQuick(4 * gtyPos + 2, true);
+                    chrom4BitGty.putQuick(4 * gtyPos + 3, false);
+                } else if (gty.charAt(0) == '1' && gty.charAt(2) == '2') {
+                    chrom4BitGty.putQuick(4 * gtyPos, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 1, true);
+                    chrom4BitGty.putQuick(4 * gtyPos + 2, true);
+                    chrom4BitGty.putQuick(4 * gtyPos + 3, true);
+                } else if (gty.charAt(0) == '2' && gty.charAt(2) == '1') {
+                    chrom4BitGty.putQuick(4 * gtyPos, true);
+                    chrom4BitGty.putQuick(4 * gtyPos + 1, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 2, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 3, false);
+                } else if (gty.charAt(0) == '2' && gty.charAt(2) == '2') {
+                    chrom4BitGty.putQuick(4 * gtyPos, true);
+                    chrom4BitGty.putQuick(4 * gtyPos + 1, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 2, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 3, true);
+                } else if (gty.charAt(0) == '.' && gty.charAt(2) == '.') {
+                    chrom4BitGty.putQuick(4 * gtyPos, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 1, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 2, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 3, false);
+                } else {
+                    String infor = "Sorry!!! the genotype " + gty + " at position " + gtyPos + " cannot be stored and will be ingored!";
+                    System.out.println(infor);
+                    chrom4BitGty.putQuick(4 * gtyPos, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 1, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 2, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 3, false);
+                    return false;
+                }
+                break;
+            case 4:
+                /*
+                 II.III Quad-allelic sequence variants (5 bits)
+                 missing 	Reference homozygous 	Heterozygous 	Heterozygous 	Heterozygous 	Heterozygous 	Heterozygous
+                 VCF genotype 	.|. 	0|0 	0|1 	1|0 	0|2 	2|0 	0|3
+                 Bits     	000 	0001 	0010 	0011 	0100 	0101 	0110
+                 Decimal 	0 	1 	2 	3 	4 	5 	6
+                 Heterozygous 	Alternative homozygous 	Heterozygous 	Heterozygous 	Heterozygous 	Heterozygous
+                 VCF genotype 	3|0 	1|1 	1|2 	2|1 	1|3 	3|1
+                 Bits 	        0111 	1000 	1001 	1010 	1011 	1011
+                 Decimal 	7 	8 	9 	10 	11 	12
+                 Alternative homozygous 	Heterozygous 	Heterozygous 	Alternative homozygous
+                 VCF genotype 	2|2 	2|3 	3|2 	3|3
+                 Bits 	       1011 	000 	0001 	0001
+                 Decimal 	13 	14 	15 	16 
+                 */
+                //loci availableIndex from 0
+                if (5 * (gtyPos + 1) > spaceNum5BitGty) {
+                    //a4djust the size of bitvectors
+                    spaceNum5BitGty = gtyPos * 5 + SPACE_LOAD_FACTOR;
+                    chrom5BitGty.setSize(spaceNum5BitGty);
+                }
+
+                if (gty == null) {
+                    chrom5BitGty.putQuick(5 * gtyPos, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 1, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 2, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 3, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 4, false);
+                } else if (gty.charAt(0) == '0' && gty.charAt(2) == '0') {
+                    chrom5BitGty.putQuick(5 * gtyPos, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 1, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 2, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 3, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 4, true);
+                } else if (gty.charAt(0) == '0' && gty.charAt(2) == '1') {
+                    chrom5BitGty.putQuick(5 * gtyPos, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 1, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 2, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 3, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 4, false);
+                } else if (gty.charAt(0) == '1' && gty.charAt(2) == '0') {
+                    chrom5BitGty.putQuick(5 * gtyPos, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 1, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 2, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 3, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 4, true);
+                } else if (gty.charAt(0) == '0' && gty.charAt(2) == '2') {
+                    chrom5BitGty.putQuick(5 * gtyPos, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 1, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 2, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 3, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 4, false);
+                } else if (gty.charAt(0) == '2' && gty.charAt(2) == '0') {
+                    chrom5BitGty.putQuick(5 * gtyPos, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 1, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 2, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 3, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 4, true);
+                } else if (gty.charAt(0) == '0' && gty.charAt(2) == '3') {
+                    chrom5BitGty.putQuick(5 * gtyPos, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 1, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 2, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 3, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 4, false);
+                } else if (gty.charAt(0) == '3' && gty.charAt(2) == '0') {
+                    chrom5BitGty.putQuick(5 * gtyPos, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 1, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 2, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 3, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 4, true);
+                } else if (gty.charAt(0) == '1' && gty.charAt(2) == '1') {
+                    chrom5BitGty.putQuick(5 * gtyPos, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 1, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 2, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 3, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 4, false);
+                } else if (gty.charAt(0) == '.' && gty.charAt(2) == '.') {
+                    chrom5BitGty.putQuick(5 * gtyPos, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 1, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 2, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 3, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 4, false);
+                } else if (gty.charAt(0) == '1' && gty.charAt(2) == '2') {
+                    chrom5BitGty.putQuick(5 * gtyPos, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 1, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 2, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 3, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 4, true);
+                } else if (gty.charAt(0) == '2' && gty.charAt(2) == '1') {
+                    chrom5BitGty.putQuick(5 * gtyPos, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 1, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 2, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 3, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 4, false);
+                } else if (gty.charAt(0) == '1' && gty.charAt(2) == '3') {
+                    chrom5BitGty.putQuick(5 * gtyPos, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 1, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 2, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 3, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 4, true);
+                } else if (gty.charAt(0) == '3' && gty.charAt(2) == '1') {
+                    chrom5BitGty.putQuick(5 * gtyPos, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 1, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 2, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 3, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 4, false);
+                } else if (gty.charAt(0) == '2' && gty.charAt(2) == '2') {
+                    chrom5BitGty.putQuick(5 * gtyPos, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 1, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 2, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 3, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 4, true);
+                } else if (gty.charAt(0) == '2' && gty.charAt(2) == '3') {
+                    chrom5BitGty.putQuick(5 * gtyPos, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 1, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 2, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 3, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 4, false);
+                } else if (gty.charAt(0) == '3' && gty.charAt(2) == '2') {
+                    chrom5BitGty.putQuick(5 * gtyPos, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 1, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 2, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 3, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 4, true);
+                } else if (gty.charAt(0) == '3' && gty.charAt(2) == '3') {
+                    chrom5BitGty.putQuick(5 * gtyPos, true);
+                    chrom5BitGty.putQuick(5 * gtyPos + 1, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 2, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 3, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 4, false);
+                } else {
+                    String infor = "Sorry!!! the genotype " + gty + " at position " + gtyPos + " cannot be stored and will be ingored!";
+                    System.out.println(infor);
+                    chrom5BitGty.putQuick(5 * gtyPos, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 1, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 2, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 3, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 4, false);
+                    return false;
+                }
+                break;
+            default:
+                //String infor = "Sorry!!! squence variants with over 4 alleles are not supported and will be ignored!";
+                // System.out.println(infor);
+                return false;
+        }
+
+        return succeed;
+    }
+
+    public boolean addPhasedGtyBitAt(int gtyPos, boolean[] gty, int alleleNum) {
+        boolean succeed = true;
+        switch (alleleNum) {
+            case 2:
+                //loci availableIndex from 0
+                if ((3 * (gtyPos + 1)) > spaceNum3BitGty) {
+                    //adjust the size of bitvectors
+                    spaceNum3BitGty = gtyPos * 3 + SPACE_LOAD_FACTOR;
+                    chrom3BitGty.setSize(spaceNum3BitGty);
+                }
+                /*       
+                 missing	Reference homozygous	Heterozygous 	Heterozygous 	Alternative homozygous
+                 VCF genotype	.|.	0|0	0|1	1|0	1|1
+                 Bits	        000  	001	010	011	100
+                 Order	0	1	2	3	4
+                
+                 */
+                if (gty == null) {
+                    chrom3BitGty.putQuick(3 * gtyPos, false);
+                    chrom3BitGty.putQuick(3 * gtyPos + 1, false);
+                    chrom3BitGty.putQuick(3 * gtyPos + 2, false);
+                } else {
+                    chrom3BitGty.putQuick(3 * gtyPos, gty[0]);
+                    chrom3BitGty.putQuick(3 * gtyPos + 1, gty[1]);
+                    chrom3BitGty.putQuick(3 * gtyPos + 2, gty[2]);
+                }
+                break;
+            case 3:
+                if ((4 * (gtyPos + 1)) > spaceNum4BitGty) {
+                    //adjust the size of bitvectors
+                    spaceNum4BitGty = gtyPos * 4 + SPACE_LOAD_FACTOR;
+                    chrom4BitGty.setSize(spaceNum4BitGty);
+                }
+                if (gty == null) {
+                    chrom4BitGty.putQuick(4 * gtyPos, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 1, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 2, false);
+                    chrom4BitGty.putQuick(4 * gtyPos + 3, false);
+                } else {
+                    chrom4BitGty.putQuick(4 * gtyPos, gty[0]);
+                    chrom4BitGty.putQuick(4 * gtyPos + 1, gty[1]);
+                    chrom4BitGty.putQuick(4 * gtyPos + 2, gty[2]);
+                    chrom4BitGty.putQuick(4 * gtyPos + 3, gty[3]);
+                }
+                break;
+            case 4:
+                if ((5 * (gtyPos + 1)) > spaceNum5BitGty) {
+                    //adjust the size of bitvectors
+                    spaceNum5BitGty = gtyPos * 5 + SPACE_LOAD_FACTOR;
+                    chrom5BitGty.setSize(spaceNum5BitGty);
+                }
+                if (gty == null) {
+                    chrom5BitGty.putQuick(5 * gtyPos, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 1, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 2, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 3, false);
+                    chrom5BitGty.putQuick(5 * gtyPos + 4, false);
+                } else {
+                    chrom5BitGty.putQuick(5 * gtyPos, gty[0]);
+                    chrom5BitGty.putQuick(5 * gtyPos + 1, gty[1]);
+                    chrom5BitGty.putQuick(5 * gtyPos + 2, gty[2]);
+                    chrom5BitGty.putQuick(5 * gtyPos + 3, gty[3]);
+                    chrom5BitGty.putQuick(5 * gtyPos + 4, gty[4]);
+                }
+                break;
+            default:
+                //String infor = "Sorry!!! squence variants with over 4 alleles are not supported and will be ignored!";
+                //System.out.println(infor);
+                return false;
+        }
+
+        return succeed;
+    }
+
+    public byte[] getPhasedGtyAt(int gtyPos, int alleleNum) {
+        switch (alleleNum) {
+            case 2:
+                if (3 * (gtyPos + 1) > spaceNum3BitGty) {
+                    return null;
+                }
+                /*
+                 missing	Reference homozygous	Heterozygous 	Heterozygous 	Alternative homozygous
+                 VCF genotype	.|.	0|0	0|1	1|0	1|1
+                 Bits      	000  	001	010	011	100
+                 Order	0	1	2	3	4        
+                 */
+                if (!chrom3BitGty.getQuick(3 * gtyPos) && !chrom3BitGty.getQuick(3 * gtyPos + 1) && !chrom3BitGty.getQuick(3 * gtyPos + 2)) {
+                    return null;
+                } else if (!chrom3BitGty.getQuick(3 * gtyPos) && !chrom3BitGty.getQuick(3 * gtyPos + 1) && chrom3BitGty.getQuick(3 * gtyPos + 2)) {
+                    return new byte[]{0, 0};
+                } else if (!chrom3BitGty.getQuick(3 * gtyPos) && chrom3BitGty.getQuick(3 * gtyPos + 1) && !chrom3BitGty.getQuick(3 * gtyPos + 2)) {
+                    return new byte[]{0, 1};
+                } else if (!chrom3BitGty.getQuick(3 * gtyPos) && chrom3BitGty.getQuick(3 * gtyPos + 1) && chrom3BitGty.getQuick(3 * gtyPos + 2)) {
+                    return new byte[]{1, 0};
+                } else if (chrom3BitGty.getQuick(3 * gtyPos) && !chrom3BitGty.getQuick(3 * gtyPos + 1) && !chrom3BitGty.getQuick(3 * gtyPos + 2)) {
+                    return new byte[]{1, 1};
+                }
+                break;
+            case 3:
+                if (4 * (gtyPos + 1) > spaceNum4BitGty) {
+                    return null;
+                }
+                if (!chrom4BitGty.getQuick(4 * gtyPos) && !chrom4BitGty.getQuick(4 * gtyPos + 1)
+                        && !chrom4BitGty.getQuick(4 * gtyPos + 2) && !chrom4BitGty.getQuick(4 * gtyPos + 3)) {
+                    return null;
+                } else if (!chrom4BitGty.getQuick(4 * gtyPos) && !chrom4BitGty.getQuick(4 * gtyPos + 1)
+                        && !chrom4BitGty.getQuick(4 * gtyPos + 2) && chrom4BitGty.getQuick(4 * gtyPos + 3)) {
+                    return new byte[]{0, 0};
+                } else if (!chrom4BitGty.getQuick(4 * gtyPos) && !chrom4BitGty.getQuick(4 * gtyPos + 1)
+                        && chrom4BitGty.getQuick(4 * gtyPos + 2) && !chrom4BitGty.getQuick(4 * gtyPos + 3)) {
+                    return new byte[]{0, 1};
+                } else if (!chrom4BitGty.getQuick(4 * gtyPos) && !chrom4BitGty.getQuick(4 * gtyPos + 1)
+                        && chrom4BitGty.getQuick(4 * gtyPos + 2) && chrom4BitGty.getQuick(4 * gtyPos + 3)) {
+                    return new byte[]{1, 0};
+                } else if (!chrom4BitGty.getQuick(4 * gtyPos) && chrom4BitGty.getQuick(4 * gtyPos + 1)
+                        && !chrom4BitGty.getQuick(4 * gtyPos + 2) && !chrom4BitGty.getQuick(4 * gtyPos + 3)) {
+                    return new byte[]{0, 2};
+                } else if (!chrom4BitGty.getQuick(4 * gtyPos) && chrom4BitGty.getQuick(4 * gtyPos + 1)
+                        && !chrom4BitGty.getQuick(4 * gtyPos + 2) && chrom4BitGty.getQuick(4 * gtyPos + 3)) {
+                    return new byte[]{2, 0};
+                } else if (!chrom4BitGty.getQuick(4 * gtyPos) && chrom4BitGty.getQuick(4 * gtyPos + 1)
+                        && chrom4BitGty.getQuick(4 * gtyPos + 2) && !chrom4BitGty.getQuick(4 * gtyPos + 3)) {
+                    return new byte[]{1, 1};
+                } else if (!chrom4BitGty.getQuick(4 * gtyPos) && chrom4BitGty.getQuick(4 * gtyPos + 1)
+                        && chrom4BitGty.getQuick(4 * gtyPos + 2) && chrom4BitGty.getQuick(4 * gtyPos + 3)) {
+                    return new byte[]{1, 2};
+                } else if (chrom4BitGty.getQuick(4 * gtyPos) && !chrom4BitGty.getQuick(4 * gtyPos + 1)
+                        && !chrom4BitGty.getQuick(4 * gtyPos + 2) && !chrom4BitGty.getQuick(4 * gtyPos + 3)) {
+                    return new byte[]{2, 1};
+                } else if (chrom4BitGty.getQuick(4 * gtyPos) && !chrom4BitGty.getQuick(4 * gtyPos + 1)
+                        && !chrom4BitGty.getQuick(4 * gtyPos + 2) && chrom4BitGty.getQuick(4 * gtyPos + 3)) {
+                    return new byte[]{2, 2};
+                }
+                break;
+            case 4:
+                if (5 * (gtyPos + 1) > spaceNum5BitGty) {
+                    return null;
+                }
+                if (!chrom5BitGty.getQuick(5 * gtyPos) && !chrom5BitGty.getQuick(5 * gtyPos + 1)
+                        && !chrom5BitGty.getQuick(5 * gtyPos + 2) && !chrom5BitGty.getQuick(5 * gtyPos + 3)
+                        && !chrom5BitGty.getQuick(5 * gtyPos + 4)) {
+                    return null;
+                } else if (!chrom5BitGty.getQuick(5 * gtyPos) && !chrom5BitGty.getQuick(5 * gtyPos + 1)
+                        && !chrom5BitGty.getQuick(5 * gtyPos + 2) && !chrom5BitGty.getQuick(5 * gtyPos + 3)
+                        && chrom5BitGty.getQuick(5 * gtyPos + 4)) {
+                    return new byte[]{0, 0};
+                } else if (!chrom5BitGty.getQuick(5 * gtyPos) && !chrom5BitGty.getQuick(5 * gtyPos + 1)
+                        && !chrom5BitGty.getQuick(5 * gtyPos + 2) && chrom5BitGty.getQuick(5 * gtyPos + 3)
+                        && !chrom5BitGty.getQuick(5 * gtyPos + 4)) {
+                    return new byte[]{0, 1};
+                } else if (!chrom5BitGty.getQuick(5 * gtyPos) && !chrom5BitGty.getQuick(5 * gtyPos + 1)
+                        && !chrom5BitGty.getQuick(5 * gtyPos + 2) && chrom5BitGty.getQuick(5 * gtyPos + 3)
+                        && chrom5BitGty.getQuick(5 * gtyPos + 4)) {
+                    return new byte[]{1, 0};
+                } else if (!chrom5BitGty.getQuick(5 * gtyPos) && !chrom5BitGty.getQuick(5 * gtyPos + 1)
+                        && chrom5BitGty.getQuick(5 * gtyPos + 2) && !chrom5BitGty.getQuick(5 * gtyPos + 3)
+                        && !chrom5BitGty.getQuick(5 * gtyPos + 4)) {
+                    return new byte[]{0, 2};
+                } else if (!chrom5BitGty.getQuick(5 * gtyPos) && !chrom5BitGty.getQuick(5 * gtyPos + 1)
+                        && chrom5BitGty.getQuick(5 * gtyPos + 2) && !chrom5BitGty.getQuick(5 * gtyPos + 3)
+                        && chrom5BitGty.getQuick(5 * gtyPos + 4)) {
+                    return new byte[]{2, 0};
+                } else if (!chrom5BitGty.getQuick(5 * gtyPos) && !chrom5BitGty.getQuick(5 * gtyPos + 1)
+                        && chrom5BitGty.getQuick(5 * gtyPos + 2) && chrom5BitGty.getQuick(5 * gtyPos + 3)
+                        && !chrom5BitGty.getQuick(5 * gtyPos + 4)) {
+                    return new byte[]{0, 3};
+                } else if (!chrom5BitGty.getQuick(5 * gtyPos) && !chrom5BitGty.getQuick(5 * gtyPos + 1)
+                        && chrom5BitGty.getQuick(5 * gtyPos + 2) && chrom5BitGty.getQuick(5 * gtyPos + 3)
+                        && chrom5BitGty.getQuick(5 * gtyPos + 4)) {
+                    return new byte[]{3, 0};
+                } else if (!chrom5BitGty.getQuick(5 * gtyPos) && chrom5BitGty.getQuick(5 * gtyPos + 1)
+                        && !chrom5BitGty.getQuick(5 * gtyPos + 2) && !chrom5BitGty.getQuick(5 * gtyPos + 3)
+                        && !chrom5BitGty.getQuick(5 * gtyPos + 4)) {
+                    return new byte[]{1, 1};
+                } else if (!chrom5BitGty.getQuick(5 * gtyPos) && chrom5BitGty.getQuick(5 * gtyPos + 1)
+                        && !chrom5BitGty.getQuick(5 * gtyPos + 2) && !chrom5BitGty.getQuick(5 * gtyPos + 3)
+                        && chrom5BitGty.getQuick(5 * gtyPos + 4)) {
+                    return new byte[]{1, 2};
+                } else if (!chrom5BitGty.getQuick(5 * gtyPos) && chrom5BitGty.getQuick(5 * gtyPos + 1)
+                        && !chrom5BitGty.getQuick(5 * gtyPos + 2) && chrom5BitGty.getQuick(5 * gtyPos + 3)
+                        && !chrom5BitGty.getQuick(5 * gtyPos + 4)) {
+                    return new byte[]{2, 1};
+                } else if (!chrom5BitGty.getQuick(5 * gtyPos) && chrom5BitGty.getQuick(5 * gtyPos + 1)
+                        && !chrom5BitGty.getQuick(5 * gtyPos + 2) && chrom5BitGty.getQuick(5 * gtyPos + 3)
+                        && chrom5BitGty.getQuick(5 * gtyPos + 4)) {
+                    return new byte[]{1, 3};
+                } else if (!chrom5BitGty.getQuick(5 * gtyPos) && chrom5BitGty.getQuick(5 * gtyPos + 1)
+                        && chrom5BitGty.getQuick(5 * gtyPos + 2) && !chrom5BitGty.getQuick(5 * gtyPos + 3)
+                        && !chrom5BitGty.getQuick(5 * gtyPos + 4)) {
+                    return new byte[]{3, 1};
+                } else if (!chrom5BitGty.getQuick(5 * gtyPos) && chrom5BitGty.getQuick(5 * gtyPos + 1)
+                        && chrom5BitGty.getQuick(5 * gtyPos + 2) && !chrom5BitGty.getQuick(5 * gtyPos + 3)
+                        && chrom5BitGty.getQuick(5 * gtyPos + 4)) {
+                    return new byte[]{2, 2};
+                } else if (!chrom5BitGty.getQuick(5 * gtyPos) && chrom5BitGty.getQuick(5 * gtyPos + 1)
+                        && chrom5BitGty.getQuick(5 * gtyPos + 2) && chrom5BitGty.getQuick(5 * gtyPos + 3)
+                        && !chrom5BitGty.getQuick(5 * gtyPos + 4)) {
+                    return new byte[]{2, 3};
+                } else if (!chrom5BitGty.getQuick(5 * gtyPos) && chrom5BitGty.getQuick(5 * gtyPos + 1)
+                        && chrom5BitGty.getQuick(5 * gtyPos + 2) && chrom5BitGty.getQuick(5 * gtyPos + 3)
+                        && chrom5BitGty.getQuick(5 * gtyPos + 4)) {
+                    return new byte[]{3, 2};
+                } else if (!chrom5BitGty.getQuick(5 * gtyPos) && chrom5BitGty.getQuick(5 * gtyPos + 1)
+                        && chrom5BitGty.getQuick(5 * gtyPos + 2) && chrom5BitGty.getQuick(5 * gtyPos + 3)
+                        && chrom5BitGty.getQuick(5 * gtyPos + 4)) {
+                    return new byte[]{3, 3};
+                }
+                break;
+            default:
+            // String infor = "Sorry!!! squence variants with over 4 alleles are not supported and will be ignored!";
+            // System.out.println(infor);
+        }
+
+        return null;
+    }
+
+    public void getPhasedGtyBitAt(int gtyPos, boolean[] bits, int alleleNum) {
+        switch (alleleNum) {
+            case 2:
+                //loci availableIndex from 0
+                if (3 * (gtyPos + 1) > spaceNum3BitGty) {
+                    bits[0] = false;
+                    bits[1] = false;
+                    bits[2] = false;
+                    return;
+                }
+                /*
+                 missing	Reference homozygous	Heterozygous 	Heterozygous 	Alternative homozygous
+                 VCF genotype	.|.	0|0	0|1	1|0	1|1
+                 Bits      	000  	001	010	011	100
+                 Order	0	1	2	3	4        
+                 */
+                bits[0] = chrom3BitGty.getQuick(3 * gtyPos);
+                bits[1] = chrom3BitGty.getQuick(3 * gtyPos + 1);
+                bits[2] = chrom3BitGty.getQuick(3 * gtyPos + 2);
+                break;
+            case 3:
+                if (4 * (gtyPos + 1) > spaceNum4BitGty) {
+                    bits[0] = false;
+                    bits[1] = false;
+                    bits[2] = false;
+                    bits[3] = false;
+                    return;
+                }
+                bits[0] = chrom4BitGty.getQuick(4 * gtyPos);
+                bits[1] = chrom4BitGty.getQuick(4 * gtyPos + 1);
+                bits[2] = chrom4BitGty.getQuick(4 * gtyPos + 2);
+                bits[3] = chrom4BitGty.getQuick(4 * gtyPos + 3);
+                break;
+            case 4:
+                if (5 * (gtyPos + 1) > spaceNum5BitGty) {
+                    bits[0] = false;
+                    bits[1] = false;
+                    bits[2] = false;
+                    bits[3] = false;
+                    bits[4] = false;
+                    return;
+                }
+                bits[0] = chrom5BitGty.getQuick(5 * gtyPos);
+                bits[1] = chrom5BitGty.getQuick(5 * gtyPos + 1);
+                bits[2] = chrom5BitGty.getQuick(5 * gtyPos + 2);
+                bits[3] = chrom5BitGty.getQuick(5 * gtyPos + 3);
+                bits[4] = chrom5BitGty.getQuick(5 * gtyPos + 4);
+                break;
+            default:
+            // String infor = "Sorry!!! squence variants with over 4 alleles are not supported and will be ignored!";
+            // System.out.println(infor);
+        }
+
+    }
+
+    public boolean addUnphasedGtyAt(String gty, int index, int alleleNum, int base) {
+        /*
+         missing	Reference homozygous	Heterozygous 	Alternative homozygous
+         VCF genotype	./.	0/0	0/1	1/1
+         Bits	00  	01	10	11
+         Order	0	1	2	3        
+         */
+
+        /*
+         missing	Reference homozygous	Heterozygous 	Heterozygous	Alternative homozygous	Heterozygous	Alternative homozygous
+         VCF genotype	./.	0/0	0/1	0/2	1/1	1/2	2/2
+         Bits	        000	001	010	011	100	101	110
+         Order	0	1	2	3	4	5	6 
+         */
+        /*
+         I.III Quad-allelic sequence variant (4 bits)
+         missing 	Reference homozygous 	Heterozygous 	Heterozygous 	Heterozygous 	Alternative homozygous 	Heterozygous
+         VCF genotype 	./. 	0/0 	0/1 	0/2 	0/3 	1/1 	1/2
+         Bits 	      000 	0001 	0010 	0011 	0100 	0101 	0110
+         Decimal 	0 	1 	2 	3 	4 	5 	6
+         Heterozygous 	Alternative homozygous 	Heterozygous 	Alternative homozygous
+         VCF genotype 	1/3 	2/2 	2/3 	3/3
+         Bits 	     0111 	1000 	1001 	1010
+         Decimal 	7 	8 	9 	10                               
+         */
+        if (gty == null || gty.charAt(0) == '.') {
+            //loci availableIndex from 0      
+            if (index + base >= spaceNumBitGty) {
+                //adjust the size of bitvectors
+                spaceNumBitGty += SPACE_LOAD_FACTOR;
+                bitGty.setSize(spaceNumBitGty);
+            }
+            //missing value
+            bitGty.replaceFromToWith(index, index + base - 1, false);
+            return true;
+        }
+
+        boolean[] bits = GlobalManager.unphasedGtyCodingMap.get(gty + ":" + alleleNum);
+        if (bits != null) {
+            //loci availableIndex from 0      
+            if (index + base >= spaceNumBitGty) {
+                //adjust the size of bitvectors
+                spaceNumBitGty += SPACE_LOAD_FACTOR;
+                bitGty.setSize(spaceNumBitGty);
+            }
+
+            for (int i = 0; i < base; i++) {
+                bitGty.putQuick(index + i, bits[i]);
+            }
+            return true;
+        } else {
+            String infor = "Sorry!!! the genotype " + gty + " at position " + index + " cannot be stored and will be ingored!";
+            LOG.error(infor);
+            return false;
+        }
+    }
+
+    public boolean addUnphasedGtyBitAt(int gtyPos, boolean[] gty, int alleleNum) {
+
+        /*
+         missing	Reference homozygous	Heterozygous 	Alternative homozygous
+         VCF genotype	./.	0/0	0/1	1/1
+         Bits	00  	01	10	11
+         Order	0	1	2	3        
+         */
+
+        /*
+         missing	Reference homozygous	Heterozygous 	Heterozygous	Alternative homozygous	Heterozygous	Alternative homozygous
+         VCF genotype	./.	0/0	0/1	0/2	1/1	1/2	2/2
+         Bits	        000	001	010	011	100	101	110
+         Order	0	1	2	3	4	5	6 
+         */
+        /*
+         I.III Quad-allelic sequence variant (4 bits)
+         missing 	Reference homozygous 	Heterozygous 	Heterozygous 	Heterozygous 	Alternative homozygous 	Heterozygous
+         VCF genotype 	./. 	0/0 	0/1 	0/2 	0/3 	1/1 	1/2
+         Bits 	      000 	0001 	0010 	0011 	0100 	0101 	0110
+         Decimal 	0 	1 	2 	3 	4 	5 	6
+         Heterozygous 	Alternative homozygous 	Heterozygous 	Alternative homozygous
+         VCF genotype 	1/3 	2/2 	2/3 	3/3
+         Bits 	     0111 	1000 	1001 	1010
+         Decimal 	7 	8 	9 	10                               
+         */
+        return false;
+    }
+
+    public byte[] getUnphasedGtyAt(int gtyPos, int alleleNum) {
+        switch (alleleNum) {
+            case 2:
+                if (2 * (gtyPos + 1) >= spaceNumBitGty) {
+                    return null;
+                }
+                /*
+                 missing	Reference homozygous	Heterozygous 	Alternative homozygous
+                 VCF genotype	./.	0/0	0/1	1/1
+                 Bits	00  	01	10	11
+                 Order	0	1	2	3        
+                 */
+                if (bitGty.getQuick(2 * gtyPos) && bitGty.getQuick(2 * gtyPos + 1)) {
+                    return new byte[]{1, 1};
+                } else if (!bitGty.getQuick(2 * gtyPos) && bitGty.getQuick(2 * gtyPos + 1)) {
+                    return new byte[]{0, 0};
+                } else if (bitGty.getQuick(2 * gtyPos) && !bitGty.getQuick(2 * gtyPos + 1)) {
+                    return new byte[]{0, 1};
+                } else if (!bitGty.getQuick(2 * gtyPos) && !bitGty.getQuick(2 * gtyPos + 1)) {
+                    return null;
+                }
+                break;
+            case 3:
+                //loci availableIndex from 0
+                if (3 * (gtyPos + 1) > spaceNum3BitGty) {
+                    return null;
+                }
+                /*
+                 missing	Reference homozygous	Heterozygous 	Heterozygous	Alternative homozygous	Heterozygous	Alternative homozygous
+                 VCF genotype	./.	0/0	0/1	0/2	1/1	1/2	2/2
+                 Bits	        000	001	010	011	100	101	110
+                 Order	0	1	2	3	4	5	6 
+                 */
+                if (!chrom3BitGty.getQuick(3 * gtyPos) && !chrom3BitGty.getQuick(3 * gtyPos + 1) && !chrom3BitGty.getQuick(3 * gtyPos + 2)) {
+                    return null;
+                } else if (!chrom3BitGty.getQuick(3 * gtyPos) && !chrom3BitGty.getQuick(3 * gtyPos + 1) && chrom3BitGty.getQuick(3 * gtyPos + 2)) {
+                    return new byte[]{0, 0};
+                } else if (!chrom3BitGty.getQuick(3 * gtyPos) && chrom3BitGty.getQuick(3 * gtyPos + 1) && !chrom3BitGty.getQuick(3 * gtyPos + 2)) {
+                    return new byte[]{0, 1};
+                } else if (!chrom3BitGty.getQuick(3 * gtyPos) && chrom3BitGty.getQuick(3 * gtyPos + 1) && chrom3BitGty.getQuick(3 * gtyPos + 2)) {
+                    return new byte[]{0, 2};
+                } else if (chrom3BitGty.getQuick(3 * gtyPos) && !chrom3BitGty.getQuick(3 * gtyPos + 1) && !chrom3BitGty.getQuick(3 * gtyPos + 2)) {
+                    return new byte[]{1, 1};
+                } else if (chrom3BitGty.getQuick(3 * gtyPos) && !chrom3BitGty.getQuick(3 * gtyPos + 1) && chrom3BitGty.getQuick(3 * gtyPos + 2)) {
+                    return new byte[]{1, 2};
+                } else if (chrom3BitGty.getQuick(3 * gtyPos) && chrom3BitGty.getQuick(3 * gtyPos + 1) && !chrom3BitGty.getQuick(3 * gtyPos + 2)) {
+                    return new byte[]{2, 2};
+                }
+                break;
+            case 4:
+                //loci availableIndex from 0
+                if (4 * (gtyPos + 1) > spaceNum4BitGty) {
+                    return null;
+                }
+                /*
+                 I.III Quad-allelic sequence variant (4 bits)
+                 missing 	Reference homozygous 	Heterozygous 	Heterozygous 	Heterozygous 	Alternative homozygous 	Heterozygous
+                 VCF genotype 	./. 	0/0 	0/1 	0/2 	0/3 	1/1 	1/2
+                 Bits    	000 	0001 	0010 	0011 	0100 	0101 	0110
+                 Decimal 	0 	1 	2 	3 	4 	5 	6
+                 Heterozygous 	Alternative homozygous 	Heterozygous 	Alternative homozygous
+                 VCF genotype 	1/3 	2/2 	2/3 	3/3
+                 Bits 	       0111 	1000 	1001 	1010
+                 Decimal 	7 	8 	9 	10
+                
+                 */
+                if (!chrom4BitGty.getQuick(4 * gtyPos) && !chrom4BitGty.getQuick(4 * gtyPos + 1)
+                        && !chrom4BitGty.getQuick(4 * gtyPos + 2) && !chrom4BitGty.getQuick(4 * gtyPos + 3)) {
+                    return null;
+                } else if (!chrom4BitGty.getQuick(4 * gtyPos) && !chrom4BitGty.getQuick(4 * gtyPos + 1)
+                        && !chrom4BitGty.getQuick(4 * gtyPos + 2) && chrom4BitGty.getQuick(4 * gtyPos + 3)) {
+                    return new byte[]{0, 0};
+                } else if (!chrom4BitGty.getQuick(4 * gtyPos) && !chrom4BitGty.getQuick(4 * gtyPos + 1)
+                        && chrom4BitGty.getQuick(4 * gtyPos + 2) && !chrom4BitGty.getQuick(4 * gtyPos + 3)) {
+                    return new byte[]{0, 1};
+                } else if (!chrom4BitGty.getQuick(4 * gtyPos) && !chrom4BitGty.getQuick(4 * gtyPos + 1)
+                        && chrom4BitGty.getQuick(4 * gtyPos + 2) && chrom4BitGty.getQuick(4 * gtyPos + 3)) {
+                    return new byte[]{0, 2};
+                } else if (!chrom4BitGty.getQuick(4 * gtyPos) && chrom4BitGty.getQuick(4 * gtyPos + 1)
+                        && !chrom4BitGty.getQuick(4 * gtyPos + 2) && !chrom4BitGty.getQuick(4 * gtyPos + 3)) {
+                    return new byte[]{0, 3};
+                } else if (!chrom4BitGty.getQuick(4 * gtyPos) && chrom4BitGty.getQuick(4 * gtyPos + 1)
+                        && !chrom4BitGty.getQuick(4 * gtyPos + 2) && chrom4BitGty.getQuick(4 * gtyPos + 3)) {
+                    return new byte[]{1, 1};
+                } else if (!chrom4BitGty.getQuick(4 * gtyPos) && chrom4BitGty.getQuick(4 * gtyPos + 1)
+                        && chrom4BitGty.getQuick(4 * gtyPos + 2) && !chrom4BitGty.getQuick(4 * gtyPos + 3)) {
+                    return new byte[]{1, 2};
+                } else if (!chrom4BitGty.getQuick(4 * gtyPos) && chrom4BitGty.getQuick(4 * gtyPos + 1)
+                        && chrom4BitGty.getQuick(4 * gtyPos + 2) && chrom4BitGty.getQuick(4 * gtyPos + 3)) {
+                    return new byte[]{1, 3};
+                } else if (chrom4BitGty.getQuick(4 * gtyPos) && !chrom4BitGty.getQuick(4 * gtyPos + 1)
+                        && !chrom4BitGty.getQuick(4 * gtyPos + 2) && !chrom4BitGty.getQuick(4 * gtyPos + 3)) {
+                    return new byte[]{2, 2};
+                } else if (chrom4BitGty.getQuick(4 * gtyPos) && !chrom4BitGty.getQuick(4 * gtyPos + 1)
+                        && !chrom4BitGty.getQuick(4 * gtyPos + 2) && chrom4BitGty.getQuick(4 * gtyPos + 3)) {
+                    return new byte[]{2, 3};
+                } else if (chrom4BitGty.getQuick(4 * gtyPos) && !chrom4BitGty.getQuick(4 * gtyPos + 1)
+                        && chrom4BitGty.getQuick(4 * gtyPos + 2) && !chrom4BitGty.getQuick(4 * gtyPos + 3)) {
+                    return new byte[]{3, 3};
+                }
+                break;
+            default:
+                // String infor = "Sorry!!! squence variants with over 4 alleles are not supported and will be ignored!";
+                // System.out.println(infor);
+                return null;
+        }
+        return null;
+    }
+
+    public void getUnphasedGtyBitAt(int gtyPos, boolean[] bits, int alleleNum) {
+        switch (alleleNum) {
+            case 2:
+                if (2 * (gtyPos + 1) > spaceNumBitGty) {
+                    bits[0] = false;
+                    bits[1] = false;
+                    return;
+                }
+                /*
+                 missing	Reference homozygous	Heterozygous 	Alternative homozygous
+                 VCF genotype	./.	0/0	0/1	1/1
+                 Bits	00  	01	10	11
+                 Order	0	1	2	3        
+                 */
+                bits[0] = bitGty.getQuick(2 * gtyPos);
+                bits[1] = bitGty.getQuick(2 * gtyPos + 1);
+                break;
+            case 3:
+                if (3 * (gtyPos + 1) > spaceNum3BitGty) {
+                    bits[0] = false;
+                    bits[1] = false;
+                    bits[2] = false;
+                    return;
+                }
+                /*
+                 missing	Reference homozygous	Heterozygous 	Heterozygous	Alternative homozygous	Heterozygous	Alternative homozygous
+                 VCF genotype	./.	0/0	0/1	0/2	1/1	1/2	2/2
+                 Bits	        000	001	010	011	100	101	110
+                 Order	0	1	2	3	4	5	6 
+                 */
+                bits[0] = chrom3BitGty.getQuick(3 * gtyPos);
+                bits[1] = chrom3BitGty.getQuick(3 * gtyPos + 1);
+                bits[2] = chrom3BitGty.getQuick(3 * gtyPos + 2);
+                break;
+            case 4:
+                if (4 * (gtyPos + 1) > spaceNum4BitGty) {
+                    bits[0] = false;
+                    bits[1] = false;
+                    bits[2] = false;
+                    bits[3] = false;
+                    return;
+                }
+
+                bits[0] = chrom4BitGty.getQuick(4 * gtyPos);
+                bits[1] = chrom4BitGty.getQuick(4 * gtyPos + 1);
+                bits[2] = chrom4BitGty.getQuick(4 * gtyPos + 2);
+                bits[3] = chrom4BitGty.getQuick(4 * gtyPos + 3);
+                break;
+
+            default:
+            // String infor = "Sorry!!! squence variants with over 4 alleles are not supported and will be ignored!";
+            //  System.out.println(infor);
+        }
+
+    }
+}

@@ -1,0 +1,216 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package org.cobi.kggseq.controller;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import org.apache.log4j.Logger;
+import java.util.HashMap;
+import java.util.List;
+import static org.cobi.kggseq.Constants.KGGSeq_URL;
+import static org.cobi.kggseq.GlobalManager.PLUGIN_PATH;
+import org.cobi.kggseq.entity.AnnotationSummarySet;
+import org.cobi.kggseq.entity.Chromosome;
+import org.cobi.kggseq.entity.Variant;
+import org.cobi.util.download.stable.HttpClient4API;
+import org.cobi.util.file.Zipper;
+
+/**
+ *
+ * @author JiangLi
+ */
+public class Phenolyzer {
+
+    private static final Logger LOG = Logger.getLogger(Phenolyzer.class);
+    String strPerlPath;
+    String strCMD;
+    String fleOutput = "./phenolyzer";
+    String strPhenolyzerPath;
+    HashMap<String, String> hmpPhenolyzer = null;
+    BufferedReader br = null;
+    BufferedWriter bw = null;
+    List<String> altSearchTerms = null;
+    String strURL = KGGSeq_URL + "download/lib/phenolyzer-master.zip";
+
+    public Phenolyzer(List<String> searchTerms, String outPath) {
+        final int INIT_PROBLEM = 0, WINDOWS = 1, UNIX = 2, POSIX_UNIX = 3, OTHER = 4;
+        int os = OTHER;
+        try {
+            String osName = System.getProperty("os.name");
+            if (osName == null) {
+                throw new IOException("os.name not found");
+            }
+            osName = osName.toLowerCase();
+            // match  
+            if (osName.indexOf("windows") != -1) {
+                os = WINDOWS;
+                this.strPerlPath = "C:/Strawberry/perl/bin/perl.exe";
+            } else if (osName.indexOf("linux") != -1
+                    || osName.indexOf("sun os") != -1
+                    || osName.indexOf("sunos") != -1
+                    || osName.indexOf("solaris") != -1
+                    || osName.indexOf("mpe/ix") != -1
+                    || osName.indexOf("freebsd") != -1
+                    || osName.indexOf("irix") != -1
+                    || osName.indexOf("digital unix") != -1
+                    || osName.indexOf("unix") != -1
+                    || osName.indexOf("mac os x") != -1) {
+                os = UNIX;
+                this.strPerlPath = "perl";
+            } else if (osName.indexOf("hp-ux") != -1
+                    || osName.indexOf("aix") != -1) {
+                os = POSIX_UNIX;
+                this.strPerlPath = "perl";
+            } else {
+                os = OTHER;
+                this.strPerlPath = "perl";
+            }
+
+        } catch (Exception ex) {
+            os = INIT_PROBLEM;
+            LOG.error(ex);
+        }
+        fleOutput = outPath;
+        this.strPhenolyzerPath = PLUGIN_PATH + "phenolyzer-master/disease_annotation.pl";
+        altSearchTerms = searchTerms;
+    }
+
+    public void runPhenolyzer() {
+        try {
+//            bw=new BufferedWriter(new FileWriter(fleInput));
+//            for(int i=0;i<altSearchTerms.size();i++){
+//                bw.write((String) altSearchTerms.get(i));
+//                bw.newLine();
+//            }
+//            bw.close();
+            String strItems = "";
+            for (int i = 0; i < altSearchTerms.size(); i++) {
+                strItems += altSearchTerms.get(i) + ";";
+            }
+            strItems = strItems.substring(0, strItems.length() - 1);
+            File f = new File(fleOutput);
+            if (!f.getParentFile().exists()) {
+                f.getParentFile().mkdir();
+            }
+            strCMD = strPerlPath + " " + strPhenolyzerPath + " \'" + strItems + "\' -p -ph -logistic -out " + fleOutput + " -addon DB_DISGENET_GENE_DISEASE_SCORE,DB_GAD_GENE_DISEASE_SCORE,DB_GENECARDS_GENE_DISEASE_SCORE -addon_weight 0.25";
+            System.out.println(strCMD);
+//            String strTest="C:\\Strawberry\\perl\\bin\\perl.exe D:\\01WORK\\KGGseq\\software\\KGGseq\\plugin\\phenolyzer-master\\disease_annotation.pl 'alzheimer;crohn' -p -ph -logistic -out testPhenolyzer_New\\testPhenolyzerphenolyzer\\out";
+//            System.out.println(strTest);
+            Process pr = Runtime.getRuntime().exec(strCMD);
+            String line;
+            
+            try{
+                BufferedReader inputError = new BufferedReader(new InputStreamReader(pr.getErrorStream()));
+                while(((line=inputError.readLine())!=null))
+                    System.out.println(line);
+                
+                int exitVal=pr.waitFor();
+                System.out.println("Phenolyzer run "+ (exitVal==0?"Successfully!":"Unsuccessfully!"));
+                pr.destroy();
+                inputError.close();
+            } catch (Exception ex) {
+                LOG.error(ex);
+            }
+            
+//            try (BufferedReader input = new BufferedReader(new InputStreamReader(pr.getInputStream()))) {
+//                while ((line = input.readLine()) != null) {
+//                    System.out.println(line);
+//                }
+//            }
+//            System.out.println("Done.");
+//            pr.waitFor();
+//            pr.destroy();
+        } catch (IOException ex) {
+            LOG.error(ex);
+        } catch (Exception ex) {
+            LOG.error(ex);
+        }
+    }
+
+    public void parseResult() {
+        try {
+//            if(fleInput==null || !fleInput.exists()) return;
+            hmpPhenolyzer = new HashMap<String, String>();
+            br = new BufferedReader(new FileReader(fleOutput + ".final_gene_list"));
+
+            String strLine;
+//            while((strLine=br.readLine())!=null){
+//                if(strLine.contains("Normalized score")){
+//                    String[] strItems=strLine.split("\t");
+//                    double[] dblScore=new double[2];
+//                    dblScore[0]=Double.parseDouble(strItems[1].substring(18));
+//                    dblScore[1]=Double.parseDouble(strItems[2].substring(11));
+//                    hmpPhenolyzer.put(strItems[0], dblScore);
+//                }
+//            }
+
+            while ((strLine = br.readLine()) != null) {
+                String[] strItems = strLine.split("\t");
+                hmpPhenolyzer.put(strItems[1], strItems[3]);
+            }
+            br.close();
+        } catch (FileNotFoundException ex) {
+            LOG.info(ex);
+
+        } catch (IOException ex) {
+            LOG.info(ex);
+        }
+    }
+
+    public HashMap<String, String> getHashMap() {
+        return this.hmpPhenolyzer;
+    }
+
+    public void addScore(Chromosome chromosome, AnnotationSummarySet ass, HashMap<String, String> hmpPhenolyzer) {
+        int intNum = 0;
+        if (chromosome == null) {
+            return;
+        }
+
+        int varFeatureNum = ass.getAvailableFeatureIndex();
+        for (Variant var : chromosome.variantList) {
+            if (var.geneSymb == null) {
+                var.setFeatureValue(varFeatureNum, null);
+//                var.setFeatureValue(ass.getAvailableFeatureIndex() + 1, null);
+                continue;
+            }
+            String strGene = var.geneSymb.toUpperCase();
+            if (hmpPhenolyzer.containsKey(strGene)) {
+                var.setFeatureValue(varFeatureNum, hmpPhenolyzer.get(strGene));
+                intNum++;
+            } else {
+                var.setFeatureValue(varFeatureNum, ".");
+            }
+        }
+
+        ass.setAnnotNum(ass.getAnnotNum() + intNum);
+        ass.setTotalNum(ass.getTotalNum() + chromosome.mRNAList.size());
+        ass.setLeftNum(ass.getLeftNum() + chromosome.mRNAList.size() - intNum);
+    }
+
+    public void downloadPhenolyzer() {
+        File fleOutputDir = new File(PLUGIN_PATH + "phenolyzer-master.zip");
+        try {
+            if (!fleOutputDir.getParentFile().exists()) {
+                fleOutputDir.getParentFile().mkdirs();
+            }
+            if (!fleOutputDir.exists()) {
+                HttpClient4API.simpleRetriever(strURL, fleOutputDir.getCanonicalPath());
+                Zipper ziper = new Zipper();
+                ziper.extractZip(fleOutputDir.getCanonicalPath(), fleOutputDir.getParentFile().getCanonicalPath() + File.separator);
+            }
+        } catch (Exception ex) {
+            LOG.error(ex);
+        }
+
+    }
+
+}
