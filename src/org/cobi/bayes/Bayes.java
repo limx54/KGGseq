@@ -1,5 +1,6 @@
 package org.cobi.bayes;
 
+import cern.colt.list.DoubleArrayList;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -8,7 +9,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import org.apache.log4j.Logger;
-import org.cobi.kggseq.controller.GeneAnnotator;
 
 import org.cobi.util.file.LocalFileFunc;
 
@@ -25,7 +25,7 @@ public class Bayes {
         // TODO Auto-generated method stub
 
         double[] annotationScoreDouble = new double[]{-0.111646, 0.1806, 0.381241, 0.81, 0.6, 0.37, 17.519};
-        Double[] annotationScore = new Double[annotationScoreDouble.length];
+        double[] annotationScore = new double[annotationScoreDouble.length];
         for (int i = 0; i < annotationScore.length; i++) {
             annotationScore[i] = (Double) annotationScoreDouble[i];
         }
@@ -49,9 +49,9 @@ public class Bayes {
     public String cellLineName = "GM12878";
     public String cellEncodeInfoName[] = {"H3K4me1", "H3K36me3", "DNase", "H3K79me2", "H3K9me3", "H3K27me3", "H3K4me2", "H3K4me3", "H3K36me3"};
 
-    public ArrayList<Double[]> causalScores = new ArrayList<Double[]>();
-    public ArrayList<Double[]> neutralScores = new ArrayList<Double[]>();
-    public ArrayList<HashMap<String, ArrayList<Double[]>>> cellTypeScores;
+    public ArrayList<double[]> causalScores = new ArrayList<double[]>();
+    public ArrayList<double[]> neutralScores = new ArrayList<double[]>();
+    public ArrayList<HashMap<String, ArrayList<double[]>>> cellTypeScores;
     public StringBuffer sb;
 
     public Bayes(String genomeVersion) {
@@ -79,7 +79,7 @@ public class Bayes {
         double H3K79me2_centrality = -1;
         for (int ii = 0; ii < List_Hit.length; ii++) {
             if (cellTypeScores.get(ii).containsKey(ChromeIndex)) {
-                Double[] annotationPosition = new Double[2 * cellTypeScores.get(ii).get(ChromeIndex).size()];
+                double[] annotationPosition = new double[2 * cellTypeScores.get(ii).get(ChromeIndex).size()];
                 for (int i = 0; i < cellTypeScores.get(ii).get(ChromeIndex).size(); i++) {
                     annotationPosition[2 * i] = cellTypeScores.get(ii).get(ChromeIndex).get(i)[0];
                     annotationPosition[2 * i + 1] = cellTypeScores.get(ii).get(ChromeIndex).get(i)[1];
@@ -109,7 +109,7 @@ public class Bayes {
         for (int a = 0; a < List_Score.length; a++) {
             int ii = a + 6;
             if (cellTypeScores.get(ii).containsKey(ChromeIndex)) {
-                Double[] annotationPosition = new Double[2 * cellTypeScores.get(ii).get(ChromeIndex).size()];
+                double[] annotationPosition = new double[2 * cellTypeScores.get(ii).get(ChromeIndex).size()];
                 for (int i = 0; i < cellTypeScores.get(ii).get(ChromeIndex).size(); i++) {
                     annotationPosition[2 * i] = cellTypeScores.get(ii).get(ChromeIndex).get(i)[0];
                     annotationPosition[2 * i + 1] = cellTypeScores.get(ii).get(ChromeIndex).get(i)[1];
@@ -136,7 +136,7 @@ public class Bayes {
         return score;
     }
 
-    public int getBinarySearchRegion(Double[] List, float posIndex, int start, int end) {
+    public int getBinarySearchRegion(double[] List, float posIndex, int start, int end) {
         int mid = start + (end - start) / 2;
         if (end < start || posIndex > List[List.length - 1] || posIndex < List[0]) {
             return -1;
@@ -150,7 +150,7 @@ public class Bayes {
         }
     }
 
-    public String getBayesScore(Double[] annotationScore, double cell_p) {
+    public String getBayesScore(double[] annotationScore, double cell_p) {
         double composite_p = 1;
         double bfFactor = 1;
         sb = new StringBuffer();
@@ -165,7 +165,7 @@ public class Bayes {
             } else {
                 causalscore = causalScores.get(2 * i + 1)[getBinarySearch(causalScores.get(2 * i), annotationScore[i], 0, causalScores.get(2 * i).length - 1)];
                 neutralscore = neutralScores.get(2 * i + 1)[getBinarySearch(neutralScores.get(2 * i), annotationScore[i], 0, neutralScores.get(2 * i).length - 1)];
-//				sb.append(annotationScore[i] + "\t" + causalscore + "|" + neutralscore + "\t");
+//				sb.append(annotationScore[t] + "\t" + causalscore + "|" + neutralscore + "\t");
                 sb.append(annotationScore[i] + "\t");
             }
             bfFactor *= causalscore / neutralscore;
@@ -180,12 +180,12 @@ public class Bayes {
 
     }
 
-    public ArrayList<HashMap<String, ArrayList<Double[]>>> getCellSpecificityElements() {
-        ArrayList<HashMap<String, ArrayList<Double[]>>> cellSpecificScore = new ArrayList<HashMap<String, ArrayList<Double[]>>>();
+    public ArrayList<HashMap<String, ArrayList<double[]>>> getCellSpecificityElements() {
+        ArrayList<HashMap<String, ArrayList<double[]>>> cellSpecificScore = new ArrayList<HashMap<String, ArrayList<double[]>>>();
         for (int i = 0; i < cellEncodeInfoName.length; i++) {
             File rsFile = new File("./resources/" + genomeVersion + "/all_cell_signal/" + cellLineName + "-" + cellEncodeInfoName[i] + ".narrowPeak.sorted.gz");
             try {
-                HashMap<String, ArrayList<Double[]>> thisHashMap = new HashMap<String, ArrayList<Double[]>>();
+                HashMap<String, ArrayList<double[]>> thisHashMap = new HashMap<String, ArrayList<double[]>>();
                 BufferedReader br = LocalFileFunc.getBufferedReader(rsFile.getCanonicalPath());
                 String currentLine;
                 while ((currentLine = br.readLine()) != null) {
@@ -199,12 +199,12 @@ public class Bayes {
                     } else {
                         key = sp[0].trim();
                     }
-                    Double[] element = new Double[]{Double.parseDouble(sp[1].trim()), Double.parseDouble(sp[2].trim()), Double.parseDouble(sp[4].trim()),
+                    double[] element = new double[]{Double.parseDouble(sp[1].trim()), Double.parseDouble(sp[2].trim()), Double.parseDouble(sp[4].trim()),
                         Double.parseDouble(sp[9].trim())};
                     if (thisHashMap.containsKey(key)) {
                         thisHashMap.get(key).add(element);
                     } else {
-                        ArrayList<Double[]> thisScore = new ArrayList<Double[]>();
+                        ArrayList<double[]> thisScore = new ArrayList<double[]>();
                         thisScore.add(element);
                         thisHashMap.put(key, thisScore);
                     }
@@ -221,7 +221,7 @@ public class Bayes {
         return cellSpecificScore;
     }
 
-    public int getBinarySearch(Double[] List, double key, int start, int end) {
+    public int getBinarySearch(final double[] List, double key, int start, int end) {
         if (key >= List[List.length - 1]) {
             return List.length - 1;
         } else if (key <= List[0]) {
@@ -244,11 +244,13 @@ public class Bayes {
 
     }
 
-    public ArrayList<Double[]> getDistributionProbability(String FilePath) {
-        ArrayList<Double[]> scores = new ArrayList<Double[]>();
+    public ArrayList<double[]> getDistributionProbability(String FilePath) {
+        ArrayList<double[]> scores = new ArrayList<double[]>();
+        DoubleArrayList thisScore = new DoubleArrayList();
+        DoubleArrayList thisProbability = new DoubleArrayList();
         for (int i = 0; i < featureNum.length; i++) {
-            LinkedList<Double> thisScore = new LinkedList<Double>();
-            LinkedList<Double> thisProbability = new LinkedList<Double>();
+            thisScore.clear();
+            thisProbability.clear();
             try {
                 BufferedReader br = new BufferedReader(new FileReader(new File(FilePath + featureNum[i] + ".dis")));
                 while (br.ready()) {
@@ -263,8 +265,15 @@ public class Bayes {
                         thisProbability.add((double) Double.parseDouble(splitStr[2]));
                     }
                 }
-                Double[] floatThisScore = thisScore.toArray(new Double[thisScore.size()]);
-                Double[] floatThisProability = thisProbability.toArray(new Double[thisProbability.size()]);
+                double[] floatThisScore = new double[thisScore.size()];
+                double[] floatThisProability = new double[thisProbability.size()];
+                for (int t = 0; t < floatThisScore.length; t++) {
+                    floatThisScore[t] = thisScore.getQuick(t);
+                }
+                for (int t = 0; t < floatThisScore.length; t++) {
+                    floatThisProability[t] = thisProbability.getQuick(t);
+                }
+
                 scores.add(floatThisScore);
                 scores.add(floatThisProability);
                 br.close();

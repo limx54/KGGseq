@@ -5,8 +5,10 @@
  */
 package org.cobi.util.file;
 
+import htsjdk.samtools.util.BlockCompressedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -20,7 +22,12 @@ import java.nio.channels.Channels;
 
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.StringTokenizer;
 import java.util.zip.GZIPInputStream;
+import org.cobi.util.text.BGZFInputStream;
+import static umontreal.iro.lecuyer.util.PrintfFormat.d;
 
 /**
  *
@@ -32,10 +39,114 @@ public class SpeedTest {
     //  static String inFile = "test.txt.gz";
     static String outFile = inFile + "tmp";
 
+    public void convertPhased2Unphased(String filePath, String outPath) throws Exception {
+        FileInputStream fin = new FileInputStream(filePath);
+        InputStreamReader isr = null;
+        BufferedReader br = null;
+        File outFile = new File(outPath);
+        BlockCompressedOutputStream bw = new BlockCompressedOutputStream(outFile);
+
+        try {
+            String line = null;
+            GZIPInputStream gzis = new GZIPInputStream(fin);
+            isr = new InputStreamReader(gzis, "utf-8");
+            br = new BufferedReader(isr, 1024 * 1024);
+            String tmpStr;
+            while ((line = br.readLine()) != null) {
+                //  String[] cells = line.split("\t");
+                bw.write(line.replace('|', '/').getBytes());
+                bw.write("\n".getBytes());
+            }
+            bw.close();
+            fin.close();
+            isr.close();
+            br.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void parsingSpeed(String filePath) throws Exception {
+        FileInputStream fin = new FileInputStream(filePath);
+        InputStreamReader isr = null;
+        BufferedReader br = null;
+
+        try {
+            String line = null;
+            GZIPInputStream gzis = new GZIPInputStream(fin);
+            isr = new InputStreamReader(gzis, "utf-8");
+            br = new BufferedReader(isr, 1024 * 1024);
+            String tmpStr;
+            while ((line = br.readLine()) != null) {
+                // String[] cells = line.split("\t");
+                // bw.write(line + "\n");
+                StringTokenizer st = new StringTokenizer(line, "\t");
+                while (st.hasMoreTokens()) {
+                    tmpStr = st.nextToken();
+                }
+            }
+            fin.close();
+            isr.close();
+            br.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void parsingSpeedByte(String filePath) throws Exception {
+        try {
+            byte[] line = null;
+            BGZFInputStream bf = new BGZFInputStream(filePath, 1);
+            bf.adjustPos();
+            bf.creatSpider();
+            int[] cellDelimts = new int[2500];
+            while ((line = bf.spider[0].readLine(cellDelimts)) != null) {
+
+                // String[] cells = line.split("\t");
+                // bw.write(line + "\n");
+            }
+            bf.spider[0].closeInputStream();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     //Conculstion: I spent one day in comparing performance of io and nio. I found io is much faster than nio on Windows
     //Probaly io has been optimized a lot for text parsing.
-    public static void main(String[] args) throws Exception {
-        multiply2();
+    public static void main(String[] args) {
+        // multiply2();
+        //byteIntTest();
+        try {
+            SpeedTest st = new SpeedTest();
+            Long startTime = System.nanoTime();
+            //readWriteByIo();
+            String filePath = "D:\\kgg3d5\\resources\\LD\\v5\\all\\ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz";
+            File file = new File(filePath);
+            st.convertPhased2Unphased(file.getCanonicalPath(), file.getName());
+            /*
+            st.parsingSpeed(filePath);
+            Long endTime = System.nanoTime();
+            System.out.println("用时：" + (endTime - startTime) / 1000000000.0);
+            startTime = System.nanoTime();
+            //st.parsingSpeedByte(filePath);
+            endTime = System.nanoTime();
+            System.out.println("用时：" + (endTime - startTime) / 1000000000.0);
+             */
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         /*
          Long startTime = System.nanoTime();
          //readWriteByIo();
@@ -61,6 +172,37 @@ public class SpeedTest {
          endTime = System.nanoTime();
          System.out.println("用时：" + (endTime - startTime) / 1000000000.0);
          */
+    }
+
+    public static void byteIntTest() throws Exception {
+        int n = 300000000;
+        long start = System.nanoTime();
+        int a = 3233323;
+        byte b = 124;
+        boolean x;
+        Map<Integer, boolean[]> unphasedGtyCodingMapInt = new HashMap<Integer, boolean[]>();
+        Map<Byte, boolean[]> unphasedGtyCodingMapByte = new HashMap<Byte, boolean[]>();
+        for (int i = 0; i < 100; i++) {
+            unphasedGtyCodingMapInt.put(i, null);
+            unphasedGtyCodingMapByte.put((byte) i, null);
+        }
+        start = System.nanoTime();
+        for (int i = 0; i < n; i++) {
+            //   a = a | GlobalManager.intOpers[4];
+            //  a = a >> 3;
+            // x = (a & GlobalManager.intOpers[16]) == GlobalManager.intOpers[16];
+            unphasedGtyCodingMapInt.containsKey(i);
+        }
+
+        System.out.println((System.nanoTime() - start) / 1000);
+        start = System.nanoTime();
+        for (int i = 0; i < n; i++) {
+            //  b = (byte) (b | GlobalManager.byteOpers[4]);
+            //  b = (byte) (b >> 3);
+            // x = (b & GlobalManager.byteOpers[4]) == GlobalManager.byteOpers[4];
+            unphasedGtyCodingMapByte.containsKey((byte) i);
+        }
+        System.out.println((System.nanoTime() - start) / 1000);
     }
 
     public static void readWriteFileByNio() throws Exception {
@@ -139,7 +281,7 @@ public class SpeedTest {
         Long startTime = System.nanoTime();
         for (int i = 0; i < size; i += 2) {
             s = i * 2;
-           // s = (i + 1) * 2;
+            // s = (i + 1) * 2;
         }
 
         Long endTime = System.nanoTime();

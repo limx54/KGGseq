@@ -23,6 +23,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -38,6 +39,8 @@ import java.util.Arrays;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipException;
+import org.apache.log4j.Logger;
+import org.cobi.util.coding.MD5File;
 
 /**
  *
@@ -45,18 +48,53 @@ import java.util.zip.ZipException;
  */
 public class LocalFileFunc {
 
+    private final Logger LOG = Logger.getLogger(LocalFileFunc.class);
+
     static public void gunzipFile(String decryptedImageName, String tarredImageName) throws Exception {
         GZIPInputStream in = new GZIPInputStream(new FileInputStream(new File(decryptedImageName)));
         File outFile = new File(tarredImageName);
-        try (ReadableByteChannel inChannel = Channels.newChannel(in)) {
-            WritableByteChannel outChannel = new FileOutputStream(outFile).getChannel();
+        try (ReadableByteChannel inChannel = Channels.newChannel(in); WritableByteChannel outChannel = new FileOutputStream(outFile).getChannel()) {
             ByteBuffer buffer = ByteBuffer.allocate(65536);
             while (inChannel.read(buffer) != -1) {
                 buffer.flip();
                 outChannel.write(buffer);
                 buffer.clear();
             }
-            outChannel.close();
+        }
+    }
+
+    static public String gunzipFile(String decryptedImageName) throws Exception {
+        //Expect decryptedImageName ends with .gz
+        String tarredImageName = decryptedImageName.substring(0, decryptedImageName.length() - 3);
+        GZIPInputStream in = new GZIPInputStream(new FileInputStream(new File(decryptedImageName)));
+        File outFile = new File(tarredImageName);
+        try (ReadableByteChannel inChannel = Channels.newChannel(in); WritableByteChannel outChannel = new FileOutputStream(outFile).getChannel()) {
+            ByteBuffer buffer = ByteBuffer.allocate(65536);
+            while (inChannel.read(buffer) != -1) {
+                buffer.flip();
+                outChannel.write(buffer);
+                buffer.clear();
+            }
+        }
+        return tarredImageName;
+    }
+
+    public static void main(String[] args) {
+        try {
+            String[] STAND_CHROM_NAMES = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13",
+                "14", "15", "16", "17", "18", "19", "20", "21", "22", "X", "Y", "M"};
+            // String path = "E:\\home\\mxli\\MyJava\\kggseq3\\resources\\hg19\\hg19_mdbNSFP3.0.chr";
+            String path = "E:\\home\\mxli\\MyJava\\kggseq3\\als\\";
+            path = args[0];
+            File folder = new File(path);
+            if (!folder.isDirectory()) {
+                System.err.println(path + " is not a director!");
+                // return;
+            }
+            LocalFileFunc.bgzipInFolder(folder.getCanonicalPath(), true);
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
     }
 
@@ -95,19 +133,109 @@ public class LocalFileFunc {
         creator.finalizeIndex(i).writeBasedOnFeatureFile(inFile);
     }
 
-    static public void tabixFile(String decryptedImageName) throws Exception {
+    static public void bgzipInFolder(String fileFolder, boolean filterGZ) {
+        File folder = new File(fileFolder);
+        String orgName = null;
+        try {
+            if (!folder.isDirectory()) {
+                orgName = folder.getCanonicalPath();
+                String tarredImageName = orgName + ".tmp";
+                File outFile = new File(tarredImageName);
+                File inFile = new File(orgName);
+                int len = 0;
+                System.out.println("Compressing " + orgName);
+                try (GZIPInputStream in = new GZIPInputStream(new FileInputStream(inFile))) {
+                    BlockCompressedOutputStream bcos = new BlockCompressedOutputStream(outFile);
+                    try (ReadableByteChannel inChannel = Channels.newChannel(in)) {
+                        ByteBuffer buffer = ByteBuffer.allocate(65536);
+                        while ((len = inChannel.read(buffer)) != -1) {
+                            buffer.flip();
+                            if (len < 65536) {
+                                bcos.write(Arrays.copyOfRange(buffer.array(), 0, len));
+                            } else {
+                                bcos.write(buffer.array());
+                            }
+                            buffer.clear();
+                        }
+                        bcos.close();
+                    }
+                }
+                inFile.delete();
+                outFile.renameTo(inFile);
+
+                FileWriter wtr = new FileWriter(new File(orgName + ".md5"));
+                String md5 = MD5File.getFileMD5StringStable(inFile);
+                wtr.write(md5);
+                wtr.close();
+                return;
+            }
+            File[] files = folder.listFiles();
+            for (File f : files) {
+
+                try {
+                    if (f.isDirectory()) {
+                        bgzipInFolder(f.getCanonicalPath(), filterGZ);
+                    }
+                    orgName = f.getCanonicalPath();
+                    if (filterGZ && !orgName.endsWith(".gz")) {
+                        continue;
+                    }
+                } catch (Exception ex) {
+                    System.err.println(ex.toString());
+                }
+
+                String tarredImageName = orgName + ".tmp";
+                File outFile = new File(tarredImageName);
+                File inFile = new File(orgName);
+                int len = 0;
+                System.out.println("Compressing " + orgName);
+                try (GZIPInputStream in = new GZIPInputStream(new FileInputStream(inFile))) {
+                    BlockCompressedOutputStream bcos = new BlockCompressedOutputStream(outFile);
+                    try (ReadableByteChannel inChannel = Channels.newChannel(in)) {
+                        ByteBuffer buffer = ByteBuffer.allocate(65536);
+                        while ((len = inChannel.read(buffer)) != -1) {
+                            buffer.flip();
+                            if (len < 65536) {
+                                bcos.write(Arrays.copyOfRange(buffer.array(), 0, len));
+                            } else {
+                                bcos.write(buffer.array());
+                            }
+                            buffer.clear();
+                        }
+                        bcos.close();
+                    }
+                }
+                inFile.delete();
+                outFile.renameTo(inFile);
+
+                FileWriter wtr = new FileWriter(new File(orgName + ".md5"));
+                String md5 = MD5File.getFileMD5StringStable(inFile);
+                wtr.write(md5);
+                wtr.close();
+
+            }
+        } catch (Exception ex) {
+            System.err.println(ex.toString());
+        }
+    }
+
+    static public void tabixFile(String decryptedImageName) {
         File inFile = new File(decryptedImageName);
         TabixIndexCreator creator;
         int i;
-        try (VCFFileReader vcfReader = new VCFFileReader(inFile, false)) {
-            creator = new TabixIndexCreator(new TabixFormat().VCF);
-            i = 0;
-            for (VariantContext context : vcfReader) {
-                creator.addFeature(context, i);
-                i++;
+        try {
+            try (VCFFileReader vcfReader = new VCFFileReader(inFile, false)) {
+                creator = new TabixIndexCreator(new TabixFormat().VCF);
+                i = 0;
+                for (VariantContext context : vcfReader) {
+                    creator.addFeature(context, i);
+                    i++;
+                }
             }
+            creator.finalizeIndex(i).writeBasedOnFeatureFile(inFile);
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
-        creator.finalizeIndex(i).writeBasedOnFeatureFile(inFile);
     }
 
     static public BufferedReader getBufferedReader(String filePath) throws Exception {

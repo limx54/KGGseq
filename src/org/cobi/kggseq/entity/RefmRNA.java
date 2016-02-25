@@ -248,6 +248,7 @@ public class RefmRNA extends SeqSegment {
          */
         //We only need adjust for gaps after the codingStartRelativeSiteInSequence
         //Note the sequences in the kggseq file are cDNA sequence from 5' to 3'. So we ingnore the direction here 
+//        delSites=null;//***********************************
         if (delSites != null) {
             IntArrayList effectiveSites = new IntArrayList();
             StringBuilder effectiveBase = new StringBuilder();
@@ -279,7 +280,8 @@ public class RefmRNA extends SeqSegment {
                 }
             }
         }
-
+        
+     //  insSites=null;//**************************************************
         if (insSites != null) {
             IntArrayList effectiveSites = new IntArrayList();
             StringBuilder effectiveBase = new StringBuilder();
@@ -326,7 +328,7 @@ public class RefmRNA extends SeqSegment {
      * 
      */
     // this is a function get position in messanger rna in which the intronic regions are excluded    
-    public GeneFeature findFeature(String chr, int oldStartPos, String ref, String[] altAlleles, boolean isForwardStrandInput, int upstreamDis, int downstreamDis, int splicingDis, String geneSym) throws Exception {
+    private GeneFeature findFeature(String chr, int oldStartPos, String ref, String[] altAlleles, boolean isForwardStrandInput, int upstreamDis, int downstreamDis, int splicingDis, String geneSym) throws Exception {
         if (strand == '0') {
             throw new Exception("Unknown strand at " + refID + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")"));
         }
@@ -549,14 +551,21 @@ public class RefmRNA extends SeqSegment {
                     int relativeCodingStartPos = Util.parseInt(gf.name.substring(gf.name.indexOf(':') + 1));
                     errorCode[0] = 0;
                     GeneFeature gf1 = calculateAminoAcidChange(relativeCodingStartPos, ref.charAt(startAllele), allele.charAt(startAllele), startPos, gf.pos2CondingEnd, geneSym, errorCode);
-                    if (errorCode[0] == 1) {
-                        LOG.warn("The RefmRNA " + refID + " has no sequence data for the variant at chr" + chr + ":" + oldStartPos);
-                    } else if (errorCode[0] == 2) {
-                        LOG.warn("The RefmRNA " + refID + " has no sequence data for the variant at chr" + chr + ":" + oldStartPos);
-                    } else if (errorCode[0] == 3) {
-                        LOG.warn("The reference allele " + ref + " of chr" + chr + ":" + oldStartPos + " in the sample data and database are not identical on " + refID + " of " + geneSym);
-                    } else if (errorCode[0] == 4) {
-                       // LOG.warn("The variant chr" + chr + ":" + oldStartPos + " is mapped against problematic codon on " + refID + " of " + geneSym);
+                    switch (errorCode[0]) {
+                        case 1:
+                            LOG.warn("The RefmRNA " + refID + " has no sequence data for the variant at chr" + chr + ":" + oldStartPos);
+                            break;
+                        case 2:
+                            LOG.warn("The RefmRNA " + refID + " has no sequence data for the variant at chr" + chr + ":" + oldStartPos);
+                            break;
+                        case 3:
+                            LOG.warn("The reference allele " + ref + " of chr" + chr + ":" + oldStartPos + " in the sample data and database are not identical on " + refID + " of " + geneSym);
+                            break;
+                    // LOG.warn("The variant chr" + chr + ":" + oldStartPos + " is mapped against problematic codon on " + refID + " of " + geneSym);
+                        case 4:
+                            break;
+                        default:
+                            break;
                     }
                     int index = gf1.getName().lastIndexOf(':');
                     if (index < 0) {
@@ -685,7 +694,7 @@ public class RefmRNA extends SeqSegment {
                             sb.append(offSet2);
                         }
                         sb.append(ref).append(">").append(alt);
-                        return new GeneFeature(GlobalManager.VarFeatureIDMap.get("intronic"), refID + sb.toString() + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":intronic" + (exonIndex));
+                        return new GeneFeature(GlobalManager.VarFeatureIDMap.get("intronic"), refID + sb.toString() + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":intron" + (exonIndex));
                     } else if (pos <= exons.get(exonIndex).start) {
                         //the 5' and 3' are relative to the closet exon   
                         relativeCodingStartPos = pos - codingStart - 1;
@@ -811,7 +820,7 @@ public class RefmRNA extends SeqSegment {
                             sb.append(offSet2);
                         }
                         sb.append(ref).append(">").append(alt);
-                        return new GeneFeature(GlobalManager.VarFeatureIDMap.get("intronic"), refID + sb.toString() + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":intronic" + (exonNum - exonIndex));
+                        return new GeneFeature(GlobalManager.VarFeatureIDMap.get("intronic"), refID + sb.toString() + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":intron" + (exonNum - exonIndex));
                     } else if (pos <= exons.get(exonIndex).start) {
                         //the 5' and 3' are relative to the closet exon
                         relativeCodingStartPos = codingEnd - pos;
@@ -1263,23 +1272,35 @@ public class RefmRNA extends SeqSegment {
             if (alt.endsWith("-")) {
                 //if this is a forward strand
                 //but it looks like the same as the reverse
-                if (incodonIndex == 2) {
-                    startCheckSite = 1;
-                } else if (incodonIndex == 1) {
-                    info.append('?');
-                    startCheckSite = 2;
-                } else if (incodonIndex == 0) {
-                    startCheckSite = 0;
+                switch (incodonIndex) {
+                    case 2:
+                        startCheckSite = 1;
+                        break;
+                    case 1:
+                        info.append('?');
+                        startCheckSite = 2;
+                        break;
+                    case 0:
+                        startCheckSite = 0;
+                        break;
+                    default:
+                        break;
                 }
                 altSB.append(ref.substring(ref.length() - delSeqLen));
             } else {
-                if (incodonIndex == 2) {
-                    startCheckSite = 1;
-                } else if (incodonIndex == 1) {
-                    info.append('?');
-                    startCheckSite = 2;
-                } else if (incodonIndex == 0) {
-                    startCheckSite = 0;
+                switch (incodonIndex) {
+                    case 2:
+                        startCheckSite = 1;
+                        break;
+                    case 1:
+                        info.append('?');
+                        startCheckSite = 2;
+                        break;
+                    case 0:
+                        startCheckSite = 0;
+                        break;
+                    default:
+                        break;
                 }
                 altSB.append(ref.substring(0, delSeqLen));
             }
@@ -1435,23 +1456,35 @@ public class RefmRNA extends SeqSegment {
                 if (alt.endsWith("-")) {
                     //if this is a forward strand
                     //but it looks like the same as the reverse
-                    if (incodonIndex == 2) {
-                        startCheckSite = 1;
-                    } else if (incodonIndex == 1) {
-                        info.append('?');
-                        startCheckSite = 2;
-                    } else if (incodonIndex == 0) {
-                        startCheckSite = 0;
+                    switch (incodonIndex) {
+                        case 2:
+                            startCheckSite = 1;
+                            break;
+                        case 1:
+                            info.append('?');
+                            startCheckSite = 2;
+                            break;
+                        case 0:
+                            startCheckSite = 0;
+                            break;
+                        default:
+                            break;
                     }
                     altSB.append(ref.substring(ref.length() - delSeqLen));
                 } else {
-                    if (incodonIndex == 2) {
-                        startCheckSite = 1;
-                    } else if (incodonIndex == 1) {
-                        info.append('?');
-                        startCheckSite = 2;
-                    } else if (incodonIndex == 0) {
-                        startCheckSite = 0;
+                    switch (incodonIndex) {
+                        case 2:
+                            startCheckSite = 1;
+                            break;
+                        case 1:
+                            info.append('?');
+                            startCheckSite = 2;
+                            break;
+                        case 0:
+                            startCheckSite = 0;
+                            break;
+                        default:
+                            break;
                     }
                     altSB.append(ref.substring(0, delSeqLen));
                 }
@@ -1604,24 +1637,36 @@ public class RefmRNA extends SeqSegment {
             StringBuilder altSB = new StringBuilder();
             if (alt.endsWith("+")) {
                 //for the revsers stand the start position is the one after the insertion
-                if (incodonIndex == 2) {
-                    startCheckSite = 1;
-                } else if (incodonIndex == 1) {
-                    info.append('?');
-                    startCheckSite = 2;
-                } else if (incodonIndex == 0) {
-                    startCheckSite = 0;
+                switch (incodonIndex) {
+                    case 2:
+                        startCheckSite = 1;
+                        break;
+                    case 1:
+                        info.append('?');
+                        startCheckSite = 2;
+                        break;
+                    case 0:
+                        startCheckSite = 0;
+                        break;
+                    default:
+                        break;
                 }
                 altSB.append(alt.substring(0, alt.length() - ref.length()));
             } else {
                 //for the forward stand the start position is the one before the insertion
-                if (incodonIndex == 2) {
-                    startCheckSite = 1;
-                } else if (incodonIndex == 1) {
-                    info.append('?');
-                    startCheckSite = 2;
-                } else if (incodonIndex == 0) {
-                    startCheckSite = 0;
+                switch (incodonIndex) {
+                    case 2:
+                        startCheckSite = 1;
+                        break;
+                    case 1:
+                        info.append('?');
+                        startCheckSite = 2;
+                        break;
+                    case 0:
+                        startCheckSite = 0;
+                        break;
+                    default:
+                        break;
                 }
                 altSB.append(alt.substring(ref.length()));
             }

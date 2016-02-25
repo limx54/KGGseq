@@ -125,7 +125,7 @@ public class NetUtils implements Constants {
         return false;
     }
 
-    public static boolean checkLibFileVersion() throws Exception {
+    public static boolean checkLibFileVersion(boolean autoUpdate) throws Exception {
         List<String> updatedLocalFiles = new ArrayList<String>();
         List<String> updatedURLFiles = new ArrayList<String>();
         boolean hasUpdated = false;
@@ -150,7 +150,7 @@ public class NetUtils implements Constants {
             }
         }
 
-        if (!updatedLocalFiles.isEmpty()) {
+        if (autoUpdate && !updatedLocalFiles.isEmpty()) {
             int MAX_TASK = 1;
             int runningThread = 0;
             ExecutorService exec = Executors.newFixedThreadPool(MAX_TASK);
@@ -198,6 +198,8 @@ public class NetUtils implements Constants {
             exec.shutdown();
             LOG.info("The library of has been updated! Please re-initiate this application!");
             updateLocal();
+        } else if (!autoUpdate) {            
+            LOG.info("A new version of KGGSeq is available! Please visit http://grass.cgs.hku.hk/limx/kggseq/download.php to see the updates\n and enable library updated automatically by '--lib-update'. To disable library checking, add '--no-lib-check'.");
         }
         return hasUpdated;
     }
@@ -366,8 +368,8 @@ public class NetUtils implements Constants {
 
                         params[0] = "cd";
                         params[1] = path.substring(0, path.length() - 4);
-                        String info ="bash -c cd " + params[1] + " && bash -c make";
-                                
+                        String info = "bash -c cd " + params[1] + " && bash -c make";
+
                         System.out.println(info);
                         Process pr = Runtime.getRuntime().exec(info);
 

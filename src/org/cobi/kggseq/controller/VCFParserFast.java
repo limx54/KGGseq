@@ -29,11 +29,11 @@ import org.cobi.kggseq.entity.Individual;
 import org.cobi.kggseq.entity.Variant;
 import org.cobi.util.text.Util;
 import org.cobi.util.file.LocalFileFunc;
-import org.cobi.util.text.ByteInputStream;
+import org.cobi.util.text.BGZFInputStream;
 
 /**
  *
- * @author mxli
+ *
  */
 public class VCFParserFast implements Constants {
 
@@ -43,14 +43,30 @@ public class VCFParserFast implements Constants {
     final String UNKNOWN_CHROM_NAME1 = "GL";
     Map<String, Integer> chromNameIndexMap = new HashMap<String, Integer>();
 
+    int[] pedEncodeGytIDMap;
     static int varNumInRam = 0;
     StringBuilder vcfHead = new StringBuilder();
+    int maxEffectiveColVCF;
+    private boolean hasChrLabel = false;
+
+    public boolean isHasChrLabel() {
+        return hasChrLabel;
+    }
+
+    public int[] getPedEncodeGytIDMap() {
+        return pedEncodeGytIDMap;
+    }
+
+    public int getMaxEffectiveColVCF() {
+        return maxEffectiveColVCF;
+    }
 
     public Genome readVariantGtyFilterOnly(String tempFolder, int threadNum, Genome orgGenome, String vAFile,
             double avgSeqQualityThrehsold, double minMappingQual, double maxStrandBias, double maxFisherStrandBias, int maxAlleleNum,
             double gtyQualityThrehsold, int minSeqDepth, double altAlleleFracRefHomThrehsold, double altAlleleFractHetThrehsold,
             double altAlleleFractAltHomThrehsold, Set<String> vcfLableInSet, int minOBS, double sampleMafOver, double sampleMafLess, boolean considerSNP, boolean considerIndel,
-            int minSecondPL, double minBestGP, boolean needProgressionIndicator, boolean needGty, boolean needReadsInfor, boolean needGtyQual, boolean noGtyVCF, List<Individual> subjectList, IntArrayList effectIndivID) throws Exception {
+            int minSecondPL, double minBestGP, boolean needProgressionIndicator, boolean needGty, boolean needReadsInfor, boolean needGtyQual, boolean needVCFHead, boolean noGtyVCF,
+            List<Individual> subjectList, IntArrayList effectIndivID, final int[] caseSetID, final int[] controlSetID, int[][] regionsIn, int[][] regionsOut) throws Exception {
         Genome genome = new Genome("UniuqeVariantGenome", tempFolder);
 
         genome.removeTempFileFromDisk();
@@ -95,7 +111,7 @@ public class VCFParserFast implements Constants {
                 acceptVarNum += readVariantsInFileOnlyFastToken(threadNum, orgGenome, dataFile, genome, avgSeqQualityThrehsold, minMappingQual, maxStrandBias, maxFisherStrandBias, maxAlleleNum, gtyQualityThrehsold, minSeqDepth,
                         altAlleleFracRefHomThrehsold, altAlleleFractHetThrehsold, altAlleleFractAltHomThrehsold, vcfLableInSet,
                         minOBS, sampleMafOver, sampleMafLess, considerSNP, considerIndel, minSecondPL, minBestGP, needProgressionIndicator,
-                        needGty, needReadsInfor, needGtyQual, noGtyVCF, subjectList, effectIndivID);
+                        needGty, needReadsInfor, needGtyQual, needVCFHead, noGtyVCF, subjectList, effectIndivID, caseSetID, controlSetID, regionsIn, regionsOut);
 
             }
         } else if (vAFile.indexOf('[') >= 0 && vAFile.indexOf(']') > 0) {
@@ -118,7 +134,7 @@ public class VCFParserFast implements Constants {
                 acceptVarNum += readVariantsInFileOnlyFastToken(threadNum, orgGenome, dataFile, genome, avgSeqQualityThrehsold, minMappingQual, maxStrandBias, maxFisherStrandBias, maxAlleleNum, gtyQualityThrehsold, minSeqDepth,
                         altAlleleFracRefHomThrehsold, altAlleleFractHetThrehsold, altAlleleFractAltHomThrehsold, vcfLableInSet,
                         minOBS, sampleMafOver, sampleMafLess, considerSNP, considerIndel, minSecondPL, minBestGP,
-                        needProgressionIndicator, needGty, needReadsInfor, needGtyQual, noGtyVCF, subjectList, effectIndivID);
+                        needProgressionIndicator, needGty, needReadsInfor, needGtyQual, needVCFHead, noGtyVCF, subjectList, effectIndivID, caseSetID, controlSetID, regionsIn, regionsOut);
             }
         } else {
             File dataFile = new File(vAFile);
@@ -126,7 +142,7 @@ public class VCFParserFast implements Constants {
             acceptVarNum = readVariantsInFileOnlyFastToken(threadNum, orgGenome, dataFile, genome, avgSeqQualityThrehsold, minMappingQual, maxStrandBias, maxFisherStrandBias, maxAlleleNum, gtyQualityThrehsold, minSeqDepth,
                     altAlleleFracRefHomThrehsold, altAlleleFractHetThrehsold, altAlleleFractAltHomThrehsold, vcfLableInSet,
                     minOBS, sampleMafOver, sampleMafLess, considerSNP, considerIndel, minSecondPL, minBestGP,
-                    needProgressionIndicator, needGty, needReadsInfor, needGtyQual, noGtyVCF, subjectList, effectIndivID);
+                    needProgressionIndicator, needGty, needReadsInfor, needGtyQual, needVCFHead, noGtyVCF, subjectList, effectIndivID, caseSetID, controlSetID, regionsIn, regionsOut);
         }
 
         // genome.setVarNum(acceptVarNum);
@@ -137,7 +153,8 @@ public class VCFParserFast implements Constants {
             double avgSeqQualityThrehsold, double minMappingQual, double maxStrandBias, double maxFisherStrandBias, int maxAlleleNum, double gtyQualityThrehsold, int minGtySeqDepth,
             double altAlleleFracRefHomThrehsold, double altAlleleFractHetThrehsold, double altAlleleFractAltHomThrehsold, Set<String> vcLlabelInSet,
             int minOBS, double sampleMafOver, double sampleMafLess, boolean considerSNP, boolean considerIndel, int minSecondPL, double minBestGP, boolean needProgressionIndicator,
-            boolean needGty, boolean needReadInfo, boolean needGtyQual, boolean noGtyVCF, final List<Individual> masterSubjectList, IntArrayList effectIndivID) throws Exception {
+            boolean needGty, boolean needReadInfo, boolean needGtyQual, boolean needVCFHead, boolean noGtyVCF, final List<Individual> masterSubjectList, IntArrayList effectIndivID,
+            final int[] caseSetID, final int[] controlSetID, final int[][] regionsIn, final int[][] regionsOut) throws Exception {
         int indexCHROM = -1;
         int indexPOS = -1;
         int indexID = -1;
@@ -153,6 +170,8 @@ public class VCFParserFast implements Constants {
         int ignoredLineNumMinMAF = 0;
         int ignoredLineNumMaxMAF = 0;
         int ignoredLineNumNoVar = 0;
+        int ignoredVarByRegionsInNum = 0;
+        int ignoredVarByRegionsOutNum = 0;
 
         byte[] currentLine = null;
 
@@ -193,10 +212,46 @@ public class VCFParserFast implements Constants {
             throw new Exception("No such a file: " + dataFile.getCanonicalPath());
         }
 
-        ByteInputStream br = null;
+        int ioThreadNum = 0;
+        // ByteInputStream br = null;
+        BGZFInputStream bf = null;
+        // BZIP2InputStream bf = null;
+
         if (dataFile.exists()) {
             try {
-                br = new ByteInputStream(dataFile, 1024 * 1024 * 100, '\t');
+                /*
+                //Interesting testing
+                BlockCompressedInputStream bci = new BlockCompressedInputStream(dataFile);  
+                bci.seek(32780);
+                System.out.println(bci.readLine());
+                bci.close();
+                 */
+
+                bf = new BGZFInputStream(dataFile.getCanonicalPath(), maxThreadNum);
+                //  bf = new BZIP2InputStream(dataFile.getCanonicalPath(), maxThreadNum);
+
+                bf.adjustPos();
+                bf.creatSpider();
+                ioThreadNum = bf.getThreadNum();
+                LOG.info(ioThreadNum + " " + (ioThreadNum == 1 ? "thread is" : "threads are") + " created to parse VCF!");
+                if (maxThreadNum > ioThreadNum) {
+                    String info = null;
+                    String fileName = dataFile.getCanonicalPath();
+                    if (fileName.endsWith(".gz")) {
+                        info = "The file is gzip-format, not bgzip-format! You can create a file with Blocked GNU Zip Format by \'zcat " + fileName + "| bgzip > " + fileName.substring(0, fileName.lastIndexOf(".")) + ".b.gz\', See more  http://www.htslib.org/doc/tabix.html";
+                    } else {
+                        info = "You can create a file with Blocked GNU Zip Format by \'bgzip " + fileName + "\', See more  http://www.htslib.org/doc/tabix.html";
+                    }
+                    //Note BZ2 is very slow
+                    /*
+                     if (fileName.endsWith(".gz")) {
+                     info = "You can create a file with bzip2 by zcat " + fileName + " | bzip2 -9 -c  " + fileName.substring(0, fileName.lastIndexOf(".")) + ".bz2, See more  http://www.htslib.org/doc/tabix.html";
+                     } else {
+                     info = "You can create a file with Blocked GNU Zip Format by bgzip " + fileName + ", See more  http://www.htslib.org/doc/tabix.html";
+                     }*/
+                    LOG.warn(info);
+                }
+
             } catch (ZipException ex) {
                 ex.printStackTrace();
             }
@@ -204,7 +259,7 @@ public class VCFParserFast implements Constants {
             throw new Exception("No input file: " + dataFile.getCanonicalPath());
         }
 
-        boolean isPhased = false;
+        // boolean isPhased = false;
         int[] pedVCFIDMap = null;
         StringBuilder subInfo = new StringBuilder();
 
@@ -222,13 +277,14 @@ public class VCFParserFast implements Constants {
 
         boolean needHead = false;
         int acceptVarNum = 0;
-        if (vcfHead.length() == 0 && needGtyQual) {
+        if (vcfHead.length() == 0 && needVCFHead) {
             needHead = true;
         }
+
         String tmpStr = null;
         try {
             //skip to the head line 
-            while ((currentLine = br.readLine()) != null) {
+            while ((currentLine = bf.spider[0].readLine()) != null) {
                 //add the end char 
                 fileLineCounter++;
 
@@ -242,8 +298,9 @@ public class VCFParserFast implements Constants {
                 }
             }
             if (currentLine == null) {
-                br.getInputStream().close();
-                return 0;
+                bf.spider[0].closeInputStream();
+                String infor = "There is no such a row starting with '#CHROM'in the input VCF file!!";
+                throw new Exception(infor);
             }
             //parse head line
             StringTokenizer st = new StringTokenizer(tmpStr);
@@ -312,6 +369,8 @@ public class VCFParserFast implements Constants {
                             if (!matched) {
                                 ignoredPedIndivLables.append(indv.getLabelInChip()).append(", ");
                                 ignoredPedIndivNum++;
+                            } else {
+                                indv.setHasGenotypes(true);
                             }
                         }
                     }
@@ -320,6 +379,7 @@ public class VCFParserFast implements Constants {
             }
 
             totalPedSubjectNum = masterSubjectList.size();
+
             if (totalPedSubjectNum > 0) {
                 //just for summary
                 for (int s = 0; s < vcfIndivNum; s++) {
@@ -360,6 +420,7 @@ public class VCFParserFast implements Constants {
                     indiv.setDadID("0");
                     indiv.setMomID("0");
                     indiv.setAffectedStatus(0);
+                    indiv.setHasGenotypes(true);
                     masterSubjectList.add(indiv);
                     pedVCFIDMap[s] = s;
                     effectIndivID.add(s);
@@ -380,6 +441,7 @@ public class VCFParserFast implements Constants {
                     indiv.setMomID("0");
                     indiv.setAffectedStatus(0);
                     masterSubjectList.add(indiv);
+                    indiv.setHasGenotypes(true);
                     pedVCFIDMap[s] = s;
                     effectIndivID.add(s);
                 }
@@ -387,6 +449,13 @@ public class VCFParserFast implements Constants {
                 effectiveIndivNum = vcfIndivNum;
             }
 
+            pedEncodeGytIDMap = new int[totalPedSubjectNum];
+            Arrays.fill(pedEncodeGytIDMap, -1);
+           int t = 0;
+            for (int index = 0; index < totalPedSubjectNum; index++) { 
+                pedEncodeGytIDMap[index] = t;
+                t++;
+            }
             runningThread = 0;
             //I spend 2 days to write a new VCFParseTask which I expected to be faster by modifying the Uitl.tokenize function
             //Unfortunately, the new Task is much slower than
@@ -395,15 +464,22 @@ public class VCFParserFast implements Constants {
 
             for (int s = 0; s < maxThreadNum; s++) {
                 parsTaskArray[s] = new VCFParseTaskFast(s);
-                // parsTaskArray[s] = new VCFParseTaskFast1(s);
+                // parsTaskArray[s] = new VCFParseTaskFast(s);
                 parsTaskArray[s].setQuantitativeQCParams(avgSeqQualityThrehsold, minMappingQual, maxStrandBias, maxFisherStrandBias, maxAlleleNum, gtyQualityThrehsold, minGtySeqDepth, minGtySeqDepth, altAlleleFracRefHomThrehsold, altAlleleFractHetThrehsold, altAlleleFractAltHomThrehsold, minSecondPL, minBestGP, minOBS, sampleMafOver, sampleMafLess);
                 parsTaskArray[s].setColIndex(indexCHROM, indexPOS, indexID, indexREF, indexALT, indexQUAL, indexFILTER, indexINFO, indexFORMAT);
-                parsTaskArray[s].setGenotypesAndSubjects(effectIndivID, masterSubjectList, pedVCFIDMap, isPhased);
+                parsTaskArray[s].setGenotypesAndSubjects(effectIndivID, masterSubjectList, pedVCFIDMap, pedEncodeGytIDMap, caseSetID, controlSetID);
                 parsTaskArray[s].setVcfLabelSet(vcLlabelInSet);
                 parsTaskArray[s].setBooleanFilter(considerSNP, considerIndel, needGty, needReadInfo, needGtyQual, noGtyVCF);
                 parsTaskArray[s].prepareTempVariables();
+                parsTaskArray[s].setRegionsIn(regionsIn);
+                parsTaskArray[s].setRegionsOut(regionsOut);
+
                 // parsTaskArray[s].addTaskListener(new MyTaskListener(parsTaskArray[s]));
-                parsTaskArray[s].setBr(br);
+                if (ioThreadNum == 1) {
+                    parsTaskArray[s].setBr(bf.spider[0]);
+                } else {
+                    parsTaskArray[s].setBr(bf.spider[s]);
+                }
 
                 parsTaskArray[s].setMaxVarNum(rowBufferSizePerThread);
                 parsTaskArray[s].setStoragePath(targGenome.getStoragePath());
@@ -418,6 +494,9 @@ public class VCFParserFast implements Constants {
             }
             exec.shutdown();
             varLineCounter = 0;
+            targGenome.setIsPhasedGty(parsTaskArray[0].isIsPhased());
+            maxEffectiveColVCF = parsTaskArray[0].getMaxEffectiveColVCF();
+            hasChrLabel = parsTaskArray[0].isHasChrLabel();
             for (int s = 0; s < maxThreadNum; s++) {
                 missingGtyNum += parsTaskArray[s].getMissingGtyNum();
                 ignoredLowDepthGtyNum += parsTaskArray[s].getIgnoredLowDepthGtyNum();
@@ -437,6 +516,9 @@ public class VCFParserFast implements Constants {
                 ignoredLineNumMinOBS += parsTaskArray[s].getIgnoredLineNumMinOBS();
                 ignoredLineNumMinMAF += parsTaskArray[s].getIgnoredLineNumMinMAF();
                 ignoredLineNumMaxMAF += parsTaskArray[s].getIgnoredLineNumMaxMAF();
+
+                ignoredVarByRegionsInNum += parsTaskArray[s].getIgnoredVarByRegionsInNum();
+                ignoredVarByRegionsOutNum += parsTaskArray[s].getIgnoredVarByRegionsOutNum();
                 //ignoredLineNumNullCase += parsTaskArray[s].getMissingGtyNum();
                 // ignoredLineNumNoVar += parsTaskArray[s].getMissingGtyNum();
                 indelNum += parsTaskArray[s].getIndelNum();
@@ -444,6 +526,7 @@ public class VCFParserFast implements Constants {
                 acceptVarNum += parsTaskArray[s].getTotalAcceptVarNum();
                 varLineCounter += parsTaskArray[s].getTotalVarNum();
                 parsTaskArray[s] = null;
+
             }
             System.gc();
         } catch (Exception nex) {
@@ -452,98 +535,107 @@ public class VCFParserFast implements Constants {
             // LOG.error(nex, info);
             //  throw new Exception(info);
         } finally {
-            br.getInputStream().close();
+            for (int s = 0; s < ioThreadNum; s++) {
+                bf.spider[s].closeInputStream();
+            }
         }
 
         StringBuilder message = new StringBuilder();
-        message.append('\n');
+        message.append("Quality control summaries:\n");
         if (missingGtyNum > 0) {
-            message.append(missingGtyNum).append(" missing genotypes are ignored \n");
+            message.append(" ").append(missingGtyNum).append(" missing genotypes are ignored \n");
         }
 
         if (ignoredLowDepthGtyNum > 0) {
-            message.append(ignoredLowDepthGtyNum).append(" genotypes are ignored due to low depth at the site with a genotype <").append(minGtySeqDepth).append('\n');
+            message.append(" ").append(ignoredLowDepthGtyNum).append(" genotypes are ignored due to low depth at the site with a genotype <").append(minGtySeqDepth).append('\n');
         }
 
         if (ignoredLowQualGtyNum > 0) {
-            message.append(ignoredLowQualGtyNum).append(" genotypes are ignored due to low quality of specific genotyping quality <").append(gtyQualityThrehsold).append('\n');
+            message.append(" ").append(ignoredLowQualGtyNum).append(" genotypes are ignored due to low quality of specific genotyping quality <").append(gtyQualityThrehsold).append('\n');
         }
 
         if (ignoredBadAltFracGtyNum > 0) {
-            message.append(ignoredBadAltFracGtyNum).append(" genotypes are ignored because the fraction of the reads carrying alternative allele >= ").append(Util.doubleToString(altAlleleFracRefHomThrehsold, 3)).
+            message.append(" ").append(ignoredBadAltFracGtyNum).append(" genotypes are ignored because the fraction of the reads carrying alternative allele >= ").append(Util.doubleToString(altAlleleFracRefHomThrehsold, 3)).
                     append(" at a reference-allele homozygous genotype and that is <= ").append(Util.doubleToString(altAlleleFractHetThrehsold, 3)).append(" at a heterozygous genotype and that is <= ").
                     append(Util.doubleToString(altAlleleFractAltHomThrehsold, 3)).append(" at an alternative-allele homozygous genotype \n");
         }
         if (ignoredLowPLGtyNum > 0) {
-            message.append(ignoredLowPLGtyNum).append(" genotypes are ignored because their second smallest Phred-scaled likelihoods (PL) are < ").append(Util.doubleToString(minSecondPL, 0)).
+            message.append(" ").append(ignoredLowPLGtyNum).append(" genotypes are ignored because their second smallest Phred-scaled likelihoods (PL) are < ").append(Util.doubleToString(minSecondPL, 0)).
                     append(".\n");
         }
 
         if (ignoredLowGPGtyNum > 0) {
-            message.append(ignoredLowGPGtyNum).append(" genotypes are ignored because their best genotype probabilities (GP) are < ").append(Util.doubleToString(minBestGP, 3)).
+            message.append(" ").append(ignoredLowGPGtyNum).append(" genotypes are ignored because their best genotype probabilities (GP) are < ").append(Util.doubleToString(minBestGP, 3)).
                     append(".\n");
         }
         message.append('\n');
 
         if (ignoredVarBymaxGtyAlleleNum > 0) {
-            message.append(ignoredVarBymaxGtyAlleleNum).append(" variants are ignored because the number of alleles is > ").append(maxAlleleNum).append(";\n");
+            message.append(" ").append(ignoredVarBymaxGtyAlleleNum).append(" variants are ignored because the number of alleles is > ").append(maxAlleleNum).append(";\n");
         }
         if (ignoredInproperChromNum > 0) {
-            message.append(ignoredInproperChromNum).append(" variants are ignored probably because of irregular chromosome labels;\n");
+            message.append(" ").append(ignoredInproperChromNum).append(" variants are ignored probably because of irregular chromosome labels;\n");
         }
 
         if (formatProbVarNum > 0) {
-            message.append(formatProbVarNum).append(" variants are ignored probably because of problematic format;\n");
+            message.append(" ").append(formatProbVarNum).append(" variants are ignored probably because of problematic format;\n");
         }
 
         if (vcfFilterOutNum > 0) {
-            message.append(vcfFilterOutNum).append(" variants are ignored due to the lack of the vcf FILTER in ").append(vcLlabelInSet.toString()).append("\n");
+            message.append(" ").append(vcfFilterOutNum).append(" variants are ignored due to the lack of the vcf FILTER in ").append(vcLlabelInSet.toString()).append("\n");
         }
 
         if (filterOutLowQualNum > 0) {
-            message.append(filterOutLowQualNum).append(" variants are ignored due to low sequencing quality (<").append(avgSeqQualityThrehsold).append(")\n");
+            message.append(" ").append(filterOutLowQualNum).append(" variants are ignored due to low sequencing quality (<").append(avgSeqQualityThrehsold).append(")\n");
         }
 
         if (ignoreMappingQualNum > 0) {
-            message.append(ignoreMappingQualNum).append(" variants are ignored due to low RMS mapping quality (<").append(minMappingQual).append(");\n");
+            message.append(" ").append(ignoreMappingQualNum).append(" variants are ignored due to low RMS mapping quality (<").append(minMappingQual).append(");\n");
         }
 
         if (ignoreStrandBiasSBNum > 0) {
-            message.append(ignoreStrandBiasSBNum).append(" variants are ignored due to large strand bias (").append(maxStrandBias).append(");\n");
+            message.append(" ").append(ignoreStrandBiasSBNum).append(" variants are ignored due to large strand bias (").append(maxStrandBias).append(");\n");
         }
 
         if (ignoreStrandBiasFSNum > 0) {
-            message.append(ignoreStrandBiasFSNum).append(" variants are ignored due to large strand bias (>").append(maxFisherStrandBias).append(");\n");
+            message.append(" ").append(ignoreStrandBiasFSNum).append(" variants are ignored due to large strand bias (>").append(maxFisherStrandBias).append(");\n");
         }
 
         if (ignoredLineNumMinOBS > 0) {
-            message.append(ignoredLineNumMinOBS).append(" variants are ignored due to the number of non-null genotypes in sample <").append(minOBS).append('\n');
+            message.append(" ").append(ignoredLineNumMinOBS).append(" variants are ignored due to the number of non-null genotypes in sample <").append(minOBS).append('\n');
         }
 
         if (ignoredLineNumMinMAF > 0) {
-            message.append(ignoredLineNumMinMAF).append(" variants are ignored due to their minor allele frequency (MAF) in sample <=").append(sampleMafOver).append('\n');
+            message.append(" ").append(ignoredLineNumMinMAF).append(" variants are ignored due to their minor allele frequency (MAF) in sample <=").append(sampleMafOver).append('\n');
         }
         if (ignoredLineNumMaxMAF > 0) {
-            message.append(ignoredLineNumMaxMAF).append(" variants are ignored due to their minor allele frequency (MAF) in sample >=").append(sampleMafLess).append('\n');
+            message.append(" ").append(ignoredLineNumMaxMAF).append(" variants are ignored due to their minor allele frequency (MAF) in sample >=").append(sampleMafLess).append('\n');
         }
 
         if (ignoredLineNumNullCase > 0) {
-            message.append(ignoredLineNumNullCase).append(" variants are ignored because patients have missing genotypes\n");
+            message.append(" ").append(ignoredLineNumNullCase).append(" variants are ignored because patients have missing genotypes\n");
         }
         if (ignoredLineNumNoVar > 0) {
-            message.append(ignoredLineNumNoVar).append(" variants are ignored because no subjects have valid genotypes after QC\n");
+            message.append(" ").append(ignoredLineNumNoVar).append(" variants are ignored because no subjects have valid genotypes after QC\n");
+        }
+
+        if (ignoredVarByRegionsInNum > 0) {
+            message.append(" ").append(ignoredVarByRegionsInNum).append(" variants are ignored because they are beyond the specified region(s)\n");
+        }
+        if (ignoredVarByRegionsOutNum > 0) {
+            message.append(" ").append(ignoredVarByRegionsOutNum).append(" variants are ignored because they are within the specified region(s)\n");
         }
 
         if (!considerIndel) {
-            message.append(indelNum).append(" Indel variants are ignored\n");
+            message.append(" ").append(indelNum).append(" Indel variants are ignored\n");
         }
         if (!considerSNP) {
-            message.append(snvNum).append(" SNV variants are ignored\n");
+            message.append(" ").append(snvNum).append(" SNV variants are ignored\n");
         }
         targGenome.setVarNum(acceptVarNum);
 
         message.append('\n').append(varLineCounter).append(" variant-lines (").append(indelNum).append(" indels").append(") are scanned; and ").append(acceptVarNum).append(" variants of ").append(effectiveIndivNum).append(" individual(s) are valid in ").append(dataFile.getCanonicalPath());
-        LOG.info(message);
+        LOG.info(message.append("\n------------------------------------------------------------\n"));
 
         //change the order to be consisten with the pedigree file
         // effectIndivID.quickSort();
@@ -565,16 +657,12 @@ public class VCFParserFast implements Constants {
         BufferedReader br = null;
         if (dataFile.exists() && dataFile.getName().endsWith(".zip")) {
             br = LocalFileFunc.getBufferedReader(dataFile.getCanonicalPath());
+        } else if (dataFile.exists() && dataFile.getName().endsWith(".gz")) {
+            br = LocalFileFunc.getBufferedReader(dataFile.getCanonicalPath());
+        } else if (dataFile.exists()) {
+            br = LocalFileFunc.getBufferedReader(dataFile.getCanonicalPath());
         } else {
-            if (dataFile.exists() && dataFile.getName().endsWith(".gz")) {
-                br = LocalFileFunc.getBufferedReader(dataFile.getCanonicalPath());
-            } else {
-                if (dataFile.exists()) {
-                    br = LocalFileFunc.getBufferedReader(dataFile.getCanonicalPath());
-                } else {
-                    throw new Exception("No input file: " + dataFile.getCanonicalPath());
-                }
-            }
+            throw new Exception("No input file: " + dataFile.getCanonicalPath());
         }
         String currentLine = null;
 

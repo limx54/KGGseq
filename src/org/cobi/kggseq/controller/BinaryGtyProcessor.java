@@ -11,7 +11,6 @@ import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.StringTokenizer;
@@ -41,37 +40,39 @@ public class BinaryGtyProcessor implements Constants {
     static int byteIndex1;
     static int byteIndex2;
     static int bitNum;
-    static boolean[] bits = new boolean[1000];
+    static boolean[] bits = new boolean[32];
     static StringBuilder stringBuilder = new StringBuilder();
+    static boolean needGzExtension = false;
 
     public BinaryGtyProcessor(String prefixName) {
-        this.pedigreeFileName = prefixName + ".fam";
+        this.pedigreeFileName = prefixName + ".kam";
         this.mapFileName = prefixName + ".kim";
         this.kggseqBinaryFileName = prefixName + ".ked";
     }
 
-    static public int[] getUnphasedGtyAt(int[] gtys, int alleleNum, int base, int indivID) {
-        bitNum = base * indivID;
+    public static final int[] getUnphasedGtyAt(byte[] gtys, int alleleNum, int base, int indivID, int blockSize) {
+        bitNum = indivID;
         for (int i = 0; i < base; i++) {
-            byteIndex1 = (bitNum + i) / 32;
-            byteIndex2 = (bitNum + i) % 32;
-            bits[i] = (gtys[byteIndex1] & GlobalManager.intOpers[byteIndex2]) == GlobalManager.intOpers[byteIndex2];
+            byteIndex1 = (bitNum) / 8;
+            byteIndex2 = (bitNum) % 8;
+            bits[i] = (gtys[byteIndex1] & GlobalManager.byteOpers[byteIndex2]) == GlobalManager.byteOpers[byteIndex2];
+            bitNum += blockSize;
         }
         switch (base) {
             case 2:
                 /*
                  missing	  Reference homozygous	 Heterozygous 	Alternative homozygous
-                 VCF genotype	./.	             0/0	       0/1	         1/1
-                 Bits           00                    01	       10	         11
+                 VCF genotype	  0/0	       0/1	         1/1  ./.	           
+                 Bits           00          01	       10	         11
                  Order	         0	              1	                2	         3        
                  */
-                if (bits[0] && bits[1]) {
-                    return new int[]{1, 1};
-                } else if (!bits[0] && bits[1]) {
+                if (!bits[0] && !bits[1]) {
                     return new int[]{0, 0};
-                } else if (bits[0] && !bits[1]) {
+                } else if (!bits[0] && bits[1]) {
                     return new int[]{0, 1};
-                } else if (!bits[0] && !bits[1]) {
+                } else if (bits[0] && !bits[1]) {
+                    return new int[]{1, 1};
+                } else if (bits[0] && bits[1]) {
                     return null;
                 }
                 break;
@@ -93,49 +94,88 @@ public class BinaryGtyProcessor implements Constants {
         return null;
     }
 
-    static public void getPhasedGtyAt(int[] gtys, int base, int indivID, boolean[] bits1) {
-        bitNum = base * indivID;
+    public static final int[] getUnphasedGtyBool(boolean[] gtyBits, int alleleNum, int base, int indivID) {
+        switch (base) {
+            case 2:
+                /*
+                 missing	  Reference homozygous	 Heterozygous 	Alternative homozygous
+                 VCF genotype	  0/0	       0/1	         1/1  ./.	           
+                 Bits           00          01	       10	         11
+                 Order	         0	              1	                2	         3        
+                 */
+                if (!gtyBits[0] && !gtyBits[1]) {
+                    return new int[]{0, 0};
+                } else if (!gtyBits[0] && gtyBits[1]) {
+                    return new int[]{0, 1};
+                } else if (gtyBits[0] && !gtyBits[1]) {
+                    return new int[]{1, 1};
+                } else if (gtyBits[0] && gtyBits[1]) {
+                    return null;
+                }
+                break;
+            default:
+                stringBuilder.delete(0, stringBuilder.length());
+                for (int i = 0; i < base; i++) {
+                    if (gtyBits[i]) {
+                        stringBuilder.append(1);
+                    } else {
+                        stringBuilder.append(0);
+                    }
+                }
+                stringBuilder.append(':').append(alleleNum);
+                int[] alleles = GlobalManager.codingUnphasedGtyCodingMap.get(stringBuilder.toString());
+                // String infor = "Sorry!!! squence variants with over 4 alleles are not supported and will be ignored!";
+                // System.out.println(infor);
+                return alleles;
+        }
+        return null;
+    }
+
+    public static final void getPhasedGtyAt1(byte[] gtys, int base, int indivID, boolean[] bits1, int blockSize) {
+        bitNum = indivID;
         for (int i = 0; i < base; i++) {
-            byteIndex1 = (bitNum + i) / 32;
-            byteIndex2 = (bitNum + i) % 32;
-            bits1[i] = (gtys[byteIndex1] & GlobalManager.intOpers[byteIndex2]) == GlobalManager.intOpers[byteIndex2];
+            byteIndex1 = (bitNum) / 8;
+            byteIndex2 = (bitNum) % 8;
+            bits1[i] = (gtys[byteIndex1] & GlobalManager.byteOpers[byteIndex2]) == GlobalManager.byteOpers[byteIndex2];
+            bitNum += blockSize;
         }
     }
 
-    static public int[] getPhasedGtyAt(int[] gtys, int alleleNum, int base, int indivID) {
-        bitNum = base * indivID;
+    public static final int[] getPhasedGtyAt(byte[] gtys, int alleleNum, int base, int indivID, int blockSize) {
+        bitNum = indivID;
         for (int i = 0; i < base; i++) {
-            byteIndex1 = (bitNum + i) / 32;
-            byteIndex2 = (bitNum + i) % 32;
-            bits[i] = (gtys[byteIndex1] & GlobalManager.intOpers[byteIndex2]) == GlobalManager.intOpers[byteIndex2];
+            byteIndex1 = (bitNum) / 8;
+            byteIndex2 = (bitNum) % 8;
+            bits[i] = (gtys[byteIndex1] & GlobalManager.byteOpers[byteIndex2]) == GlobalManager.byteOpers[byteIndex2];
+            bitNum += blockSize;
         }
         switch (base) {
             case 2:
                 /*       
                  missing	Reference homozygous	Heterozygous 	Heterozygous 	Alternative homozygous
-                 VCF genotype	.|.	0|0	0|1	1|0	1|1
+                 VCF genotype		0|0	0|1	1|0	1|1 .|.
                  Bits	        000  	001	010	011	100
                  Order	0	1	2	3	4                
                
                  II.II Tri-allelic sequence variant (4 bits)
                  missing 	Reference homozygous 	Heterozygous 	Heterozygous 	Heterozygous 	Heterozygous 	Alternative homozygous
-                 VCF genotype 	.|. 	0|0 	0|1 	0|2 	1|0 	1|1 	1|2
+                 VCF genotype 	0|0 	0|1 	0|2 	1|0 	1|1 	1|2
                  Bits      	000 	0001 	0010 	0011 	0100 	0101 	0110
                  Decimal 	0 	1 	2 	3 	4 	5 	6
                  Heterozygous 	Heterozygous 	Alternative homozygous
-                 VCF genotype 	2|0 	2|1 	2|2
+                 VCF genotype 	2|0 	2|1 	2|2 	.|. 
                  Bits     	0111 	1000 	1001
                  Decimal 	7 	8 	9     
                  */
-                if (!bits[0] && !bits[1] && bits[2]) {
+                if (!bits[0] && !bits[1] && !bits[2]) {
                     return new int[]{0, 0};
-                } else if (!bits[0] && bits[1] && !bits[2]) {
+                } else if (!bits[0] && !bits[1] && bits[2]) {
                     return new int[]{0, 1};
-                } else if (!bits[0] && bits[1] && bits[2]) {
+                } else if (!bits[0] && bits[1] && !bits[2]) {
                     return new int[]{1, 0};
-                } else if (bits[0] && !bits[1] && !bits[2]) {
+                } else if (!bits[0] && bits[1] && bits[2]) {
                     return new int[]{1, 1};
-                } else if (!bits[0] && !bits[1] && !bits[2]) {
+                } else if (bits[0] && !bits[1] && !bits[2]) {
                     return null;
                 }
                 break;
@@ -157,12 +197,62 @@ public class BinaryGtyProcessor implements Constants {
         return null;
     }
 
-    static public void getUnphasedGtyAt(int[] gtys, int base, int indivID, boolean[] bits1) {
-        bitNum = base * indivID;
+    public static final int[] getPhasedGtyBool(boolean[] gtyBits, int alleleNum, int base, int indivID) {
+        switch (base) {
+            case 2:
+                /*       
+                 missing	Reference homozygous	Heterozygous 	Heterozygous 	Alternative homozygous
+                 VCF genotype		0|0	0|1	1|0	1|1 .|.
+                 Bits	        000  	001	010	011	100
+                 Order	0	1	2	3	4                
+               
+                 II.II Tri-allelic sequence variant (4 bits)
+                 missing 	Reference homozygous 	Heterozygous 	Heterozygous 	Heterozygous 	Heterozygous 	Alternative homozygous
+                 VCF genotype 	0|0 	0|1 	0|2 	1|0 	1|1 	1|2
+                 Bits      	000 	0001 	0010 	0011 	0100 	0101 	0110
+                 Decimal 	0 	1 	2 	3 	4 	5 	6
+                 Heterozygous 	Heterozygous 	Alternative homozygous
+                 VCF genotype 	2|0 	2|1 	2|2 	.|. 
+                 Bits     	0111 	1000 	1001
+                 Decimal 	7 	8 	9     
+                 */
+                if (!gtyBits[0] && !gtyBits[1] && !gtyBits[2]) {
+                    return new int[]{0, 0};
+                } else if (!gtyBits[0] && !gtyBits[1] && gtyBits[2]) {
+                    return new int[]{0, 1};
+                } else if (!gtyBits[0] && gtyBits[1] && !gtyBits[2]) {
+                    return new int[]{1, 0};
+                } else if (!gtyBits[0] && gtyBits[1] && gtyBits[2]) {
+                    return new int[]{1, 1};
+                } else if (gtyBits[0] && !gtyBits[1] && !gtyBits[2]) {
+                    return null;
+                }
+                break;
+            default:
+                stringBuilder.delete(0, stringBuilder.length());
+                for (int i = 0; i < base; i++) {
+                    if (gtyBits[i]) {
+                        stringBuilder.append(1);
+                    } else {
+                        stringBuilder.append(0);
+                    }
+                }
+                stringBuilder.append(':').append(alleleNum);
+                int[] alleles = GlobalManager.codingPhasedGtyCodingMap.get(stringBuilder.toString());
+                // String infor = "Sorry!!! squence variants with over 4 alleles are not supported and will be ignored!";
+                // System.out.println(infor);
+                return alleles;
+        }
+        return null;
+    }
+
+    public static final void getUnphasedGtyAt1(byte[] gtys, int base, int indivID, boolean[] bits1,int blockSize) {
+        bitNum = indivID;
         for (int i = 0; i < base; i++) {
-            byteIndex1 = (bitNum + i) / 32;
-            byteIndex2 = (bitNum + i) % 32;
-            bits1[i] = (gtys[byteIndex1] & GlobalManager.intOpers[byteIndex2]) == GlobalManager.intOpers[byteIndex2];
+            byteIndex1 = (bitNum ) / 8;
+            byteIndex2 = (bitNum ) % 8;
+            bits1[i] = (gtys[byteIndex1] & GlobalManager.byteOpers[byteIndex2]) == GlobalManager.byteOpers[byteIndex2];
+            bitNum += blockSize;
         }
     }
 
@@ -193,9 +283,11 @@ public class BinaryGtyProcessor implements Constants {
         String line = null;
         String delimiter = "\t\" \",/";
         BufferedReader br = null;
+
         File file = new File(pedigreeFileName + ".gz");
         if (file.exists()) {
             br = LocalFileFunc.getBufferedReader(file.getCanonicalPath());
+            needGzExtension = true;
         } else {
             file = new File(pedigreeFileName);
             if (file.exists()) {
@@ -238,7 +330,8 @@ public class BinaryGtyProcessor implements Constants {
     }
 
     // public void calcualte
-    public boolean readBinaryGenotype(List<Individual> subjectList, Genome genome) throws Exception {
+    public StringBuilder readBinaryGenotype(List<Individual> subjectList, Genome genome, int minOBS, int maxGtyAlleleNum, double sampleMafOver,
+            double sampleMafLess, boolean considerSNP, boolean considerIndel) throws Exception {
         int indiSize = subjectList.size();
         IntArrayList caseSetID = new IntArrayList();
         IntArrayList controlSetID = new IntArrayList();
@@ -257,22 +350,12 @@ public class BinaryGtyProcessor implements Constants {
         String info = ("Reading genotype bit-file from [ " + kggseqBinaryFileName + " ] \n");
         //openkggseqPedFormat
         DataInputStream in = null;
-        in = new DataInputStream(new BufferedInputStream(new FileInputStream(kggseqBinaryFileName)));
+        if (needGzExtension) {
+            in = new DataInputStream(new BufferedInputStream(new GZIPInputStream(new FileInputStream(kggseqBinaryFileName + ".gz"))));
+        } else {
+            in = new DataInputStream(new BufferedInputStream(new FileInputStream(kggseqBinaryFileName)));
+        }
 
-        /*
-         File file = new File(kggseqBinaryFileName + ".gz");
-         if (file.exists()) {
-         in = new DataInputStream(new BufferedInputStream(new GZIPInputStream(new FileInputStream(file.getCanonicalPath()))));
-         } else {
-         file = new File(kggseqBinaryFileName);
-         if (file.exists()) {
-         in = new DataInputStream(new BufferedInputStream(new FileInputStream(file.getCanonicalPath())));
-         } else {
-         LOG.error(file.getCanonicalPath() + " does not exist!");
-         return false;
-         }
-         }
-         */
         byte bt1 = in.readByte();
         byte bt2 = in.readByte();
         // System.out.println(bytesToHexString(new byte[]{bt1}));
@@ -283,6 +366,7 @@ public class BinaryGtyProcessor implements Constants {
             throw new Exception("The " + kggseqBinaryFileName + " is not a valid kggseq binary file!!!");
         }
         boolean isPhased = false;
+
         bt1 = in.readByte();
         if (bt1 == 1) {
             isPhased = true;
@@ -301,6 +385,7 @@ public class BinaryGtyProcessor implements Constants {
         int g11 = 0;
         int g12 = 0;
         int g22 = 0;
+        int missingG = 0;
         if (caseNum > 0) {
             needAccoundAffect = true;
         }
@@ -308,119 +393,225 @@ public class BinaryGtyProcessor implements Constants {
             needAccoundUnaffect = true;
         }
 
+        List<Variant> tmpList = new ArrayList<Variant>();
+        int ignoredLineNumMinOBS = 0, ignoredLineNumMinMAF = 0, ignoredLineNumMaxMAF = 0, ignoredVarBymaxGtyAlleleNum = 0;
+        int obsS = 0;
+
+        double sampleMafOverC = 1 - sampleMafOver;
+        double sampleMafLessC = 1 - sampleMafLess;
+        boolean needMAFQCOver = false;
+        if (sampleMafOver >= 0) {
+            needMAFQCOver = true;
+        }
+        boolean needMAFQCLess = false;
+        if (sampleMafLess < 0.5) {
+            needMAFQCLess = true;
+        }
+        boolean incomplete;
+        double maf;
+        final int gtyLen = 8;
         for (int chromID = 0; chromID < chroms.length; chromID++) {
             if (chroms[chromID] == null) {
                 continue;
             }
+            tmpList.clear();
+
             for (Variant var : chroms[chromID].variantList) {
                 alleleNum = var.getAltAlleles().length + 1;
 
                 if (isPhased) {
-                    //to do 
+                    base = GlobalManager.phasedAlleleBitMap.get(alleleNum);
+                    bitNum = base * indiviNum;
+                    intNum = bitNum / gtyLen;
+                    if (bitNum % gtyLen != 0) {
+                        intNum++;
+                    }
+                    var.encodedGty = new byte[intNum];
+                    /*                   
+                    for (int i = 0; i < intNum; i++) {
+                        var.encodedGty[i] = in.readByte();
+                    }
+                     */
+                    intNum = in.read(var.encodedGty);
+                    if (intNum != var.encodedGty.length) {
+                        String infor = "Error occurred when reading binary genotypes. Your binary genotypes may be broken!";
+                        LOG.error(infor);
+                        System.exit(1);
+                    }
                 } else {
                     base = GlobalManager.unphasedAlleleBitMap.get(alleleNum);
                     bitNum = base * indiviNum;
-                    intNum = bitNum / 32;
-                    if (bitNum % 32 != 0) {
+                    intNum = bitNum / gtyLen;
+                    if (bitNum % gtyLen != 0) {
                         intNum++;
                     }
-                    var.encodedGty = new int[intNum];
+                    var.encodedGty = new byte[intNum];
+                    /*                   
                     for (int i = 0; i < intNum; i++) {
-                        var.encodedGty[i] = in.readInt();
+                        var.encodedGty[i] = in.readByte();
+                    }
+                     */
+
+                    intNum = in.read(var.encodedGty);
+                    if (intNum != var.encodedGty.length) {
+                        String infor = "Error occurred when reading binary genotypes. Your binary genotypes may be broken!";
+                        LOG.error(infor);
+                        System.exit(1);
                     }
                 }
-                if (!needAccoundAffect && !needAccoundUnaffect) {
+                //In any case, it must read the binary genotype data
+                if (alleleNum > maxGtyAlleleNum) {
+                    ignoredVarBymaxGtyAlleleNum++;
+                    continue;
+                }
+                if (!considerSNP || !considerIndel) {
+                    //a lazy point 
+                    incomplete = true;
+
+                    //only consider Indel
+                    if (!considerSNP && var.isIndel) {
+                        incomplete = false;
+                    } else if (!considerIndel && !var.isIndel) {
+                        incomplete = false;
+                    }
+
+                    if (incomplete) {
+                        continue;
+                    }
+                }
+
+                obsS = 0;
+
+                g11 = 0;
+                g12 = 0;
+                g22 = 0;
+                missingG = 0;
+                for (int j = 0; j < indiSize; j++) {
+                    subID = j;
+                    if (isPhased) {
+                        gtys = BinaryGtyProcessor.getPhasedGtyAt(var.encodedGty, alleleNum, base, subID, indiSize);
+                    } else {
+                        gtys = BinaryGtyProcessor.getUnphasedGtyAt(var.encodedGty, alleleNum, base, subID, indiSize);
+                    }
+                    if (gtys == null) {
+                        missingG++;
+                        continue;
+                    }
+                    if (gtys[0] != gtys[1]) {
+                        g12++;
+                    } else if (gtys[0] == 0) {
+                        g11++;
+                    } else {
+                        g22++;
+                    }
+                    obsS++;
+                }
+                var.setAffectedRefHomGtyNum(g11);
+                var.setAffectedHetGtyNum(g12);
+                var.setAffectedAltHomGtyNum(g22);
+                var.setMissingtyNum(missingG);
+                if (obsS < minOBS) {
+                    ignoredLineNumMinOBS++;
+                    continue;
+                }
+                maf = (g12 * 0.5 + g22) / (g11 + g12 + g22);
+                if (needMAFQCOver || needMAFQCLess) {
+                    if (needMAFQCOver) {
+                        if (Double.isNaN(maf) || maf <= sampleMafOver || maf >= sampleMafOverC) {
+                            ignoredLineNumMinMAF++;
+                            continue;
+                        }
+                    }
+                    if (needMAFQCLess) {
+                        if (Double.isNaN(maf) || maf >= sampleMafLess && maf <= sampleMafLessC) {
+                            ignoredLineNumMaxMAF++;
+                            continue;
+                        }
+                    }
+                }
+
+                var.localAltAF = (float) maf;
+                missingG = 0;
+                if (needAccoundAffect) {
                     g11 = 0;
                     g12 = 0;
                     g22 = 0;
-                    for (int j = 0; j < indiSize; j++) {
-                        subID = j;
+                    for (int j = 0; j < caseNum; j++) {
+                        subID = caseSetID.getQuick(j);
                         if (isPhased) {
-                            //gtys = subjectList.get(subID).markerGtySetArray.getPhasedGtyAt(var.genotypeIndex, var.getAltAlleles().length + 1);
+                            gtys = BinaryGtyProcessor.getPhasedGtyAt(var.encodedGty, alleleNum, base, subID, indiSize);
                         } else {
-                            gtys = BinaryGtyProcessor.getUnphasedGtyAt(var.encodedGty, alleleNum, base, subID);
+                            gtys = BinaryGtyProcessor.getUnphasedGtyAt(var.encodedGty, alleleNum, base, subID, indiSize);
                         }
                         if (gtys == null) {
+                            missingG++;
                             continue;
                         }
                         if (gtys[0] != gtys[1]) {
                             g12++;
+                        } else if (gtys[0] == 0) {
+                            g11++;
                         } else {
-                            if (gtys[0] == 0) {
-                                g11++;
-                            } else {
-                                g22++;
-                            }
+                            g22++;
                         }
                     }
                     var.setAffectedRefHomGtyNum(g11);
                     var.setAffectedHetGtyNum(g12);
                     var.setAffectedAltHomGtyNum(g22);
-                } else {
-                    if (needAccoundAffect) {
-                        g11 = 0;
-                        g12 = 0;
-                        g22 = 0;
-                        for (int j = 0; j < caseNum; j++) {
-                            subID = caseSetID.getQuick(j);
-                            if (isPhased) {
-                                //gtys = subjectList.get(subID).markerGtySetArray.getPhasedGtyAt(var.genotypeIndex, var.getAltAlleles().length + 1);
-                            } else {
-                                gtys = BinaryGtyProcessor.getUnphasedGtyAt(var.encodedGty, alleleNum, base, subID);
-                            }
-                            if (gtys == null) {
-                                continue;
-                            }
-                            if (gtys[0] != gtys[1]) {
-                                g12++;
-                            } else {
-                                if (gtys[0] == 0) {
-                                    g11++;
-                                } else {
-                                    g22++;
-                                }
-                            }
-                        }
-                        var.setAffectedRefHomGtyNum(g11);
-                        var.setAffectedHetGtyNum(g12);
-                        var.setAffectedAltHomGtyNum(g22);
-                    }
-
-                    if (needAccoundUnaffect) {
-                        g11 = 0;
-                        g12 = 0;
-                        g22 = 0;
-                        for (int i = 0; i < controlNum; i++) {
-                            subID = controlSetID.getQuick(i);
-                            if (isPhased) {
-                                //gtys = subjectList.get(subID).markerGtySetArray.getPhasedGtyAt(var.genotypeIndex, var.getAltAlleles().length + 1);
-                            } else {
-                                gtys = BinaryGtyProcessor.getUnphasedGtyAt(var.encodedGty, alleleNum, base, subID);
-                            }
-                            if (gtys == null) {
-                                continue;
-                            }
-                            if (gtys[0] != gtys[1]) {
-                                g12++;
-                            } else {
-                                if (gtys[0] == 0) {
-                                    g11++;
-                                } else {
-                                    g22++;
-                                }
-                            }
-                        }
-                        var.setUnaffectedRefHomGtyNum(g11);
-                        var.setUnaffectedHetGtyNum(g12);
-                        var.setUnaffectedAltHomGtyNum(g22);
-                    }
                 }
 
+                if (needAccoundUnaffect) {
+                    g11 = 0;
+                    g12 = 0;
+                    g22 = 0;
+                    for (int i = 0; i < controlNum; i++) {
+                        subID = controlSetID.getQuick(i);
+                        if (isPhased) {
+                            gtys = BinaryGtyProcessor.getPhasedGtyAt(var.encodedGty, alleleNum, base, subID, indiSize);
+                        } else {
+                            gtys = BinaryGtyProcessor.getUnphasedGtyAt(var.encodedGty, alleleNum, base, subID, indiSize);
+                        }
+                        if (gtys == null) {
+                            missingG++;
+                            continue;
+                        }
+                        if (gtys[0] != gtys[1]) {
+                            g12++;
+                        } else if (gtys[0] == 0) {
+                            g11++;
+                        } else {
+                            g22++;
+                        }
+                    }
+                    var.setUnaffectedRefHomGtyNum(g11);
+                    var.setUnaffectedHetGtyNum(g12);
+                    var.setUnaffectedAltHomGtyNum(g22);
+                    var.setMissingtyNum(missingG);
+                }
+                tmpList.add(var);
             }
-
+            chroms[chromID].variantList.clear();
+            chroms[chromID].variantList.addAll(tmpList);
+            tmpList.clear();
         }
         in.close();
-        return false;
+        StringBuilder message = new StringBuilder();
+        message.append("Quality control summaries:\n");
+        if (ignoredLineNumMinOBS > 0) {
+            message.append(" ").append(ignoredLineNumMinOBS).append(" variants are ignored due to the number of non-null genotypes in sample <").append(minOBS).append('\n');
+        }
+
+        if (ignoredLineNumMinMAF > 0) {
+            message.append(" ").append(ignoredLineNumMinMAF).append(" variants are ignored due to their minor allele frequency (MAF) in sample <=").append(sampleMafOver).append('\n');
+        }
+        if (ignoredLineNumMaxMAF > 0) {
+            message.append(" ").append(ignoredLineNumMaxMAF).append(" variants are ignored due to their minor allele frequency (MAF) in sample >=").append(sampleMafLess).append('\n');
+        }
+        if (ignoredVarBymaxGtyAlleleNum > 0) {
+            message.append(" ").append(ignoredVarBymaxGtyAlleleNum).append(" variants are ignored because the number of alleles is > ").append(maxGtyAlleleNum).append(";\n");
+        }
+
+        return message;
     }
 
     public static String bytesToHexString(byte[] src) {
@@ -512,10 +703,11 @@ public class BinaryGtyProcessor implements Constants {
                 }
 
                 effectiveSNPNum++;
+                Variant var = new Variant(position, ref, alt.split(","));
                 if (alt.indexOf('+') >= 0 || alt.indexOf('-') >= 0) {
                     indelNum++;
+                    var.isIndel = true;
                 }
-                Variant var = new Variant(position, ref, alt.split(","));
 
                 var.setLabel(label);
                 genome.addVariant(chrom, var);
@@ -549,7 +741,7 @@ public class BinaryGtyProcessor implements Constants {
             BinaryGtyProcessor bgp = new BinaryGtyProcessor("./kggseq");
             bgp.readPedigreeFile(indivList);
             Genome genome = bgp.readVariantsMapFile(null);
-            bgp.readBinaryGenotype(indivList, genome);
+            // bgp.readBinaryGenotype(indivList, genome);
             //   genome.export2FlatTextPlink(indivList, "./test");
         } catch (Exception ex) {
             ex.printStackTrace();

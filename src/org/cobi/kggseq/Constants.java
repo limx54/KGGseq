@@ -12,7 +12,7 @@ public interface Constants {
 
     String PVERSION = "1.0";        // 3 chars
     String PREL = "KGGSeq";               // space or p (full, or prelease)
-    String PDATE = "12/Dec./2015"; // 11 chars
+    String PDATE = "2/Feb./2016"; // 11 chars
     final static String[] STAND_CHROM_NAMES = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13",
         "14", "15", "16", "17", "18", "19", "20", "21", "22", "X", "Y", "XY", "M", "Un"};
     String KGGSeq_URL = "http://grass.cgs.hku.hk/limx/kggseq/";

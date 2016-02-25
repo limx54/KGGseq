@@ -55,82 +55,61 @@ public class Phenolyzer {
     }
 
     public void runPhenolyzer() {
-        try {
-//            bw=new BufferedWriter(new FileWriter(fleInput));
-//            for(int i=0;i<altSearchTerms.size();i++){
-//                bw.write((String) altSearchTerms.get(i));
-//                bw.newLine();
-//            }
-//            bw.close();
-            String strItems = "";
-            for (int i = 0; i < altSearchTerms.size(); i++) {
-                strItems += altSearchTerms.get(i) + ";";
-            }
-            strItems = strItems.substring(0, strItems.length() - 1);
-            File f = new File(fleOutput);
-            if (!f.getParentFile().exists()) {
-                f.getParentFile().mkdir();
-            }
-            String[] params = new String[12];
-            params[0] = strPerlPath;
-            params[1] = strPhenolyzerPath;
-            params[2] = "\"" + strItems + "\"";
-            params[3] = "-p";
-            params[4] = "-ph";
-            params[5] = "-logistic";
-            params[6] = "-out";
-            params[7] = fleOutput;
-            params[8] = "-addon";
-            params[9] = "DB_DISGENET_GENE_DISEASE_SCORE,DB_GAD_GENE_DISEASE_SCORE,DB_GENECARDS_GENE_DISEASE_SCORE";
-            params[10] = "-addon_weight";
-            params[11] = "0.25";
+        String strItems = "";
+        StringBuilder comInfor = new StringBuilder();
+        for (int i = 0; i < altSearchTerms.size(); i++) {
+            strItems += altSearchTerms.get(i) + ";";
+        }
+        strItems = strItems.substring(0, strItems.length() - 1);
+        File f = new File(fleOutput);
+        if (!f.getParentFile().exists()) {
+            f.getParentFile().mkdir();
+        }
+        String[] params = new String[12];
+        params[0] = strPerlPath;
+        params[1] = strPhenolyzerPath;
+        params[2] = "\"" + strItems + "\"";
+        params[3] = "-p";
+        params[4] = "-ph";
+        params[5] = "-logistic";
+        params[6] = "-out";
+        params[7] = fleOutput;
+        params[8] = "-addon";
+        params[9] = "DB_DISGENET_GENE_DISEASE_SCORE,DB_GAD_GENE_DISEASE_SCORE,DB_GENECARDS_GENE_DISEASE_SCORE";
+        params[10] = "-addon_weight";
+        params[11] = "0.25";
 
-            // strCMD = strPerlPath + " " + strPhenolyzerPath + " \"" + strItems + "\" -p -ph -logistic -out " + fleOutput + " -addon DB_DISGENET_GENE_DISEASE_SCORE,DB_GAD_GENE_DISEASE_SCORE,DB_GENECARDS_GENE_DISEASE_SCORE -addon_weight 0.25";
-            // System.out.println(strCMD);
+        // strCMD = strPerlPath + " " + strPhenolyzerPath + " \"" + strItems + "\" -p -ph -logistic -out " + fleOutput + " -addon DB_DISGENET_GENE_DISEASE_SCORE,DB_GAD_GENE_DISEASE_SCORE,DB_GENECARDS_GENE_DISEASE_SCORE -addon_weight 0.25";
+        // System.out.println(strCMD);
 //            String strTest="C:\\Strawberry\\perl\\bin\\perl.exe D:\\01WORK\\KGGseq\\software\\KGGseq\\plugin\\phenolyzer-master\\disease_annotation.pl 'alzheimer;crohn' -p -ph -logistic -out testPhenolyzer_New\\testPhenolyzerphenolyzer\\out";
 //            System.out.println(strTest);
-            // Process pr = Runtime.getRuntime().exec(strCMD);
-            //Process pr = new ProcessBuilder(strCMD).start();
+        // Process pr = Runtime.getRuntime().exec(strCMD);
+        //Process pr = new ProcessBuilder(strCMD).start();
+        String line;
+
+        try {
             Process pr = Runtime.getRuntime().exec(params);
 
-            String line;
-
-            try {
-                BufferedReader inputError = new BufferedReader(new InputStreamReader(pr.getErrorStream()));
-                while (((line = inputError.readLine()) != null)) {
-                    //  System.out.println(line);
-                }
-
-                int exitVal = pr.waitFor();
-                pr.destroy();
-                inputError.close();
-
-                if (exitVal != 0) {
-                    StringBuilder comInfor = new StringBuilder();
-                    for (String param : params) {
-                        comInfor.append(param);
-                        comInfor.append(" ");
-                    }
-                    LOG.info("Phenolyzer failed to run by the command: " + comInfor.toString());
-                }
-
-            } catch (Exception ex) {
-                LOG.error(ex);
+            BufferedReader inputError = new BufferedReader(new InputStreamReader(pr.getErrorStream()));
+            while (((line = inputError.readLine()) != null)) {
+                //  System.out.println(line);
             }
 
-//            try (BufferedReader input = new BufferedReader(new InputStreamReader(pr.getInputStream()))) {
-//                while ((line = input.readLine()) != null) {
-//                    System.out.println(line);
-//                }
-//            }
-//            System.out.println("Done.");
-//            pr.waitFor();
-//            pr.destroy();
-        } catch (IOException ex) {
-            LOG.error(ex);
+            int exitVal = pr.waitFor();
+            pr.destroy();
+            inputError.close();
+
+            if (exitVal != 0) {
+                for (String param : params) {
+                    comInfor.append(param);
+                    comInfor.append(" ");
+                }
+                LOG.info("Phenolyzer failed to run by the command: " + comInfor.toString());
+            }
         } catch (Exception ex) {
-            LOG.error(ex);
+            LOG.error("Phenolyzer failed to run by the command: " + comInfor.toString() + "\n" + ex.toString());
         }
+
     }
 
     public void parseResult() {

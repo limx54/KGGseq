@@ -28,7 +28,8 @@ import org.cobi.kggseq.GlobalManager;
 import org.cobi.kggseq.entity.Genome;
 import org.cobi.kggseq.entity.Individual;
 import org.cobi.kggseq.entity.Variant;
-import org.cobi.util.text.ByteInputStream;
+import org.cobi.util.text.BGZFInputStream.BZPartReader;
+
 import org.cobi.util.text.Util;
 import org.cobi.util.thread.Task;
 import org.objenesis.strategy.StdInstantiatorStrategy;
@@ -39,161 +40,170 @@ import org.objenesis.strategy.StdInstantiatorStrategy;
  */
 public class VCFParseTaskFast extends Task implements Callable<String>, Constants {
 
-    private static final Logger LOG = Logger.getLogger(VCFParseTaskFast.class);
-    Map<String, Integer> chromNameIndexMap = new HashMap<String, Integer>();
-    final String UNKNOWN_CHROM_NAME0 = "Un";
-    final String UNKNOWN_CHROM_NAME1 = "GL";
-    List<Variant>[] varChroms = null;
+    private final Logger LOG = Logger.getLogger(VCFParseTaskFast.class);
+    private Map<String, Integer> chromNameIndexMap = new HashMap<String, Integer>();
+    final private String UNKNOWN_CHROM_NAME0 = "Un";
+    final private String UNKNOWN_CHROM_NAME1 = "GL";
+    private List<Variant>[] varChroms = null;
 
-    String storagePath;
-    Kryo kryo = new Kryo();
+    private String storagePath;
+    private final Kryo kryo = new Kryo();
 
     //As array is much faster than list; I try to use array when it does not was
-    int threadID = -1;
-    IntArrayList caeSetID;
-    IntArrayList controlSetID;
+    private int threadID = -1;
+    private int[] caeSetID;
+    private int[] controlSetID;
 
-    int indexCHROM;
-    int indexPOS;
-    int indexID;
-    int indexREF;
-    int indexALT;
-    int indexQUAL;
-    int indexFILTER;
-    int indexFORMAT;
-    int indexINFO;
+    private int indexCHROM;
+    private int indexPOS;
+    private int indexID;
+    private int indexREF;
+    private int indexALT;
+    private int indexQUAL;
+    private int indexFILTER;
+    private int indexFORMAT;
+    private int indexINFO;
 
-    double avgSeqQualityThrehsold;
-    double minMappingQual;
-    double maxStrandBias;
-    double maxFisherStrandBias;
-    double gtyQualityThrehsold;
-    int minGtySeqDepth;
-    int minSeqDepth;
-    double altAlleleFracRefHomThrehsold;
-    double altAlleleFractHetThrehsold;
-    double altAlleleFractAltHomThrehsold;
-    int minSecondPL;
-    double minBestGP;
-    int minOBS;
-    double sampleMafOver;
-    double sampleMafLess;
-    int maxGtyAlleleNum;
+    private double avgSeqQualityThrehsold;
+    private double minMappingQual;
+    private double maxStrandBias;
+    private double maxFisherStrandBias;
+    private double gtyQualityThrehsold;
+    private int minGtySeqDepth;
+    private int minSeqDepth;
+    private double altAlleleFracRefHomThrehsold;
+    private double altAlleleFractHetThrehsold;
+    private double altAlleleFractAltHomThrehsold;
+    private int minSecondPL;
+    private double minBestGP;
+    private int minOBS;
+    private double sampleMafOver;
+    private double sampleMafLess;
+    private int maxGtyAlleleNum;
+    private int[] tempInt;
+    private Set<String> vcfLabelSet;
 
-    Set<String> vcfLabelSet;
-
-    boolean noGtyVCF;
-    boolean considerSNP;
-    boolean considerIndel;
-    boolean needGty;
-    boolean needReadsInfor;
-    boolean needGtyQual;
+    private boolean noGtyVCF;
+    private boolean considerSNP;
+    private boolean considerIndel;
+    private boolean needGty;
+    private boolean needReadsInfor;
+    private boolean needGtyQual;
 
     //result variables
-    int ignoredLowQualGtyNum = 0;
-    int ignoredLowDepthGtyNum = 0;
-    int ignoredBadAltFracGtyNum = 0;
-    int ignoredLowPLGtyNum = 0;
-    int ignoredLowGPGtyNum = 0;
-    int ignoreStrandBiasSBNum = 0;
-    int missingGtyNum = 0;
-    int formatProbVarNum = 0;
-    int filterOutLowQualNum = 0;
-    int vcfFilterOutNum = 0;
-    int ignoredLineNumMinOBS = 0;
-    int ignoredLineNumMinMAF = 0;
-    int ignoredLineNumMaxMAF = 0;
-    int nonRSVariantNum = 0;
-    int ignoreMappingQualNum = 0;
-    int ignoreStrandBiasFSNum = 0;
-    int indelNum = 0, snvNum = 0;
-    int ignoredInproperChromNum = 0;
-    int ignoredVarBymaxGtyAlleleNum = 0;
+    private int ignoredLowQualGtyNum = 0;
+    private int ignoredLowDepthGtyNum = 0;
+    private int ignoredBadAltFracGtyNum = 0;
+    private int ignoredLowPLGtyNum = 0;
+    private int ignoredLowGPGtyNum = 0;
+    private int ignoreStrandBiasSBNum = 0;
+    private int missingGtyNum = 0;
+    private final int formatProbVarNum = 0;
+    private int filterOutLowQualNum = 0;
+    private int vcfFilterOutNum = 0;
+    private int ignoredLineNumMinOBS = 0;
+    private int ignoredLineNumMinMAF = 0;
+    private int ignoredLineNumMaxMAF = 0;
+    private int nonRSVariantNum = 0;
+    private int ignoreMappingQualNum = 0;
+    private int ignoreStrandBiasFSNum = 0;
+    private int indelNum = 0, snvNum = 0;
+    private int ignoredInproperChromNum = 0;
+    private int ignoredVarBymaxGtyAlleleNum = 0;
+    private int ignoredVarByRegionsInNum = 0;
+    private int ignoredVarByRegionsOutNum = 0;
 
-    int totalVarNum = 0;
-    int totalAcceptVarNum = 0;
+    private int totalVarNum = 0;
+    private int totalAcceptVarNum = 0;
     //temp variables to save time
-    boolean checkVCFfilter = false;
-    double sampleMafOverC = 0;
-    double sampleMafLessC = 0;
-    int[] gtyQuality = null;
-    int[][] gtys = null;
-    int[] gtyDepth = null;
-    int[][] readCounts = null;
+    private boolean checkVCFfilter = false;
+    private double sampleMafOverC = 0;
+    private double sampleMafLessC = 0;
+    private int[] gtyQuality = null;
+    private int[] gtys = null;
+    private int[] gtyDepth = null;
+    private int[] readCounts = null;
 
-    float[] readFractions = null;
-    int[] secondMostGtyPL = null;
-    int[] bestGtyGP = null;
-    boolean needAccoundAffect = false;
-    boolean needAccoundUnaffect = false;
-    boolean needMAFQCOver = false;
-    boolean needMAFQCLess = false;
-    double maf = 0;
-    boolean hasOrginalGenome = false;
-    int effectiveIndivNum = 0;
-    int totalPedSubjectNum = 0;
-    int maxVcfIndivNum = 0;
-    int maxEffectiveColVCF = -1;
+    private float[] readFractions = null;
+    private int[] secondMostGtyPL = null;
+    private int[] bestGtyGP = null;
+    private boolean needAccoundAffect = false;
+    private boolean needAccoundUnaffect = false;
+    private boolean needMAFQCOver = false;
+    private boolean needMAFQCLess = false;
+    private double maf = 0;
+    private boolean hasOrginalGenome = false;
+    private int effectiveIndivNum = 0;
+    private int totalPedSubjectNum = 0;
+    private int maxVcfIndivNum = 0;
+    private int maxEffectiveColVCF = -1;
 
-    int controlSize;
-    int caseSize;
+    private int controlSize;
+    private int caseSize;
 
-    String currChr = null;
-    int makerPostion = 0;
-    String varLabel = null;
-    String vcfLabel = null;
-    int obsS;
-    String ref = null;
-    String alt = null;
-    boolean incomplete = true;
-
-    double avgSeqQuality = 0;
-    double mappingQual;
-    double strandBias;
-
-    int gtyIndexInInfor = -1;
-    int gtyQualIndexInInfor = -1;
-    int gtyDepthIndexInInfor = -1;
-    int gtyAlleleDepthIndexInInfor = -1;
-    int gtyAltAlleleFracIndexInInfor = -1;
-    int gtyPLIndexInInfor = -1;
-    int gtyGPIndexInInfor = -1;
-
-    boolean hasIndexGT = false;
-    boolean hasIndexGQ = false;
-    boolean hasIndexDP = false;
-    boolean hasIndexAD = false;
-    boolean hasIndexFA = false;
-    boolean hasIndexPL = false;
-    boolean hasIndexGP = false;
-
-    ByteInputStream br;
+    BZPartReader bzSpider;
     int maxVarNum;
 
     //temp variables
-    int iGty = 0;
-    int index1 = 0;
-    int index2 = 0;
+    private int iGty = 0;
+    private int index1 = 0;
+    private int index2 = 0;
 
-    int t = 0;
+    private int t = 0;
 
-    int p = 0;
+    private int p = 0;
 
-    int index = 0;
-    int g11 = 0, g12 = 0, g22 = 0;
-    int indexA, indexB;
-    boolean isLowQualBreak = false;
+    private int index = 0;
+    private int g11 = 0, g12 = 0, g22 = 0;
+    private int indexA, indexB;
+    private boolean isLowQualBreak = false;
 
-    boolean isIndel = false;
-    boolean isInvalid = false;
-    int alleleNum = 0;
+    private boolean isIndel = false;
+    private boolean isInvalid = false;
+    private int alleleNum = 0;
 
-    int maxIndex2 = -1;
-    int ii = 0;
-    String tmpStr = null;
+    private int maxIndex2 = -1;
+    private int ii = 0;
+    private String tmpStr = null;
 
-    StringBuilder tmpSB = new StringBuilder();
-    BufferedWriter[] vcfWriters;
+    private boolean isRegionInModel = false;
+    private boolean isRegionOutModel = false;
+
+    private StringBuilder tmpSB = new StringBuilder();
+    private BufferedWriter[] vcfWriters;
+    private int[][] regionsIn;
+    private int[][] regionsOut;
+    private boolean hasChrLabel = false;
+
+    public boolean isHasChrLabel() {
+        return hasChrLabel;
+    }
+
+    public void setRegionsIn(int[][] regions) {
+        if (regions != null) {
+            isRegionInModel = true;
+            regionsIn = regions;
+        }
+    }
+
+    public int getMaxEffectiveColVCF() {
+        return maxEffectiveColVCF;
+    }
+
+    public void setRegionsOut(int[][] regions) {
+        if (regions != null) {
+            isRegionOutModel = true;
+            regionsOut = regions;
+        }
+    }
+
+    public int getIgnoredVarByRegionsInNum() {
+        return ignoredVarByRegionsInNum;
+    }
+
+    public int getIgnoredVarByRegionsOutNum() {
+        return ignoredVarByRegionsOutNum;
+    }
 
     public String getStoragePath() {
         return storagePath;
@@ -211,8 +221,8 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
         return totalAcceptVarNum;
     }
 
-    public void setBr(ByteInputStream br) {
-        this.br = br;
+    public void setBr(BZPartReader br) {
+        this.bzSpider = br;
     }
 
     public void setMaxVarNum(int maxVarNum) {
@@ -307,12 +317,14 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
         sampleMafOverC = 1 - sampleMafOver;
         sampleMafLessC = 1 - sampleMafLess;
         needAccoundAffect = false;
-        if (!caeSetID.isEmpty()) {
+        if (caeSetID != null && caeSetID.length > 0) {
             needAccoundAffect = true;
+            caseSize = caeSetID.length;
         }
         needAccoundUnaffect = false;
-        if (!controlSetID.isEmpty()) {
+        if (controlSetID != null && controlSetID.length > 0) {
             needAccoundUnaffect = true;
+            controlSize = controlSetID.length;
         }
         if (orgGenome != null) {
             hasOrginalGenome = true;
@@ -348,22 +360,21 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
             maxVcfIndivNum += 1;
 
             gtyQuality = new int[maxVcfIndivNum];
-            gtys = new int[maxVcfIndivNum][2];
+            gtys = new int[maxVcfIndivNum + maxVcfIndivNum];
             gtyDepth = new int[maxVcfIndivNum];
             //read counts 0, 1,2,3
-            readCounts = new int[maxVcfIndivNum][2];
+            readCounts = new int[maxVcfIndivNum + maxVcfIndivNum];
             secondMostGtyPL = new int[maxVcfIndivNum];
             readFractions = new float[maxVcfIndivNum];
             bestGtyGP = new int[maxVcfIndivNum];
 
             Arrays.fill(readFractions, Float.NaN);
-            controlSize = controlSetID.size();
-            caseSize = caeSetID.size();
+
         }
 
     }
 
-    private static boolean equal(byte[] src, int start, int end, byte[] tar) {
+    private boolean equal(byte[] src, int start, int end, byte[] tar) {
         if (end - start != tar.length) {
             return false;
         }
@@ -375,7 +386,7 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
         return true;
     }
 
-     private static  int indexof(byte[] src, int start, int end, byte[] tar) {
+    private int indexof(byte[] src, int start, int end, byte[] tar) {
         if (end - start < tar.length) {
             return -1;
         }
@@ -395,7 +406,19 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
         }
         return -1;
     }
-    static int[] tempInt;
+
+    private int indexof(byte[] src, int start, int end, byte tar) {
+        if (end - start < 1) {
+            return -1;
+        }
+        for (int i = start; i < end; i++) {
+            if (tar == src[i]) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     /*
      public int[] tokenizeDelimiter(final byte[] string, final byte delimiter) {
      int strLen = string.length;
@@ -567,12 +590,10 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
      indexes[wordCount] = endI;
      }
      */
-
-      private  static  int[] tokenizeDelimiter(byte[] string, int startI, int endI, byte delimiter) {
+    private int[] tokenizeDelimiter(byte[] string, int startI, int endI, byte delimiter) {
         int tempLength = ((endI - startI) / 2) + 2;
         if (tempInt == null || tempInt.length < tempLength) {
             tempInt = new int[tempLength];
-
         }
 
         int i = startI;
@@ -617,7 +638,7 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
         return result;
     }
 
-     private static  void tokenizeDelimiter(byte[] string, int startI, int endI, byte delimiter, int[] indexes) {
+    private int tokenizeDelimiter(byte[] string, int startI, int endI, byte delimiter, int[] indexes) {
         int i = startI;
         int j = 0;
         int wordCount = 0;
@@ -652,10 +673,10 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
             // tempInt[wordCount++] = i;
             indexes[wordCount] = endI;
         }
-
+        return wordCount + 1;
     }
 
-     private static  float parseFloat(byte[] f, int start, int end) {
+    private float parseFloat(byte[] f, int start, int end) {
         float ret = 0f;         // return value
         int pos = start;          // read pointer position
         int part = 0;          // the current part (int, float and sci parts of the number)
@@ -725,7 +746,7 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
         return ret;
     }
 
-     private static  int parseInt(final byte[] s, int start, int end) {
+    private int parseInt(final byte[] s, int start, int end) {
         // Check for a sign.
         int num = 0;
         int sign = -1;
@@ -762,18 +783,56 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
         return sign * num;
     }
 
+    int gtyIndexInInfor = -1;
+    int gtyQualIndexInInfor = -1;
+    int gtyDepthIndexInInfor = -1;
+    int gtyAlleleDepthIndexInInfor = -1;
+    int gtyAltAlleleFracIndexInInfor = -1;
+    int gtyPLIndexInInfor = -1;
+    int gtyGPIndexInInfor = -1;
+
+    boolean hasIndexGT = false;
+    boolean hasIndexGQ = false;
+    boolean hasIndexDP = false;
+    boolean hasIndexAD = false;
+    boolean hasIndexFA = false;
+    boolean hasIndexPL = false;
+    boolean hasIndexGP = false;
+
+    byte[] gtBytes = "GT".getBytes();
+    byte[] gqBytes = "GQ".getBytes();
+    byte[] dpBytes = "DP".getBytes();
+    byte[] adBytes = "AD".getBytes();
+    byte[] faBytes = "FA".getBytes();
+    byte[] plBytes = "PL".getBytes();
+    byte[] gpBytes = "GP".getBytes();
+
     public int parseVariantsInFileOnlyFastToken() {
         byte[] currentLine = null;
         int[] cellDelimts = new int[maxEffectiveColVCF + 2];
         int acceptVarNum = 0;
-        int base = 0;
+
         byte[] sByte;
         byte[] tmpByte = new byte[100];
         int lastTmpByteIndex = 0;
+
+        int obsS;
+        String ref = null;
+        String alt = null;
+
+        String currChr = null;
+        int makerPostion = 0;
+        String varLabel = null;
+        String vcfLabel = null;
+        boolean incomplete = true;
+
+        double avgSeqQuality = 0;
+        double mappingQual;
+        double strandBias;
         try {
 
             //at most use 5 bits represent a genotype
-        /*
+            /*
              2 bits for an unphased -genotype of a bi-allelic sequence variants
              3 bits for a phased -genotype of a bi-allelic sequence variants
              3 bits for an unphased -genotype of a tri-allelic sequence variants
@@ -781,7 +840,7 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
              4 bits for an unphased -genotype of a quad-allelic sequence variants
              5 bits for a phased -genotype of a quad-allelic sequence variants        
              */
-            /*
+ /*
              if (caseIDSet.isEmpty()) {
              throw new Exception("It seems that you have no specified patients (labeled with \'2\') in your sample!"
              + " You need patient samples to proceed on KGGSeq!");
@@ -791,39 +850,39 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
             //unfornatuely, mine splitter is faster than guava
             //Splitter niceCommaSplitter = Splitter.on('\t').limit(maxEffectiveColVCF + 1);
             //String[] cellDelimts = new String[maxEffectiveColVCF + 1];
-            currentLine = br.readLine(cellDelimts);
-            if (currentLine == null) {
-                return 0;
-            }
             String inforS = null;
 
-            int bitNum;
-            int byteIndex1;
-            int byteIndex2;
-            byte[] gtBytes = "GT".getBytes();
-            byte[] gqBytes = "GQ".getBytes();
-            byte[] dpBytes = "DP".getBytes();
-            byte[] adBytes = "AD".getBytes();
-            byte[] faBytes = "FA".getBytes();
-            byte[] plBytes = "PL".getBytes();
-            byte[] gpBytes = "GP".getBytes();
+            int[] cellsBT = new int[maxGtyAlleleNum + 1 > 20 ? maxGtyAlleleNum + 1 : 20];
 
-            int[] cellsBT = new int[3];
-            int[] cellsPL = new int[4];
+            int[] cellsPL = new int[maxGtyAlleleNum * maxGtyAlleleNum + 1];
             int len;
             //warning if all of the genotypes are missing, it will have a problem.
             //decide the whether genotypes are phased or not //at most consider 3 alternative alleles
-            if (indexof(currentLine, 0, currentLine.length, ("0|0").getBytes()) >= 0 || indexof(currentLine, 0, currentLine.length, ("0|1").getBytes()) >= 0 || indexof(currentLine, 0, currentLine.length, ("1|0").getBytes()) >= 0 || indexof(currentLine, 0, currentLine.length, ("1|1").getBytes()) >= 0) {
-                isPhased = true;
-            }
-            do {
+            //note in the current version of GATK, the PGT are given as alternative
+            int[] formatCellIndexes;
+
+            /*
+             if (indexof(currentLine, 0, currentLine.length, ("0|0").getBytes()) >= 0 || indexof(currentLine, 0, currentLine.length, ("0|1").getBytes()) >= 0 || indexof(currentLine, 0, currentLine.length, ("1|0").getBytes()) >= 0 || indexof(currentLine, 0, currentLine.length, ("1|1").getBytes()) >= 0) {
+             isPhased = true;
+             }*/
+            //isPhased = false; 
+            int s = 0;
+            int sc = 0;
+            int subjectNum;
+            boolean hasNotCheckedPhase = true;
+            Integer chromID;
+            boolean isWithinRegion;
+            int vcfID;
+            int regionNum;
+            while ((currentLine = bzSpider.readLine(cellDelimts)) != null) {
                 totalVarNum++;
-                // System.out.println(currentLine); 
+                // System.out.println(new String(currentLine)); 
                 if (cellDelimts[0] == 0) {
                     continue;
                 }
-                if (tmpByte.length < currentLine.length) {
-                    tmpByte = new byte[currentLine.length];
+                if (tmpByte.length <= currentLine.length) {
+                    //the currentLine does not have line ending symbol
+                    tmpByte = new byte[currentLine.length + 1];
                 }
                 lastTmpByteIndex = 0;
                 //indexCHROM==0;
@@ -834,25 +893,69 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                     break;
                 }
 
-                //Mitochondrion
-                if (currChr.contains("T") || currChr.contains("t")) {
-                    currChr = "M";
-                } else {
-                    if (currChr.charAt(0) == 'c' || currChr.charAt(0) == 'C') {
-                        currChr = currChr.substring(3);
+                if (currChr.charAt(0) == 'c' || currChr.charAt(0) == 'C') {
+                    if (!hasChrLabel) {
+                        hasChrLabel = true;
                     }
+                    currChr = currChr.substring(3);
                 }
+                //Mitochondrion
+                if (currChr.charAt(0) == 'M' || currChr.charAt(0) == 'm') {
+                    currChr = "M";
+                }
+
                 //indexPOS=1;
                 makerPostion = parseInt(currentLine, cellDelimts[indexPOS] + 1, cellDelimts[indexPOS + 1]);
 
-//System.out.println(makerPostion);
-              
+                chromID = chromNameIndexMap.get(currChr);
+                if (chromID == null) {
+                    //System.err.println("Unrecognized chromosome name: " + currChr);
+                    continue;
+                }
+
+                if (isRegionInModel) {
+                    int[] pos = regionsIn[chromID];
+                    if (pos == null) {
+                        ignoredVarByRegionsInNum++;
+                        continue;
+                    }
+                    isWithinRegion = false;
+                    regionNum = pos.length / 2;
+                    for (int k = 0; k < regionNum; k++) {
+                        if (makerPostion >= pos[k * 2] && makerPostion <= pos[k * 2 + 1]) {
+                            isWithinRegion = true;
+                            break;
+                        }
+                    }
+
+                    if (!isWithinRegion) {
+                        ignoredVarByRegionsInNum++;
+                        continue;
+                    }
+                }
+
+                if (isRegionOutModel) {
+                    int[] pos = regionsOut[chromID];
+                    if (pos != null) {
+                        isWithinRegion = false;
+                        regionNum = pos.length / 2;
+                        for (int k = 0; k < regionNum; k++) {
+                            if (makerPostion >= pos[k * 2] && makerPostion <= pos[k * 2 + 1]) {
+                                isWithinRegion = true;
+                                break;
+                            }
+                        }
+                        if (isWithinRegion) {
+                            ignoredVarByRegionsOutNum++;
+                            continue;
+                        }
+                    }
+                }
+
                 /*
-                 if (makerPostion == 142728364) {                    
+                 if (makerPostion == 56102470) {
                  int sss = 0;
-              
-                 } 
-                 */
+                 }*/
                 //indexID=2
                 sByte = Arrays.copyOfRange(currentLine, cellDelimts[indexID] + 1, cellDelimts[indexID + 1]);
                 varLabel = new String(sByte);
@@ -888,7 +991,7 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                         altAllelesIndexes[ss] = alt;
                     } else if (ref.length() < alt.length()) {
                         //insertion
-                                /*examples 
+                        /*examples 
                          insertion1
                          chr1 1900106 . TCT TCTCCT 217 . INDEL;DP=62;AF1=0.5;CI95=0.5,0.5;DP4=17,9,18,12;MQ=60;FQ=217;PV4=0.78,1,1,0.1 GT:PL:DP:SP:GQ 0/1:255,0,255:56:-991149567:99
                         
@@ -915,7 +1018,7 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                         isIndel = true;
                     } else if (ref.length() > alt.length()) {
                         //deletion     
-                                /*examples
+                        /*examples
                          deletion1
                          chr1 113659065 . ACTCT ACT 214 . INDEL;DP=61;AF1=1;CI95=1,1;DP4=0,0,22,34;MQ=60;FQ=-204 GT:PL:DP:SP:GQ 1/1:255,169,0:56:-991149568:99
                          deletion2
@@ -939,7 +1042,6 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                             tmpSB.append(alt);
                             altAllelesIndexes[ss] = tmpSB.toString();
                         }
-
                         isIndel = true;
                     } else {
                         StringBuilder info = new StringBuilder("Unexpected (REF	ALT) format when parsing line :" + currentLine);
@@ -974,13 +1076,13 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                     }
                 }
 
-                if (hasOrginalGenome) {
-                    Variant[] vars = orgGenome.lookupVariants(currChr, makerPostion, isIndel, ref, altAllelesIndexes);
-                    if (vars == null) {
-                        continue;
-                    }
-                }
-
+                /*
+                 if (hasOrginalGenome) {
+                 Variant[] vars = orgGenome.lookupVariants(currChr, makerPostion, isIndel, ref, altAllelesIndexes);
+                 if (vars == null) {
+                 continue;
+                 }
+                 }*/
                 //initialize varaibles
                 incomplete = true;
                 obsS = 0;
@@ -1028,6 +1130,7 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                     if (avgSeqQuality < avgSeqQualityThrehsold) {
                         filterOutLowQualNum++;
                         isLowQualBreak = true;
+
                         continue;
                     }
                 }
@@ -1096,11 +1199,6 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                     }
                 }
 
-                Integer chromID = chromNameIndexMap.get(currChr);
-                if (chromID == null) {
-                    //System.err.println("Unrecognized chromosome name: " + currChr);
-                    continue;
-                }
                 //it is no gty vcf
                 if (indexFORMAT < 0 || noGtyVCF) {
                     Variant var = new Variant(makerPostion, ref, altAllelesIndexes);
@@ -1118,15 +1216,12 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                 }
 
                 if (maxVcfIndivNum > 0) {
-                    for (int[] gty : gtys) {
-                        gty[0] = -1;
-                        gty[1] = -1;
-                    }
+                    Arrays.fill(gtys, -1);
                 }
 
                 //System.out.println(currentLine);
                 //StringTokenizer st1 = new StringTokenizer(tmpBuffer.toString(), ":"); 
-                int[] formatCellIndexes = tokenizeDelimiter(currentLine, cellDelimts[indexFORMAT] + 1, cellDelimts[indexFORMAT + 1], (byte) ':');
+                formatCellIndexes = tokenizeDelimiter(currentLine, cellDelimts[indexFORMAT] + 1, cellDelimts[indexFORMAT + 1], (byte) ':');
 
                 // String[] cells1 = Util.tokenize(cellDelimts[indexFORMAT], ':');
                 ii = 0;
@@ -1141,25 +1236,22 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                         if (gtyQualityThrehsold > 0) {
                             gtyQualIndexInInfor = ii;
                             hasIndexGQ = true;
-                            maxIndex2 = ii;
-                            Arrays.fill(gtyQuality, 0);
+                            maxIndex2 = ii;                            
+                            Arrays.fill(gtyQuality, Integer.MAX_VALUE);
                         }
                     } else if (equal(currentLine, ii == 0 ? formatCellIndexes[ii] : formatCellIndexes[ii] + 1, formatCellIndexes[ii + 1], dpBytes)) {
                         if (minGtySeqDepth > 0) {
                             gtyDepthIndexInInfor = ii;
                             hasIndexDP = true;
                             maxIndex2 = ii;
-                            Arrays.fill(gtyDepth, 0);
+                            Arrays.fill(gtyDepth, Integer.MAX_VALUE);
                         }
                     } else if (equal(currentLine, ii == 0 ? formatCellIndexes[ii] : formatCellIndexes[ii] + 1, formatCellIndexes[ii + 1], adBytes)) {
                         if (altAlleleFracRefHomThrehsold < 1 || altAlleleFractHetThrehsold > 0 || altAlleleFractAltHomThrehsold > 0 || needReadsInfor) {
                             gtyAlleleDepthIndexInInfor = ii;
                             hasIndexAD = true;
                             maxIndex2 = ii;
-                            for (int[] readCount : readCounts) {
-                                readCount[0] = -1;
-                                readCount[1] = -1;
-                            }
+                            Arrays.fill(readCounts, -1);
                             Arrays.fill(readFractions, Float.NaN);
                         }
                     } else if (equal(currentLine, ii == 0 ? formatCellIndexes[ii] : formatCellIndexes[ii] + 1, formatCellIndexes[ii + 1], faBytes)) {
@@ -1174,23 +1266,20 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                             gtyPLIndexInInfor = ii;
                             hasIndexPL = true;
                             maxIndex2 = ii;
-                            Arrays.fill(secondMostGtyPL, 0);
+                            Arrays.fill(secondMostGtyPL, Integer.MAX_VALUE);
                         }
                     } else if (equal(currentLine, ii == 0 ? formatCellIndexes[ii] : formatCellIndexes[ii] + 1, formatCellIndexes[ii + 1], gpBytes)) {
                         if (minBestGP > 0) {
                             gtyGPIndexInInfor = ii;
                             hasIndexGP = true;
                             maxIndex2 = ii;
-                            Arrays.fill(bestGtyGP, 0);
+                            Arrays.fill(bestGtyGP, Integer.MAX_VALUE);
                         }
                     }
                 }
 
                 //1/1:0,2:2:6.02:70,6,0	./.
                 indexA = -1;
-                int s = 0;
-                int sc = 0;
-
                 for (int k = 0; k < effectiveIndivNum; k++) {
                     iGty = effectIndivIDInVCF.getQuick(k);
                     s = iGty + indexFORMAT + 1;
@@ -1202,37 +1291,55 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                      */
 //ASCII .
                     if (currentLine[cellDelimts[s] + 1] == 46) {
-                        gtys[iGty][0] = -1;
-                        gtys[iGty][1] = -1;
+                        gtys[((iGty << 1))] = -1;
+                        gtys[((iGty << 1)) + 1] = -1;
                         continue;
                     }
-
+//                    System.out.println(k);
                     //':':58
+
+                    Arrays.fill(formatCellIndexes, -1);
                     tokenizeDelimiter(currentLine, cellDelimts[s] + 1, cellDelimts[s + 1], (byte) 58, formatCellIndexes);
+                    
+                    //Sometimes, the forma is 
+                    if (gtyIndexInInfor >= 0 && formatCellIndexes[gtyIndexInInfor] > 0 && formatCellIndexes[gtyIndexInInfor + 1] > 0) {
+                        if (hasNotCheckedPhase) {
+                            //'|' 124                        
+                            if (indexof(currentLine, gtyIndexInInfor == 0 ? formatCellIndexes[gtyIndexInInfor] : formatCellIndexes[gtyIndexInInfor] + 1, formatCellIndexes[gtyIndexInInfor + 1], (byte) 124) > 0
+                                    && indexof(currentLine, gtyIndexInInfor == 0 ? formatCellIndexes[gtyIndexInInfor] : formatCellIndexes[gtyIndexInInfor] + 1, formatCellIndexes[gtyIndexInInfor + 1], (byte) 47) < 0) {
+                                isPhased = true;
+                                hasNotCheckedPhase = false;
+                            } else if (indexof(currentLine, gtyIndexInInfor == 0 ? formatCellIndexes[gtyIndexInInfor] : formatCellIndexes[gtyIndexInInfor] + 1, formatCellIndexes[gtyIndexInInfor + 1], (byte) 124) < 0
+                                    && indexof(currentLine, gtyIndexInInfor == 0 ? formatCellIndexes[gtyIndexInInfor] : formatCellIndexes[gtyIndexInInfor] + 1, formatCellIndexes[gtyIndexInInfor + 1], (byte) 47) > 0) {
+                                isPhased = false;
+                                hasNotCheckedPhase = false;
+                            }
+
+                        }
 //Note this function is slower
 //sByte = Arrays.copyOfRange(currentLine, cellDelimts[s] + 1, cellDelimts[s + 1]);
-                    //tokenizeDelimiter(sByte, 0, sByte.length, (byte) ':', formatCellIndexes);
-                    if (gtyIndexInInfor >= 0) {
+                        //tokenizeDelimiter(sByte, 0, sByte.length, (byte) ':', formatCellIndexes); 
+
                         Arrays.fill(cellsBT, -1);
                         if (isPhased) {
-                            //'/' 124
+                            //'|' 124
                             tokenizeDelimiter(currentLine, gtyIndexInInfor == 0 ? formatCellIndexes[gtyIndexInInfor] : formatCellIndexes[gtyIndexInInfor] + 1, formatCellIndexes[gtyIndexInInfor + 1], (byte) 124, cellsBT);
                             //tokenizeDelimiter(sByte, gtyIndexInInfor == 0 ? formatCellIndexes[gtyIndexInInfor] : formatCellIndexes[gtyIndexInInfor] + 1, formatCellIndexes[gtyIndexInInfor + 1], (byte) '|', cellsBT);
                         } else {
                             //'/' 47
                             tokenizeDelimiter(currentLine, gtyIndexInInfor == 0 ? formatCellIndexes[gtyIndexInInfor] : formatCellIndexes[gtyIndexInInfor] + 1, formatCellIndexes[gtyIndexInInfor + 1], (byte) 47, cellsBT);
                         }
-                        gtys[iGty][0] = parseInt(currentLine, cellsBT[0], cellsBT[1]);
+                        gtys[(iGty << 1)] = parseInt(currentLine, cellsBT[0], cellsBT[1]);
                         //gtys[iGty][0] = parseInt(sByte, cellsBT[0], cellsBT[1]);
                         if (cellsBT[2] > 0) {
-                            gtys[iGty][1] = parseInt(currentLine, cellsBT[1] + 1, cellsBT[2]);
+                            gtys[(iGty << 1) + 1] = parseInt(currentLine, cellsBT[1] + 1, cellsBT[2]);
                             // gtys[iGty][1] = parseInt(sByte, cellsBT[1] + 1, cellsBT[2]);
                         } else {
-                            gtys[iGty][1] = gtys[iGty][0];
+                            gtys[(iGty << 1) + 1] = gtys[(iGty << 1)];
                         }
-                    }
 
-                    if (gtyQualIndexInInfor >= 0) {
+                    }
+                    if (gtyQualIndexInInfor >= 0 && formatCellIndexes[gtyQualIndexInInfor] > 0 && formatCellIndexes[gtyQualIndexInInfor + 1] > 0) {
                         if (currentLine[gtyQualIndexInInfor == 0 ? formatCellIndexes[gtyQualIndexInInfor] : formatCellIndexes[gtyQualIndexInInfor] + 1] == 46) {
                             gtyQuality[iGty] = 0;
                         } else {
@@ -1240,35 +1347,50 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                         }
 
                     }
-                    if (gtyDepthIndexInInfor >= 0) {
+                    if (gtyDepthIndexInInfor >= 0 && formatCellIndexes[gtyDepthIndexInInfor] > 0 && formatCellIndexes[gtyDepthIndexInInfor + 1] > 0) {
                         if (currentLine[gtyDepthIndexInInfor == 0 ? formatCellIndexes[gtyDepthIndexInInfor] : formatCellIndexes[gtyDepthIndexInInfor] + 1] == 46) {
                             gtyDepth[iGty] = 0;
                         } else {
                             gtyDepth[iGty] = parseInt(currentLine, gtyDepthIndexInInfor == 0 ? formatCellIndexes[gtyDepthIndexInInfor] : formatCellIndexes[gtyDepthIndexInInfor] + 1, formatCellIndexes[gtyDepthIndexInInfor + 1]);
-                            if (indexA == -1 && readCounts[iGty][0] > 0 && gtyAlleleDepthIndexInInfor != -1 && gtyDepthIndexInInfor > gtyAlleleDepthIndexInInfor) {
-                                readCounts[iGty][1] = gtyDepth[iGty] - readCounts[iGty][0];
+                            if (indexA == -1 && readCounts[(iGty << 1)] > 0 && gtyAlleleDepthIndexInInfor != -1 && gtyDepthIndexInInfor > gtyAlleleDepthIndexInInfor) {
+                                readCounts[(iGty << 1) + 1] = gtyDepth[iGty] - readCounts[(iGty << 1)];
                             }
                         }
 
                     }
 
-                    if (gtyAlleleDepthIndexInInfor >= 0) {                          
+                    // the format is a little bit compex. e.g., GT:AD:DP:GQ:PL	3/3:0,0,0,40:60:56:1200,1307,1629,1257,1440,1527,56,93,139,0
+                    if (gtyAlleleDepthIndexInInfor >= 0 && formatCellIndexes[gtyAlleleDepthIndexInInfor] > 0 && formatCellIndexes[gtyAlleleDepthIndexInInfor + 1] > 0) {
                         if (currentLine[gtyAlleleDepthIndexInInfor == 0 ? formatCellIndexes[gtyAlleleDepthIndexInInfor] : formatCellIndexes[gtyAlleleDepthIndexInInfor] + 1] != 46) {
                             Arrays.fill(cellsBT, -1);
-                            tokenizeDelimiter(currentLine, gtyAlleleDepthIndexInInfor == 0 ? formatCellIndexes[gtyAlleleDepthIndexInInfor] : formatCellIndexes[gtyAlleleDepthIndexInInfor] + 1, formatCellIndexes[gtyAlleleDepthIndexInInfor + 1], (byte) 44, cellsBT);
-                            if (cellsBT[2] < 0) {
+                            len = tokenizeDelimiter(currentLine, gtyAlleleDepthIndexInInfor == 0 ? formatCellIndexes[gtyAlleleDepthIndexInInfor] : formatCellIndexes[gtyAlleleDepthIndexInInfor] + 1, formatCellIndexes[gtyAlleleDepthIndexInInfor + 1], (byte) 44, cellsBT);
+                            if (len < 3) {
                                 indexA = -1;
                                 if (gtyDepthIndexInInfor < gtyAlleleDepthIndexInInfor) {
-                                    readCounts[iGty][1] = parseInt(currentLine, cellsBT[0], cellsBT[1]);
-                                    readCounts[iGty][0] = gtyDepth[iGty] - readCounts[iGty][1];
+                                    readCounts[(iGty << 1) + 1] = parseInt(currentLine, cellsBT[0], cellsBT[1] + 1);
+                                    readCounts[(iGty << 1)] = gtyDepth[iGty] - readCounts[(iGty << 1) + 1];
                                 }
                             } else {
-                                readCounts[iGty][0] = parseInt(currentLine, cellsBT[0], cellsBT[1]);
-                                readCounts[iGty][1] = parseInt(currentLine, cellsBT[1] + 1, cellsBT[2]);
+                                readCounts[(iGty << 1)] = parseInt(currentLine, cellsBT[0], cellsBT[1] + 1);
+                                readCounts[(iGty << 1) + 1] = 0;
+                                len = len - 1;
+                                for (t = 1; t < len; t++) {
+                                    //.
+                                    if (currentLine[cellsBT[t] + 1] == 46) {
+                                        continue;
+                                    }
+                                    //'0' : 48
+                                    if (currentLine[cellsBT[t] + 1] == 48) {
+                                        continue;
+                                    }
+                                    sc = parseInt(currentLine, cellsBT[t] + 1, cellsBT[t + 1]);
+                                    readCounts[(iGty << 1) + 1] += sc;
+                                }
                             }
                         }
+
                     }
-                    if (gtyAltAlleleFracIndexInInfor >= 0) {
+                    if (gtyAltAlleleFracIndexInInfor >= 0 && formatCellIndexes[gtyAltAlleleFracIndexInInfor] > 0 && formatCellIndexes[gtyAltAlleleFracIndexInInfor + 1] > 0) {
                         if (currentLine[gtyAltAlleleFracIndexInInfor == 0 ? formatCellIndexes[gtyAltAlleleFracIndexInInfor] : formatCellIndexes[gtyAltAlleleFracIndexInInfor] + 1] == 46) {
                             readFractions[iGty] = Float.NaN;
                         } else {
@@ -1276,9 +1398,9 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                         }
                     }
 
-                    if (gtyPLIndexInInfor >= 0) {
+                    if (gtyPLIndexInInfor >= 0 && formatCellIndexes[gtyPLIndexInInfor] > 0 && formatCellIndexes[gtyPLIndexInInfor + 1] > 0) {
                         if (currentLine[gtyPLIndexInInfor == 0 ? formatCellIndexes[gtyPLIndexInInfor] : formatCellIndexes[gtyPLIndexInInfor] + 1] != 46) {
-                            tokenizeDelimiter(currentLine, gtyPLIndexInInfor == 0 ? formatCellIndexes[gtyPLIndexInInfor] : formatCellIndexes[gtyPLIndexInInfor] + 1, formatCellIndexes[gtyPLIndexInInfor + 1], (byte) 44, cellsPL);
+                            len = tokenizeDelimiter(currentLine, gtyPLIndexInInfor == 0 ? formatCellIndexes[gtyPLIndexInInfor] : formatCellIndexes[gtyPLIndexInInfor] + 1, formatCellIndexes[gtyPLIndexInInfor + 1], (byte) 44, cellsPL);
 
                             if (currentLine[gtyPLIndexInInfor == 0 ? formatCellIndexes[gtyPLIndexInInfor] : formatCellIndexes[gtyPLIndexInInfor] + 1] != 46) {
                                 secondMostGtyPL[iGty] = parseInt(currentLine, cellsPL[0], cellsPL[1]);
@@ -1288,8 +1410,9 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                             } else {
                                 secondMostGtyPL[iGty] = Integer.MAX_VALUE;
                             }
-                            len = cellsPL.length - 1;
+                            len = len - 1;
                             for (t = 1; t < len; t++) {
+                                //.
                                 if (currentLine[cellsPL[t] + 1] == 46) {
                                     continue;
                                 }
@@ -1298,15 +1421,16 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                                     continue;
                                 }
                                 sc = parseInt(currentLine, cellsPL[t] + 1, cellsPL[t + 1]);
+
                                 if (sc < secondMostGtyPL[iGty]) {
                                     secondMostGtyPL[iGty] = sc;
                                 }
                             }
                         }
                     }
-                    if (gtyGPIndexInInfor >= 0) {
+                    if (gtyGPIndexInInfor >= 0 && formatCellIndexes[gtyGPIndexInInfor] > 0 && formatCellIndexes[gtyGPIndexInInfor + 1] > 0) {
                         if (currentLine[gtyGPIndexInInfor == 0 ? formatCellIndexes[gtyGPIndexInInfor] : formatCellIndexes[gtyGPIndexInInfor] + 1] != 46) {
-                            tokenizeDelimiter(currentLine, gtyGPIndexInInfor == 0 ? formatCellIndexes[gtyGPIndexInInfor] : formatCellIndexes[gtyGPIndexInInfor] + 1, formatCellIndexes[gtyGPIndexInInfor], (byte) 44, cellsPL);
+                            len = tokenizeDelimiter(currentLine, gtyGPIndexInInfor == 0 ? formatCellIndexes[gtyGPIndexInInfor] : formatCellIndexes[gtyGPIndexInInfor] + 1, formatCellIndexes[gtyGPIndexInInfor], (byte) 44, cellsPL);
 
                             if (currentLine[formatCellIndexes[gtyGPIndexInInfor - 1] + 1] != 46) {
                                 bestGtyGP[iGty] = parseInt(currentLine, cellsPL[0], cellsPL[1]);
@@ -1316,7 +1440,7 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                             } else {
                                 bestGtyGP[iGty] = Integer.MAX_VALUE;
                             }
-                            len = cellsPL.length - 1;
+                            len = len - 1;
                             for (t = 1; t < len; t++) {
                                 if (currentLine[cellsPL[t] + 1] == 46) {
                                     continue;
@@ -1342,116 +1466,7 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                  * 
                  */
                 //QC
-                for (int k = totalPedSubjectNum - 1; k >= 0; k--) {
-                    index = pedVCFIDMap[k];
-                    if (index < 0) {
-                        continue;
-                    }
-
-                    //ignore variants with missing genotypes
-                    if (gtys[index][0] == -1) {
-                        missingGtyNum++;
-                        continue;
-                    }
-
-                    if (hasIndexGQ && gtyQuality[index] < gtyQualityThrehsold) {
-                        gtys[index][0] = -1;
-                        gtys[index][1] = -1;
-                        ignoredLowQualGtyNum++;
-                        continue;
-                    }
-                    if (hasIndexDP && gtyDepth[index] < minGtySeqDepth) {
-                        gtys[index][0] = -1;
-                        gtys[index][1] = -1;
-                        ignoredLowDepthGtyNum++;
-                        continue;
-                    }
-                    if (hasIndexPL && secondMostGtyPL[index] < minSecondPL) {
-                        ignoredLowPLGtyNum++;
-                        gtys[index][0] = -1;
-                        gtys[index][1] = -1;
-                        continue;
-                    }
-                    if (hasIndexGP && bestGtyGP[index] < minBestGP) {
-                        ignoredLowGPGtyNum++;
-                        gtys[index][0] = -1;
-                        gtys[index][1] = -1;
-                        continue;
-                    }
-
-                    if (hasIndexAD || hasIndexFA) {
-                        if (gtys[index][0] == 0 && gtys[index][1] == 0) {
-                            if (altAlleleFracRefHomThrehsold < 1) {
-                                //the AD infor may be missing
-                                if (readCounts[index][0] == -1 && Float.isNaN(readFractions[index])) {
-                                    continue;
-                                }
-                                if (Float.isNaN(readFractions[index])) {
-                                    readFractions[index] = (float) (((double) readCounts[index][1]) / (readCounts[index][0] + readCounts[index][1]));
-                                }
-
-                                if (Float.isNaN(readFractions[index])) {
-                                    gtys[index][0] = -1;
-                                    gtys[index][1] = -1;
-                                    ignoredBadAltFracGtyNum++;
-                                    continue;
-                                } else if (readFractions[index] > altAlleleFracRefHomThrehsold) {
-                                    gtys[index][0] = -1;
-                                    gtys[index][1] = -1;
-                                    ignoredBadAltFracGtyNum++;
-                                    continue;
-                                }
-
-                            }
-                        } else if (gtys[index][0] != gtys[index][1]) {
-                            if (altAlleleFractHetThrehsold > 0) {
-                                //the AD infor may be missing
-                                if (readCounts[index][0] == -1 && Float.isNaN(readFractions[index])) {
-                                    continue;
-                                }
-                                if (Float.isNaN(readFractions[index])) {
-                                    readFractions[index] = (float) (((double) readCounts[index][1]) / (readCounts[index][0] + readCounts[index][1]));
-                                }
-                                if (Float.isNaN(readFractions[index])) {
-                                    gtys[index][0] = -1;
-                                    gtys[index][1] = -1;
-                                    ignoredBadAltFracGtyNum++;
-                                    continue;
-                                } else if (readFractions[index] < altAlleleFractHetThrehsold) {
-                                    gtys[index][0] = -1;
-                                    gtys[index][1] = -1;
-                                    ignoredBadAltFracGtyNum++;
-                                    continue;
-                                }
-                            }
-
-                        } else {
-                            if (altAlleleFractAltHomThrehsold > 0) {
-                                //the AD infor may be missing
-                                if (readCounts[index][1] == -1 && Float.isNaN(readFractions[index])) {
-                                    continue;
-                                }
-                                if (Float.isNaN(readFractions[index])) {
-                                    readFractions[index] = (float) (((double) readCounts[index][1]) / (readCounts[index][0] + readCounts[index][1]));
-                                }
-                                if (Float.isNaN(readFractions[index])) {
-                                    gtys[index][0] = -1;
-                                    gtys[index][1] = -1;
-                                    ignoredBadAltFracGtyNum++;
-                                    continue;
-                                } else if (readFractions[index] < altAlleleFractAltHomThrehsold) {
-                                    gtys[index][0] = -1;
-                                    gtys[index][1] = -1;
-                                    ignoredBadAltFracGtyNum++;
-                                    continue;
-                                }
-                            }
-                        }
-                    }
-                    obsS++;
-                }
-
-
+                obsS = genotypeQC();
                 /*
                  if (obsS == 0) {
                  ignoredLineNumNoVar++;
@@ -1474,36 +1489,34 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                         if (idLabel < 0) {
                             continue;
                         }
-                        if (gtys[idLabel][0] == -1) {
+                        if (gtys[(idLabel << 1)] == -1) {
                             continue;
                         }
-                        if (gtys[idLabel][1] == -1) {
-                            if (gtys[idLabel][0] == 0) {
+                        if (gtys[(idLabel << 1) + 1] == -1) {
+                            if (gtys[(idLabel << 1)] == 0) {
                                 g11++;
                             } else {
                                 g22++;
                             }
+                        } else if (gtys[(idLabel << 1)] != gtys[(idLabel << 1) + 1]) {
+                            g12++;
+                        } else if (gtys[(idLabel << 1)] == 0) {
+                            g11++;
                         } else {
-                            if (gtys[idLabel][0] != gtys[idLabel][1]) {
-                                g12++;
-                            } else if (gtys[idLabel][0] == 0) {
-                                g11++;
-                            } else {
-                                g22++;
-                            }
+                            g22++;
                         }
                     }
                 }
                 if (needMAFQCOver || needMAFQCLess) {
                     maf = (g12 * 0.5 + g22) / (g11 + g12 + g22);
                     if (needMAFQCOver) {
-                        if (maf <= sampleMafOver || maf >= sampleMafOverC) {
+                        if (Double.isNaN(maf) || maf <= sampleMafOver || maf >= sampleMafOverC) {
                             ignoredLineNumMinMAF++;
                             continue;
                         }
                     }
                     if (needMAFQCLess) {
-                        if (maf >= sampleMafLess && maf <= sampleMafLessC) {
+                        if (Double.isNaN(maf) || maf >= sampleMafLess && maf <= sampleMafLessC) {
                             ignoredLineNumMaxMAF++;
                             continue;
                         }
@@ -1520,212 +1533,32 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                     lastTmpByteIndex = cellDelimts[9];
                 }
 
-                int subjectNum = subjectList.size();
                 if (needGty) {
-                    int byteNum = 0;
-                    //as the genotypes may be use for other purpose so we need record it before filtering 
-                    if (!isPhased) {
-                        base = GlobalManager.unphasedAlleleBitMap.get(alleleNum);
-                        bitNum = base * subjectNum;
-
-                        if (bitNum % 32 != 0) {
-                            byteNum = bitNum / 32 + 1;
-                        } else {
-                            byteNum = bitNum / 32;
-                        }
-
-                        var.encodedGty = new int[byteNum];
-                        Arrays.fill(var.encodedGty, 0);
-                        for (index = 0; index < totalPedSubjectNum; index++) {
-                            int idLabel = pedVCFIDMap[index];
-                            if (idLabel < 0) {
-                                continue;
-                            }
-
-                            /*
-                             missing	Reference homozygous	Heterozygous 	Alternative homozygous
-                             VCF genotype	./.	0/0	0/1	1/1
-                             Bits	00  	01	10	11
-                             Order	0	1	2	3        
-                             */
-
-                            /*
-                             missing	Reference homozygous	Heterozygous 	Heterozygous	Alternative homozygous	Heterozygous	Alternative homozygous
-                             VCF genotype	./.	0/0	0/1	0/2	1/1	1/2	2/2
-                             Bits	        000	001	010	011	100	101	110
-                             Order	0	1	2	3	4	5	6 
-                             */
-                            /*
-                             I.III Quad-allelic sequence variant (4 bits)
-                             missing 	Reference homozygous 	Heterozygous 	Heterozygous 	Heterozygous 	Alternative homozygous 	Heterozygous
-                             VCF genotype 	./. 	0/0 	0/1 	0/2 	0/3 	1/1 	1/2
-                             Bits 	      000 	0001 	0010 	0011 	0100 	0101 	0110
-                             Decimal 	0 	1 	2 	3 	4 	5 	6
-                             Heterozygous 	Alternative homozygous 	Heterozygous 	Alternative homozygous
-                             VCF genotype 	1/3 	2/2 	2/3 	3/3
-                             Bits 	     0111 	1000 	1001 	1010
-                             Decimal 	7 	8 	9 	10                               
-                             */
-                            bitNum = base * index;
-                            if (gtys[idLabel][0] == -1) {
-                                //missing value         
-                                continue;
-                            } else {
-                                switch (alleleNum) {
-                                    case 2:
-                                        /*
-                                         missing	Reference homozygous	Heterozygous 	Alternative homozygous
-                                         VCF genotype	./.	0/0	0/1	1/1
-                                         Bits	00  	01	10	11
-                                         Order	0	1	2	3        
-                                         */
-
-                                        //to speedup the analysis
-                                        if (gtys[idLabel][0] == 0 && gtys[idLabel][1] == 0) {
-
-                                            byteIndex1 = (bitNum + 1) / 32;
-                                            byteIndex2 = (bitNum + 1) % 32;
-                                            // System.out.println(Integer.toBinaryString(var.encodedGty[byteIndex1]));
-                                            var.encodedGty[byteIndex1] = var.encodedGty[byteIndex1] | GlobalManager.intOpers[byteIndex2];
-                                            //System.out.println(Integer.toBinaryString(var.encodedGty[byteIndex1]));
-                                        } else if (gtys[idLabel][0] == 0 && gtys[idLabel][1] == 1 || gtys[idLabel][0] == 1 && gtys[idLabel][1] == 0) {
-                                            byteIndex1 = (bitNum) / 32;
-                                            byteIndex2 = (bitNum) % 32;
-                                            // System.out.println(Integer.toBinaryString(var.encodedGty[byteIndex1]));
-                                            var.encodedGty[byteIndex1] = var.encodedGty[byteIndex1] | GlobalManager.intOpers[byteIndex2];
-                                            // System.out.println(Integer.toBinaryString(var.encodedGty[byteIndex1]));
-                                        } else if (gtys[idLabel][0] == 1 && gtys[idLabel][1] == 1) {
-                                            byteIndex1 = (bitNum) / 32;
-                                            byteIndex2 = (bitNum) % 32;
-                                            var.encodedGty[byteIndex1] = var.encodedGty[byteIndex1] | GlobalManager.intOpers[byteIndex2];
-                                            byteIndex1 = (bitNum + 1) / 32;
-                                            byteIndex2 = (bitNum + 1) % 32;
-                                            var.encodedGty[byteIndex1] = var.encodedGty[byteIndex1] | GlobalManager.intOpers[byteIndex2];
-                                        }
-                                        break;
-                                    default:
-                                        boolean[] bits = GlobalManager.unphasedGtyCodingMap.get(gtys[idLabel] + ":" + alleleNum);
-                                        for (int i = 0; i < base; i++) {
-                                            if (bits[i]) {
-                                                byteIndex1 = (bitNum + i) / 32;
-                                                byteIndex2 = (bitNum + i) % 32;
-                                                var.encodedGty[byteIndex1] = var.encodedGty[byteIndex1] | GlobalManager.intOpers[byteIndex2];
-                                            }
-                                        }
-                                }
-                            }
-                        }
-                    } else {
-                        base = GlobalManager.phasedAlleleBitMap.get(alleleNum);
-                        bitNum = base * subjectNum;
-
-                        if (bitNum % 32 != 0) {
-                            byteNum = bitNum / 32 + 1;
-                        } else {
-                            byteNum = bitNum / 32;
-                        }
-
-                        var.encodedGty = new int[byteNum];
-                        Arrays.fill(var.encodedGty, 0);
-
-                        for (index = 0; index < totalPedSubjectNum; index++) {
-                            int idLabel = pedVCFIDMap[index];
-                            if (idLabel < 0) {
-                                continue;
-                            }
-                            bitNum = base * index;
-                            if (gtys[idLabel][0] == -1) {
-                                //missing value         
-                                continue;
-                            } else {
-                                switch (alleleNum) {
-                                    case 2:
-                                        /*       
-                                         missing	Reference homozygous	Heterozygous 	Heterozygous 	Alternative homozygous
-                                         VCF genotype	.|.	0|0	0|1	1|0	1|1
-                                         Bits	        000  	001	010	011	100
-                                         Order	0	1	2	3	4                
-               
-                                         II.II Tri-allelic sequence variant (4 bits)
-                                         missing 	Reference homozygous 	Heterozygous 	Heterozygous 	Heterozygous 	Heterozygous 	Alternative homozygous
-                                         VCF genotype 	.|. 	0|0 	0|1 	0|2 	1|0 	1|1 	1|2
-                                         Bits      	000 	0001 	0010 	0011 	0100 	0101 	0110
-                                         Decimal 	0 	1 	2 	3 	4 	5 	6
-                                         Heterozygous 	Heterozygous 	Alternative homozygous
-                                         VCF genotype 	2|0 	2|1 	2|2
-                                         Bits     	0111 	1000 	1001
-                                         Decimal 	7 	8 	9     
-                                         */
-
-                                        //to speedup the analysis
-                                        if (gtys[idLabel][0] == 0 && gtys[idLabel][1] == 0) {
-                                            byteIndex1 = (bitNum + 2) / 32;
-                                            byteIndex2 = (bitNum + 2) % 32;
-                                            // System.out.println(Integer.toBinaryString(var.encodedGty[byteIndex1]));
-                                            var.encodedGty[byteIndex1] = var.encodedGty[byteIndex1] | GlobalManager.intOpers[byteIndex2];
-                                            //System.out.println(Integer.toBinaryString(var.encodedGty[byteIndex1]));
-                                        } else if (gtys[idLabel][0] == 0 && gtys[idLabel][1] == 1) {
-                                            byteIndex1 = (bitNum + 1) / 32;
-                                            byteIndex2 = (bitNum + 1) % 32;
-                                            // System.out.println(Integer.toBinaryString(var.encodedGty[byteIndex1]));
-                                            var.encodedGty[byteIndex1] = var.encodedGty[byteIndex1] | GlobalManager.intOpers[byteIndex2];
-                                            // System.out.println(Integer.toBinaryString(var.encodedGty[byteIndex1]));
-                                        } else if (gtys[idLabel][0] == 1 && gtys[idLabel][1] == 0) {
-                                            byteIndex1 = (bitNum + 1) / 32;
-                                            byteIndex2 = (bitNum + 1) % 32;
-                                            // System.out.println(Integer.toBinaryString(var.encodedGty[byteIndex1]));
-                                            var.encodedGty[byteIndex1] = var.encodedGty[byteIndex1] | GlobalManager.intOpers[byteIndex2];
-                                            byteIndex1 = (bitNum + 2) / 32;
-                                            byteIndex2 = (bitNum + 2) % 32;
-                                            // System.out.println(Integer.toBinaryString(var.encodedGty[byteIndex1]));
-                                            var.encodedGty[byteIndex1] = var.encodedGty[byteIndex1] | GlobalManager.intOpers[byteIndex2];
-                                        } else if (gtys[idLabel][0] == 1 && gtys[idLabel][1] == 1) {
-                                            byteIndex1 = (bitNum) / 32;
-                                            byteIndex2 = (bitNum) % 32;
-                                            var.encodedGty[byteIndex1] = var.encodedGty[byteIndex1] | GlobalManager.intOpers[byteIndex2];
-                                        }
-                                        break;
-                                    default:
-                                        boolean[] bits = GlobalManager.phasedGtyCodingMap.get(gtys[idLabel] + ":" + alleleNum);
-                                        for (int i = 0; i < base; i++) {
-                                            if (bits[i]) {
-                                                byteIndex1 = (bitNum + i) / 32;
-                                                byteIndex2 = (bitNum + i) % 32;
-                                                var.encodedGty[byteIndex1] = var.encodedGty[byteIndex1] | GlobalManager.intOpers[byteIndex2];
-                                            }
-                                        }
-                                }
-                            }
-                        }
-                    }
+                    encodeGenotype(var);
                 }
 
                 if (needReadsInfor) {
-                    var.readInfor = new char[subjectNum * 2];
+                    var.readInfor = new char[effectiveIndivNum * 2];
                     //two chars for a gty 
                     for (index = 0; index < totalPedSubjectNum; index++) {
-                        int idLabel = pedVCFIDMap[index];
-                        if (idLabel < 0) {
+                        vcfID = pedVCFIDMap[index];
+                        if (vcfID < 0) {
                             continue;
                         }
-                        if (readCounts[idLabel] == null) {
-                            continue;
-                        }
-                        var.readInfor[index + index] = (char) readCounts[idLabel][0];
-                        var.readInfor[index + index + 1] = (char) readCounts[idLabel][1];
+
+                        var.readInfor[(pedEncodeGytID[index] << 1)] = (char) readCounts[(vcfID)];
+                        var.readInfor[(pedEncodeGytID[index] << 1) + 1] = (char) readCounts[(vcfID) + 1];
                     }
                 }
 
                 if (needGtyQual) {
                     for (index = 0; index < totalPedSubjectNum; index++) {
                         int idLabel = pedVCFIDMap[index];
-                        tmpByte[lastTmpByteIndex] = 9;
-                        lastTmpByteIndex++;
-
+                        //if the subject is not in the original vcf, just ignore it
                         if (idLabel < 0) {
-                            tmpByte[lastTmpByteIndex] = 46;
-                            lastTmpByteIndex++;
                             /*
+                             tmpByte[lastTmpByteIndex] = 46;
+                             lastTmpByteIndex++;
                              tmpByte[lastTmpByteIndex] = 47;
                              lastTmpByteIndex++;
                              tmpByte[lastTmpByteIndex] = 46;
@@ -1734,7 +1567,11 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                             continue;
                         }
 
-                        if (gtys[idLabel][0] == -1) {
+                        //\t:9
+                        tmpByte[lastTmpByteIndex] = 9;
+                        lastTmpByteIndex++;
+
+                        if (gtys[(idLabel << 1)] == -1) {
                             tmpByte[lastTmpByteIndex] = 46;
                             lastTmpByteIndex++;
                             /*
@@ -1750,10 +1587,11 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                         System.arraycopy(currentLine, cellDelimts[s] + 1, tmpByte, lastTmpByteIndex, t);
                         lastTmpByteIndex += t;
                     }
+
                     tmpByte[lastTmpByteIndex] = 10;
                     lastTmpByteIndex++;
-                    String sss = new String(Arrays.copyOfRange(tmpByte, 0, lastTmpByteIndex));
-                    vcfWriters[chromID].write(sss);
+                    String newString = new String(Arrays.copyOfRange(tmpByte, 0, lastTmpByteIndex));
+                    vcfWriters[chromID].write(newString);
                 }
 
                 if (needAccoundAffect) {
@@ -1762,17 +1600,17 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                     g22 = 0;
 
                     for (int i = 0; i < caseSize; i++) {
-                        int idLabel = pedVCFIDMap[caeSetID.getQuick(i)];
+                        int idLabel = pedVCFIDMap[caeSetID[i]];
                         if (idLabel < 0) {
                             continue;
                         }
-                        if (gtys[idLabel][0] == -1) {
+                        if (gtys[(idLabel << 1)] == -1) {
                             continue;
                         }
 
-                        if (gtys[idLabel][0] != gtys[idLabel][1]) {
+                        if (gtys[(idLabel << 1)] != gtys[(idLabel << 1) + 1]) {
                             g12++;
-                        } else if (gtys[idLabel][0] == 0) {
+                        } else if (gtys[(idLabel << 1)] == 0) {
                             g11++;
                         } else {
                             g22++;
@@ -1781,24 +1619,29 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                     var.setAffectedRefHomGtyNum(g11);
                     var.setAffectedHetGtyNum(g12);
                     var.setAffectedAltHomGtyNum(g22);
+                    if (!needAccoundUnaffect) {
+                        maf = (g12 * 0.5 + g22) / (g11 + g12 + g22);
+                        var.localAltAF = (float) maf;
+                    }
                 }
+
                 if (needAccoundUnaffect) {
                     g11 = 0;
                     g12 = 0;
                     g22 = 0;
 
                     for (int i = 0; i < controlSize; i++) {
-                        int idLabel = pedVCFIDMap[controlSetID.getQuick(i)];
+                        int idLabel = pedVCFIDMap[controlSetID[i]];
                         if (idLabel < 0) {
                             continue;
                         }
-                        if (gtys[idLabel][0] == -1) {
+                        if (gtys[(idLabel << 1)] == -1) {
                             continue;
                         }
 
-                        if (gtys[idLabel][0] != gtys[idLabel][1]) {
+                        if (gtys[(idLabel << 1)] != gtys[(idLabel << 1) + 1]) {
                             g12++;
-                        } else if (gtys[idLabel][0] == 0) {
+                        } else if (gtys[(idLabel << 1)] == 0) {
                             g11++;
                         } else {
                             g22++;
@@ -1807,20 +1650,30 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                     var.setUnaffectedRefHomGtyNum(g11);
                     var.setUnaffectedHetGtyNum(g12);
                     var.setUnaffectedAltHomGtyNum(g22);
+                    //Record allele frequencies of controls
+                    // if (!needAccoundAffect)
+                    {
+                        maf = (g12 * 0.5 + g22) / (g11 + g12 + g22);
+                        var.localAltAF = (float) maf;
+                    }
                 }
 
                 if (!needAccoundAffect && !needAccoundUnaffect) {
                     var.setAffectedRefHomGtyNum(g11);
                     var.setAffectedHetGtyNum(g12);
                     var.setAffectedAltHomGtyNum(g22);
+                    maf = (g12 * 0.5 + g22) / (g11 + g12 + g22);
+                    var.localAltAF = (float) maf;
                 }
                 acceptVarNum++;
                 if (acceptVarNum >= maxVarNum) {
+                    // System.out.println(acceptVarNum);
                     totalAcceptVarNum += acceptVarNum;
                     writeChromosomeToDiskClean();
                     acceptVarNum = 0;
                 }
-            } while ((currentLine = br.readLine(cellDelimts)) != null);
+
+            }
 
             if (acceptVarNum > 0) {
                 writeChromosomeToDiskClean();
@@ -1842,7 +1695,405 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
         return acceptVarNum;
     }
 
-    public void writeChromosomeToDiskClean() {
+    private int genotypeQC() {
+        int obsS = 0;
+        for (int k = totalPedSubjectNum - 1; k >= 0; k--) {
+            index = pedVCFIDMap[k];
+            if (index < 0) {
+                continue;
+            }
+
+            //ignore variants with missing genotypes
+            if (gtys[(index << 1)] == -1) {
+                missingGtyNum++;
+                continue;
+            }
+
+            if (hasIndexGQ && gtyQuality[index] < gtyQualityThrehsold) {
+                gtys[(index << 1)] = -1;
+                gtys[(index << 1) + 1] = -1;
+                ignoredLowQualGtyNum++;
+                continue;
+            }
+            if (hasIndexDP && gtyDepth[index] < minGtySeqDepth) {
+                gtys[(index << 1)] = -1;
+                gtys[(index << 1) + 1] = -1;
+                ignoredLowDepthGtyNum++;
+                continue;
+            }
+            if (hasIndexPL && secondMostGtyPL[index] < minSecondPL) {
+                ignoredLowPLGtyNum++;
+                gtys[(index << 1)] = -1;
+                gtys[(index << 1) + 1] = -1;
+                continue;
+            }
+            if (hasIndexGP && bestGtyGP[index] < minBestGP) {
+                ignoredLowGPGtyNum++;
+                gtys[(index << 1)] = -1;
+                gtys[(index << 1) + 1] = -1;
+                continue;
+            }
+
+            if (hasIndexAD || hasIndexFA) {
+                if (gtys[(index << 1)] == 0 && gtys[(index << 1) + 1] == 0) {
+                    if (altAlleleFracRefHomThrehsold < 1) {
+                        //the AD infor may be missing
+                        if (readCounts[(index << 1)] == -1 && Float.isNaN(readFractions[index])) {
+                            continue;
+                        }
+                        if (Float.isNaN(readFractions[index])) {
+                            readFractions[index] = (float) (((double) readCounts[(index << 1) + 1]) / (readCounts[(index << 1)] + readCounts[(index << 1) + 1]));
+                        }
+
+                        if (Float.isNaN(readFractions[index])) {
+                            gtys[(index << 1)] = -1;
+                            gtys[(index << 1) + 1] = -1;
+                            ignoredBadAltFracGtyNum++;
+                            continue;
+                        } else if (readFractions[index] > altAlleleFracRefHomThrehsold) {
+                            gtys[(index << 1)] = -1;
+                            gtys[(index << 1) + 1] = -1;
+                            ignoredBadAltFracGtyNum++;
+                            continue;
+                        }
+
+                    }
+                } else if (gtys[(index << 1)] != gtys[(index << 1) + 1]) {
+                    if (altAlleleFractHetThrehsold > 0) {
+                        //the AD infor may be missing
+                        if (readCounts[(index << 1)] == -1 && Float.isNaN(readFractions[index])) {
+                            continue;
+                        }
+                        if (Float.isNaN(readFractions[index])) {
+                            readFractions[index] = (float) (((double) readCounts[(index << 1) + 1]) / (readCounts[(index << 1)] + readCounts[(index << 1) + 1]));
+                        }
+                        if (Float.isNaN(readFractions[index])) {
+                            gtys[(index << 1)] = -1;
+                            gtys[(index << 1) + 1] = -1;
+                            ignoredBadAltFracGtyNum++;
+                            continue;
+                        } else if (readFractions[index] < altAlleleFractHetThrehsold) {
+                            gtys[(index << 1)] = -1;
+                            gtys[(index << 1) + 1] = -1;
+                            ignoredBadAltFracGtyNum++;
+                            continue;
+                        }
+                    }
+
+                } else if (altAlleleFractAltHomThrehsold > 0) {
+                    //the AD infor may be missing
+                    if (readCounts[(index << 1) + 1] == -1 && Float.isNaN(readFractions[index])) {
+                        continue;
+                    }
+                    if (Float.isNaN(readFractions[index])) {
+                        readFractions[index] = (float) (((double) readCounts[(index << 1) + 1]) / (readCounts[(index << 1)] + readCounts[(index << 1) + 1]));
+                    }
+                    if (Float.isNaN(readFractions[index])) {
+                        gtys[(index << 1)] = -1;
+                        gtys[(index << 1) + 1] = -1;
+                        ignoredBadAltFracGtyNum++;
+                        continue;
+                    } else if (readFractions[index] < altAlleleFractAltHomThrehsold) {
+                        gtys[(index << 1)] = -1;
+                        gtys[(index << 1) + 1] = -1;
+                        ignoredBadAltFracGtyNum++;
+                        continue;
+                    }
+                }
+            }
+            obsS++;
+        }
+        return obsS;
+    }
+
+    private void encodeGenotype(Variant var) {
+        int base, bitNum, byteNum, alleleNumShift, byteIndex1, byteIndex2, s1;
+        //as the genotypes may be use for other purpose so we need record it before filtering 
+        final int gtyLen = 8;
+        int missingNum = 0;
+        int v;
+        if (isPhased) {
+            base = GlobalManager.phasedAlleleBitMap.get(alleleNum);
+            bitNum = base * totalPedSubjectNum;
+
+            if (bitNum % gtyLen != 0) {
+                byteNum = bitNum / gtyLen + 1;
+            } else {
+                byteNum = bitNum / gtyLen;
+            }
+
+            var.encodedGty = new byte[byteNum];
+            Arrays.fill(var.encodedGty, (byte) 0);
+            alleleNumShift = alleleNum << 16;
+            for (index = 0; index < totalPedSubjectNum; index++) {
+                int vcfID = pedVCFIDMap[index] << 1;
+                bitNum = pedEncodeGytID[index];
+                //Note: 00 does not denote missing any longer
+                if (vcfID < 0) {
+                    missingNum++;
+                    //missing value      
+                    if (alleleNum == 2) {
+                        byteIndex1 = (bitNum) / gtyLen;
+                        byteIndex2 = (bitNum) % gtyLen;
+                        var.encodedGty[byteIndex1] |= GlobalManager.byteOpers[byteIndex2];
+                    } else {
+                        v = alleleNum * alleleNum;
+                        for (int i = 0; i < base; i++) {
+                            if ((v & GlobalManager.intOpers[32 + i - base]) == GlobalManager.intOpers[32 + i - base]) {
+                                byteIndex1 = (bitNum) / gtyLen;
+                                byteIndex2 = (bitNum) % gtyLen;
+                                var.encodedGty[byteIndex1] |= GlobalManager.byteOpers[byteIndex2];
+                            }
+                            bitNum += totalPedSubjectNum;
+                        }
+                    }
+                    continue;
+                }
+
+                if (gtys[(vcfID)] == -1) {
+                    missingNum++;
+                    //missing value      
+                    if (alleleNum == 2) {
+                        byteIndex1 = (bitNum) / gtyLen;
+                        byteIndex2 = (bitNum) % gtyLen;
+                        var.encodedGty[byteIndex1] |= GlobalManager.byteOpers[byteIndex2];
+                    } else {
+                        v = alleleNum * alleleNum;
+                        for (int i = 0; i < base; i++) {
+                            if ((v & GlobalManager.intOpers[32 + i - base]) == GlobalManager.intOpers[32 + i - base]) {
+                                byteIndex1 = (bitNum) / gtyLen;
+                                byteIndex2 = (bitNum) % gtyLen;
+                                var.encodedGty[byteIndex1] |= GlobalManager.byteOpers[byteIndex2];
+                            }
+                            bitNum += totalPedSubjectNum;
+                        }
+                    }
+                    continue;
+                } else {
+                    switch (alleleNum) {
+                        case 2:
+                            /*       
+                             missing	Reference homozygous	Heterozygous 	Heterozygous 	Alternative homozygous
+                             VCF genotype	0|0	0|1	1|0	1|1 .|.	
+                             Bits	        000  	001	010	011	100
+                             Order	0	1	2	3	4                
+               
+                             II.II Tri-allelic sequence variant (4 bits)
+                             missing 	Reference homozygous 	Heterozygous 	Heterozygous 	Heterozygous 	Heterozygous 	Alternative homozygous
+                             VCF genotype 	0|0 	0|1 	0|2 	1|0 	1|1 	1|2 .|. 	
+                             Bits      	000 	0001 	0010 	0011 	0100 	0101 	0110
+                             Decimal 	0 	1 	2 	3 	4 	5 	6
+                             Heterozygous 	Heterozygous 	Alternative homozygous
+                             VCF genotype 	2|0 	2|1 	2|2
+                             Bits     	0111 	1000 	1001
+                             Decimal 	7 	8 	9     
+                             */
+
+                            //to speedup the analysis
+                            if (gtys[(vcfID)] == 0 && gtys[(vcfID) + 1] == 0) {
+
+                            } else if (gtys[(vcfID)] == 0 && gtys[(vcfID) + 1] == 1) {
+                                bitNum += (totalPedSubjectNum + totalPedSubjectNum);
+                                byteIndex1 = (bitNum) / gtyLen;
+                                byteIndex2 = (bitNum) % gtyLen;
+                                // System.out.println(Integer.toBinaryString(var.encodedGty[byteIndex1]));
+                                var.encodedGty[byteIndex1] |= GlobalManager.byteOpers[byteIndex2];
+                                //System.out.println(Integer.toBinaryString(var.encodedGty[byteIndex1]));
+
+                            } else if (gtys[(vcfID)] == 1 && gtys[(vcfID) + 1] == 0) {
+                                bitNum += totalPedSubjectNum;
+                                byteIndex1 = (bitNum) / gtyLen;
+                                byteIndex2 = (bitNum) % gtyLen;
+                                // System.out.println(Integer.toBinaryString(var.encodedGty[byteIndex1]));
+                                var.encodedGty[byteIndex1] |= GlobalManager.byteOpers[byteIndex2];
+                                // System.out.println(Integer.toBinaryString(var.encodedGty[byteIndex1]));
+
+                            } else if (gtys[(vcfID)] == 1 && gtys[(vcfID) + 1] == 1) {
+                                bitNum += totalPedSubjectNum;
+                                byteIndex1 = (bitNum) / gtyLen;
+                                byteIndex2 = (bitNum) % gtyLen;
+                                // System.out.println(Integer.toBinaryString(var.encodedGty[byteIndex1]));
+                                var.encodedGty[byteIndex1] |= GlobalManager.byteOpers[byteIndex2];
+                                bitNum += (totalPedSubjectNum);
+                                byteIndex1 = (bitNum) / gtyLen;
+                                byteIndex2 = (bitNum) % gtyLen;
+                                // System.out.println(Integer.toBinaryString(var.encodedGty[byteIndex1]));
+                                var.encodedGty[byteIndex1] |= GlobalManager.byteOpers[byteIndex2];
+
+                            } else {
+                                byteIndex1 = (bitNum) / gtyLen;
+                                byteIndex2 = (bitNum) % gtyLen;
+                                var.encodedGty[byteIndex1] |= GlobalManager.byteOpers[byteIndex2];
+                            }
+                            break;
+                        default:
+                            boolean[] bits = GlobalManager.phasedGtyCodingMap.get(gtys[(vcfID)] | (gtys[(vcfID) + 1] << 8) | (alleleNumShift));
+                            for (int i = 0; i < base; i++) {
+                                if (bits[i]) {
+                                    byteIndex1 = (bitNum) / gtyLen;
+                                    byteIndex2 = (bitNum) % gtyLen;
+                                    var.encodedGty[byteIndex1] |= GlobalManager.byteOpers[byteIndex2];
+                                }
+                                bitNum += totalPedSubjectNum;
+                            }
+                    }
+                }
+            }
+        } else {
+            base = GlobalManager.unphasedAlleleBitMap.get(alleleNum);
+            bitNum = base * totalPedSubjectNum;
+
+            if (bitNum % gtyLen != 0) {
+                byteNum = bitNum / gtyLen + 1;
+            } else {
+                byteNum = bitNum / gtyLen;
+            }
+
+            var.encodedGty = new byte[byteNum];
+            Arrays.fill(var.encodedGty, (byte) 0);
+            alleleNumShift = alleleNum << 16;
+            for (index = 0; index < totalPedSubjectNum; index++) {
+                int vcfID = pedVCFIDMap[index] << 1;
+                bitNum = pedEncodeGytID[index];
+                if (vcfID < 0) {
+                    missingNum++;
+                    if (alleleNum == 2) {
+                        //missing
+                        byteIndex1 = (bitNum) / gtyLen;
+                        byteIndex2 = (bitNum) % gtyLen;
+                        var.encodedGty[byteIndex1] |= GlobalManager.byteOpers[byteIndex2];
+                        bitNum += totalPedSubjectNum;
+                        byteIndex1 = (bitNum) / gtyLen;
+                        byteIndex2 = (bitNum) % gtyLen;
+                        var.encodedGty[byteIndex1] |= GlobalManager.byteOpers[byteIndex2];
+                    } else {
+                        v = alleleNum * (alleleNum + 1);
+                        v = v >>> 1;
+                        for (int i = 0; i < base; i++) {
+                            if ((v & GlobalManager.intOpers[32 + i - base]) == GlobalManager.intOpers[32 + i - base]) {
+                                byteIndex1 = (bitNum) / gtyLen;
+                                byteIndex2 = (bitNum) % gtyLen;
+                                var.encodedGty[byteIndex1] |= GlobalManager.byteOpers[byteIndex2];
+                            }
+                            bitNum += totalPedSubjectNum;
+                        }
+                    }
+                    continue;
+                }
+
+                /*
+                 missing	Reference homozygous	Heterozygous 	Alternative homozygous
+                 VCF genotype		0/0	0/1	1/1 ./.
+                 Bits	00  	01	10	11
+                 Order	0	1	2	3        
+                 */
+
+ /*
+                 missing	Reference homozygous	Heterozygous 	Heterozygous	Alternative homozygous	Heterozygous	Alternative homozygous
+                 VCF genotype	0/0	0/1	0/2	1/1	1/2	2/2 ./.	
+                 Bits	        000	001	010	011	100	101	110
+                 Order	0	1	2	3	4	5	6 
+                 */
+ /*
+                 I.III Quad-allelic sequence variant (4 bits)
+                 missing 	Reference homozygous 	Heterozygous 	Heterozygous 	Heterozygous 	Alternative homozygous 	Heterozygous
+                 VCF genotype 0/0 	0/1 	0/2 	0/3 	1/1 	1/2 		
+                 Bits 	      000 	0001 	0010 	0011 	0100 	0101 	0110
+                 Decimal 	0 	1 	2 	3 	4 	5 	6
+                 Heterozygous 	Alternative homozygous 	Heterozygous 	Alternative homozygous
+                 VCF genotype 	1/3 	2/2 	2/3 	3/3 ./. 
+                 Bits 	     0111 	1000 	1001 	1010
+                 Decimal 	7 	8 	9 	10                               
+                 */
+                if (gtys[(vcfID)] == -1) {
+                    missingNum++;
+                    //missing value       
+                    if (alleleNum == 2) {
+                        //missing
+                        byteIndex1 = (bitNum) / gtyLen;
+                        byteIndex2 = (bitNum) % gtyLen;
+                        var.encodedGty[byteIndex1] |= GlobalManager.byteOpers[byteIndex2];
+                        bitNum += totalPedSubjectNum;
+                        byteIndex1 = (bitNum) / gtyLen;
+                        byteIndex2 = (bitNum) % gtyLen;
+                        var.encodedGty[byteIndex1] |= GlobalManager.byteOpers[byteIndex2];
+                    } else {
+                        v = alleleNum * (alleleNum + 1);
+                        v = v >>> 1;
+                        for (int i = 0; i < base; i++) {
+                            if ((v & GlobalManager.intOpers[32 + i - base]) == GlobalManager.intOpers[32 + i - base]) {
+                                byteIndex1 = (bitNum) / gtyLen;
+                                byteIndex2 = (bitNum) % gtyLen;
+                                var.encodedGty[byteIndex1] |= GlobalManager.byteOpers[byteIndex2];
+                            }
+                            bitNum += totalPedSubjectNum;
+                        }
+                    }
+                } else {
+                    switch (alleleNum) {
+                        case 2:
+                            /*
+                             missing	Reference homozygous	Heterozygous 	Alternative homozygous
+                             VCF genotype	0/0	0/1	1/1 ./.
+                             Bits	00  	01	10	11
+                             Order	0	1	2	3        
+                             */
+
+                            //to speedup the analysis
+                            if (gtys[(vcfID)] == 0 && gtys[(vcfID) + 1] == 0) {
+
+                            } else if (gtys[(vcfID)] == 0 && gtys[(vcfID) + 1] == 1 || gtys[(vcfID)] == 1 && gtys[(vcfID) + 1] == 0) {
+                                bitNum += totalPedSubjectNum;
+                                byteIndex1 = (bitNum) / gtyLen;
+                                byteIndex2 = (bitNum) % gtyLen;
+                                // System.out.println(Integer.toBinaryString(var.encodedGty[byteIndex1]));
+                                var.encodedGty[byteIndex1] |= GlobalManager.byteOpers[byteIndex2];
+                                //System.out.println(Integer.toBinaryString(var.encodedGty[byteIndex1]));
+
+                            } else if (gtys[(vcfID)] == 1 && gtys[(vcfID) + 1] == 1) {
+                                byteIndex1 = (bitNum) / gtyLen;
+                                byteIndex2 = (bitNum) % gtyLen;
+                                // System.out.println(Integer.toBinaryString(var.encodedGty[byteIndex1]));
+                                var.encodedGty[byteIndex1] |= GlobalManager.byteOpers[byteIndex2];
+                                // System.out.println(Integer.toBinaryString(var.encodedGty[byteIndex1]));                               
+
+                            } else {
+                                //missing
+                                byteIndex1 = (bitNum) / gtyLen;
+                                byteIndex2 = (bitNum) % gtyLen;
+                                var.encodedGty[byteIndex1] |= GlobalManager.byteOpers[byteIndex2];
+                                bitNum += totalPedSubjectNum;
+                                byteIndex1 = (bitNum) / gtyLen;
+                                byteIndex2 = (bitNum) % gtyLen;
+                                var.encodedGty[byteIndex1] |= GlobalManager.byteOpers[byteIndex2];
+                            }
+                            break;
+                        default:
+                            if (gtys[(vcfID)] > gtys[(vcfID) + 1]) {
+                                s1 = gtys[(vcfID)];
+                                gtys[(vcfID)] = gtys[(vcfID) + 1];
+                                gtys[(vcfID) + 1] = s1;
+                            }
+                            //at most 64 alleles
+                            boolean[] bits = GlobalManager.unphasedGtyCodingMap.get(gtys[(vcfID)] | (gtys[(vcfID) + 1] << 8) | (alleleNumShift));
+                            for (int i = 0; i < base; i++) {
+                                if (bits[i]) {
+                                    byteIndex1 = (bitNum) / gtyLen;
+                                    byteIndex2 = (bitNum) % gtyLen;
+                                    var.encodedGty[byteIndex1] |= GlobalManager.byteOpers[byteIndex2];
+                                }
+                                bitNum += totalPedSubjectNum;
+                            }
+                    }
+                }
+            }
+            //for (int t=0;t<var.encodedGty.length;t++)      System.out.println(String.format("%8s", Integer.toBinaryString(var.encodedGty[t]&0xff )).replace(' ', '0'));
+        }
+
+        var.setMissingtyNum(missingNum);
+    }
+
+    private void writeChromosomeToDiskClean() {
         int chromID = -1;
         String chromeName;
         try {
@@ -1896,11 +2147,16 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
         this.noGtyVCF = noGtyVCF;
     }
 
-    IntArrayList effectIndivIDInVCF;
-    int[] pedVCFIDMap;
-    List<Individual> subjectList;
-    boolean isPhased = false;
+    private IntArrayList effectIndivIDInVCF;
+    private int[] pedVCFIDMap;
+    private int[] pedEncodeGytID;
+    private List<Individual> subjectList;
+    private boolean isPhased = false;
     Genome orgGenome;
+
+    public boolean isIsPhased() {
+        return isPhased;
+    }
 
     public List<Variant>[] getVarChroms() {
         return varChroms;
@@ -1914,34 +2170,16 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
         this.orgGenome = orgGenome;
     }
 
-    public void setGenotypesAndSubjects(IntArrayList effectIndivID, List<Individual> subjectList1, int[] pedVCFIDMap,
-            boolean isPhased) {
+    public void setGenotypesAndSubjects(IntArrayList effectIndivID, List<Individual> subjectList1, int[] pedVCFIDMap, int[] pedEncodeGytIDMap, int[] caeSetID, int[] controlSetID) {
         this.effectIndivIDInVCF = effectIndivID;
-        this.isPhased = isPhased;
         this.subjectList = new ArrayList<Individual>();
-        int sizeIndiv = subjectList1.size();
-        for (int s = 0; s < sizeIndiv; s++) {
-            Individual indiv0 = subjectList1.get(s);
-            Individual indiv = new Individual();
-            indiv.setLabelInChip(indiv0.getLabelInChip());
-            indiv.setFamilyID(indiv0.getFamilyID());
-            indiv.setIndividualID(indiv0.getIndividualID());
-            indiv.setDadID(indiv0.getDadID());
-            indiv.setMomID(indiv0.getMomID());
-            indiv.setAffectedStatus(indiv0.getAffectedStatus());
-            subjectList.add(indiv);
+        if (subjectList1 != null && !subjectList1.isEmpty()) {
+            subjectList.addAll(subjectList1);
         }
-
-        caeSetID = new IntArrayList();
-        controlSetID = new IntArrayList();
-        for (int i = 0; i < sizeIndiv; i++) {
-            if (subjectList.get(i).getAffectedStatus() == 2) {
-                caeSetID.add(i);
-            } else if (subjectList.get(i).getAffectedStatus() == 1) {
-                controlSetID.add(i);
-            }
-        }
+        this.caeSetID = caeSetID;
+        this.controlSetID = controlSetID;
         this.pedVCFIDMap = pedVCFIDMap;
+        this.pedEncodeGytID = pedEncodeGytIDMap;
     }
 
     public VCFParseTaskFast(int threadID) {
@@ -2020,7 +2258,7 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                         do {
                             fileIndex++;
                             fileName = new File(storagePath + File.separator + chrNameP + ".vcf.gz." + fileIndex);
-                            //the initial size of the compressed file is 
+                            //the initial size of the compressedGty file is 
                             if (fileName.length() <= 20) {
                                 break;
                             }

@@ -7,7 +7,6 @@ package org.cobi.kggseq.entity;
 
 import java.util.HashSet;
 import java.util.Set;
-import org.cobi.kggseq.controller.VariantAnnotator;
 import org.cobi.randomforests.MyRandomForest;
 import org.cobi.util.text.Util;
 
@@ -17,7 +16,7 @@ import org.cobi.util.text.Util;
  */
 public class CombOrders {
 
-    public Set<Integer> indexes = null;
+    public  Set<Integer> indexes = null;
     public double auc = 0;
     public RegressionParams rp;
     public MyRandomForest rf;

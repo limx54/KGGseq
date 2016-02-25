@@ -35,19 +35,46 @@ public class Variant implements Serializable {
     public boolean isIBS = false;
     public byte smallestFeatureID = 17;//by default
 
-    private int affectedRefHomGtyNum = 0;
+    private int affectedRefHomGtyNum = 0;   
     private int affectedHetGtyNum = 0;
     private int affectedAltHomGtyNum = 0;
     private int unaffectedRefHomGtyNum = 0;
     private int unaffectedHetGtyNum = 0;
     private int unaffectedAltHomGtyNum = 0;
-    public int[] encodedGty = null;
+    private int missingtyNum = 0;
+
+    public boolean compressedGty = false;
+    public byte[] encodedGty = null;
+    public long[] encodedGtyIndex = null;
     public char[] readInfor = null;
-    public byte chrID=-1;
+    public byte chrID = -1;
+    public boolean hasBeenAcced=false;
+
+    public void releaseMem() {
+        featureValues = null;
+        scores1 = null;
+        scores2 = null;
+        readInfor = null;
+        refGeneAnnot = null;
+        gEncodeAnnot = null;
+        knownGeneAnnot = null;
+        ensemblGeneAnnot = null;
+    }
 
     public int getAffectedAltHomGtyNum() {
         return affectedAltHomGtyNum;
     }
+
+    public int getMissingtyNum() {
+        return missingtyNum;
+    }
+
+    public void setMissingtyNum(int missingtyNum) {
+        this.missingtyNum = missingtyNum;
+    }
+
+    
+
 
     public void setAffectedAltHomGtyNum(int affectedAltHomGtyNum) {
         this.affectedAltHomGtyNum = affectedAltHomGtyNum;

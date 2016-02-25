@@ -25,7 +25,6 @@ import jsc.independentsamples.MannWhitneyTest;
 import jsc.tests.H1;
 import org.apache.log4j.Logger;
 import org.cobi.kggseq.GlobalManager;
-import org.cobi.kggseq.entity.AnnotationSummarySet;
 import org.cobi.kggseq.entity.ArrayListComparatorDouble;
 import org.cobi.kggseq.entity.Chromosome;
 import org.cobi.kggseq.entity.Gene;

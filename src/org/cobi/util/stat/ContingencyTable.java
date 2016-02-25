@@ -370,7 +370,7 @@ public class ContingencyTable {
      * @param observed The observed values.
      * @return The Pearson's Chi-Squared value.
      */
-    static public double pearsonChiSquared22(long[][] readCountsInt) {
+    public static final double pearsonChiSquared22(long[][] readCountsInt) {
         double chiSquared = readCountsInt[0][0] * readCountsInt[1][1] - readCountsInt[0][1] * readCountsInt[1][0];
         chiSquared = chiSquared * chiSquared;
         chiSquared /= (readCountsInt[0][0] + readCountsInt[0][1]);
@@ -384,7 +384,7 @@ public class ContingencyTable {
     /**
      * Fill in the count1 and count2 arrays.
      */
-    static public double fisherExact22(long[][] contigencyTable22,int rowNum,int colNum, int tails) {
+    public static final double fisherExact22(long[][] contigencyTable22,int rowNum,int colNum, int tails) {
       //  int rowNum = contigencyTable22.length;
        // int colNum = contigencyTable22[0].length;
         int[] Rs = new int[rowNum];

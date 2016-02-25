@@ -285,8 +285,7 @@
                             &nbsp; &nbsp;<img src="imgs/leaf.gif" width="10" height="8" /><a href="#PhenotypeMining" target="_self">Phenotype mining</a><br />
                             &nbsp; &nbsp;<img src="imgs/leaf.gif" width="10" height="8" /><a href="#Expression" target="_self">Expression</a><br />                                    
                             <br />
-                            <img src="imgs/head1.gif" width="12" height="12" /> <a href="#AssociationEnrichment" target="_self">Association&amp;enrichment</a><br />
-
+                            <img src="imgs/head1.gif" width="12" height="12" /> <a href="#AssociationEnrichment" target="_self">Statistical tests</a><br />
                             &nbsp; &nbsp;<img src="imgs/leaf.gif" width="10" height="8" /><a href="#AssociationVariant" target="_self">Association at variant </a><br />
                             &nbsp; &nbsp;<img src="imgs/leaf.gif" width="10" height="8" /><a href="#AssociationGene" target="_self">Association at gene</a><br />
                             &nbsp; &nbsp;<img src="imgs/leaf.gif" width="10" height="8" /><a href="#MutationRateGene" target="_self">Mutation rate at gene</a><br />      
@@ -296,6 +295,9 @@
                             <img src="imgs/head1.gif" width="12" height="12" />  <a href="#Plotting" target="_self">Plotting</a><br />
                             &nbsp; &nbsp;<img src="imgs/leaf.gif" width="10" height="8" /><a href="#Plotting" target="_self">Allele frequency</a><br />
                             &nbsp; &nbsp;<img src="imgs/leaf.gif" width="10" height="8" /><a href="#Plotting" target="_self">Q-Q</a><br />
+                            <br />
+                            <img src="imgs/head1.gif" width="12" height="12" />  <a href="#Miscellaneous" target="_self">Miscellaneous</a><br />
+                            &nbsp; &nbsp;<img src="imgs/leaf.gif" width="10" height="8" /><a href="#Miscellaneous" target="_self">Linkage Disequilibrium</a><br />
 
 
                         </p>
@@ -364,6 +366,9 @@
                                     <p><code> &nbsp; java -Xmx10g -jar ./kggseq.jar  &lt;arguments&gt; </code></p>
                                     <p>The arguments <tt>-Xmx10g</tt> set the maximum Java  heap sizes for KGGSeq as 10 gigabytes. Specifying a larger maximum heap size can speed up the analysis when processing large datasets. A higher setting like <tt>-Xmx20g</tt> is required when there is over 50 million. The number, however, should be less than the size of physical memory of a machine. </p>
                                     <p><strong>Note</strong>&nbsp;  <font class="textMark">&lt;arguments &gt;</font><b>can be saved in a flat text file.</b></p>
+                                    <p>
+                                        <strong>Note</strong>&nbsp;  For some advanced statistical analysis in which some third-party tools are called, you have to run R and C++ make command to install them. Please watch our <a  href="http://grass.cgs.hku.hk/limx/kggseq/doc10/demov10.mp4" target="_blank">demo video</a>  for details.
+                                    </p>
 
                                     <br /> <strong>Note</strong>&nbsp;  To use KGGSeq under Proxy  Network, you need specifically use the following java command to configure the  proxy settings (Thank Daniele Yumi for this suggestion): <br />
                                     <code>  java -Dhttp.proxyHost=xxx.xxx.xxx -Dhttp.proxyPort=xxxx -Dhttp.proxyUser=xxx -Dhttp.proxyPassword=xxx -jar "./kggseq.jar"  </code> 
@@ -389,8 +394,8 @@
                                             #I.Environmental setting<br />
                                             --buildver hg19 \                           \ #line 1<br />
                                             --nt 4 \                    \ #line 2<br />
-                                            #--no-lib-check                              \ #line 3<br />
-                                            #--no-resource-check \                       \ #line 4</p>
+                                            #--lib-update                              \ #line 3<br />
+                                            #--resource-update \                       \ #line 4</p>
                                         <p>#II. Specify the input files<br />
                                             --vcf-file examples/rare.disease.hg19.vcf    \ #line 5<br />
                                             --ped-file examples/rare.disease.ped.txt     \ #line 6, or specify --indiv-pheno X:1,Y:1,Z:2</p>
@@ -490,14 +495,18 @@
                                     <img src="imgs/leaf.gif" width="10" height="8"/>  Specify the local path to store the resource datasets <code>java -jar kggseq.jar --resource path/to/resource/files</code>
                                     <p>Once initiated, KGGSeq will automatically download the resource data from its web server to the local folder. By default, it is --resource "./"<br />
                                     </p>
-                                    <img src="imgs/leaf.gif" width="10" height="8" />   Switch off the auto-checking function for itself.
+                                    <img src="imgs/leaf.gif" width="10" height="8" /> Switch off the auto-checking function for itself.
                                     <code>java -jar kggseq.jar --no-lib-check</code>
-                                    <p>By default, KGGSeq will automatically check and download the available latest version of it, once initiated.<br />
+                                    <p>By default,  KGGSeq will automatically check the latest version of the kggseq.jar.<br />
+                                    </p>
+                                    <img src="imgs/leaf.gif" width="10" height="8" />   Switch on the auto-checking and-updating function for itself.
+                                    <code>java -jar kggseq.jar --lib-update</code>
+                                    <p>With this option, KGGSeq will automatically check the latest version of the kggseq.jar and update it if necessary.<br />
                                     </p>
 
-                                    <img src="imgs/leaf.gif" width="10" height="8" /> Switch off the auto-checking function for all relevant resource datasets.
-                                    <code>java -jar kggseq.jar --no-resource-check</code>
-                                    <p>By default, KGGSeq will automatically check and download the available latest version of resource datasets, once initiated.<br />
+                                    <img src="imgs/leaf.gif" width="10" height="8" /> Switch on auto-checking and-updating for NEEDED resource datasets.
+                                    <code>java -jar kggseq.jar --resource-update</code>
+                                    <p>With this option, KGGSeq will automatically check and download the available latest version of resource datasets, once initiated.<br />
                                     </p>
 
                                     <img src="imgs/leaf.gif" width="10" height="8" /> Switch off the auto-log function to write log in a text file.
@@ -639,9 +648,11 @@
                                     <p><img src="imgs/leaf.gif" width="10" height="8" /> For <a href="http://www.1000genomes.org/node/101" target="_blank">VCF</a> input: <tt>--o-vcf</tt>
                                         <code>java -jar kggseq.jar --vcf-file path/to/file1 --ped-file path/to/file2  --o-vcf</code>
                                         Generate an extra copy of output for the prioritized variants in VCF format, which can be further analyzed by other tools.</p>
-
                                     <strong>Note</strong>  Please use <tt>--missing-gty X</tt> to denote missing genotypes in the output VCF file. It is <tt>--missing-gty ./.</tt> by default.
-
+                                    
+                                    <p><img src="imgs/leaf.gif" width="10" height="8" /> For <a href="http://www.1000genomes.org/node/101" target="_blank">VCF</a> input, but in a simplified format: <tt>--o-svcf</tt>
+                                        <code>java -jar kggseq.jar --vcf-file path/to/file1 --ped-file path/to/file2  --o-svcf</code>
+                                        Generate an extra copy of output for the prioritized variants in simplified VCF format, in which only genotypes are kept in the FORMAT column.</p>
                                     <p><img src="imgs/leaf.gif" width="10" height="8" /> The group-file format for <a href="http://genome.sph.umich.edu/wiki/EPACTS#Creating_marker_group_file" target="_blank"> EPACTS </a> input or other tools : <tt>--o-gene-grp</tt>
                                         <code>java -jar kggseq.jar --vcf-file path/to/file1 --ped-file path/to/file2  --o-gene-grp</code>
                                         Output coordinates, reference and alternative alleles of left variants of each gene in a group-file format, which can be further analyzed by other tools for more sophisticated gene-based association analysis.</p>
@@ -689,16 +700,16 @@
                                                 </table>
                                                 After running the command above, KGGSeq will generat three file:					           <br />
                                                 <b>kggseq.ked</b> (the KGGSeq binary genotype file, genotype information)<br />
-                                                <b>kggseq.fam</b> (first six columns of the conventional <a href="http://www.broadinstitute.org/science/programs/medical-and-population-genetics/haploview/input-file-formats-0" target="_blank">Linkage Pedigree file</a>)<br />
-                                                <b>kggseq.bim</b> (extended MAP file: two extra cols for reference and alternative allele names, like: A G,C)<br />
-                                                The<b> kggseq.fam</b> and <b>kggseq.bim</b> are similar to <a href="http://pngu.mgh.harvard.edu/%7Epurcell/plink/binary.shtml" target="_blank">PLINK BED</a> format.<br />
+                                                <b>kggseq.kam</b> (the KGGSeq family data file, first six columns of the conventional <a href="http://www.broadinstitute.org/science/programs/medical-and-population-genetics/haploview/input-file-formats-0" target="_blank">Linkage Pedigree file</a>)<br />
+                                                <b>kggseq.bim</b> (the KGGSeq variants map data file, two extra columns for reference and alternative allele names, like: A G,C)<br />
+                                                The<b> kggseq.kam</b> and <b>kggseq.kim</b> are similar to the *.fam and *.bim files of <a href="http://pngu.mgh.harvard.edu/%7Epurcell/plink/binary.shtml" target="_blank">PLINK BED</a> format.<br />
                                                 <br />
                                                 But the <b>kggseq.ked</b> has a different way to present genotypes, which is more flexible.
                                                 Here is the binary view of  <b>kggseq.ked</b> file:<br />
                                                 <table  class="list">
                                                     <tr>
                                                         <td >   |-magic &nbsp; &nbsp;&nbsp;number--| &nbsp;&nbsp;|phase mode| &nbsp;|------------------genotype data-------------------|<br />
-                                                            10011110 10000010 &nbsp; 00000000&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;11010000 00011000 10100101 00000000</td>
+                                                            10011110 10000010 &nbsp; 00000000&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<tt><font color="green">101</font><font color="red">001</font>00</tt> <tt><font color="green">100</font><font color="red">101</font>00</tt> <tt><font color="green">100</font><font color="red">000</font><font color="green">00</font></tt> <tt><font color="green">1</font>0000000 </tt> </td>
                                                     </tr>
                                                 </table>
 
@@ -708,7 +719,7 @@
                                                     <li> First two bytes <tt>10011110 10000010 </tt> for the validation checking of a KGGSeq binary genotype file.</li>
                                                     <li> Third byte is <tt>00000000</tt> (Unphased genotypes) or <tt>00000001</tt> (Phased genotypes) </li>
                                                     <li> Genotype data, either for unphased or phased ones in Variant-major order ((i.e. list all individuals for the first Variant, all individuals for the second Variant, etc) ).
-                                                        The 4th byte (<tt>11010000</tt>) denotes genotypes of chr1:4793. The A, B and C have bit genotypes 11,01 and 00 respectively. The 5th byte (<tt>00011000</tt> ) denotes genotypes of chr1:53560. The 6th and 7th bytes (<tt>10100101</tt> and <tt>00000000</tt>) present genotypes of chr1:12887054, which has three alleles.</li>
+                                                        The 4th byte (<tt><font color="green">101</font><font color="red">001</font>00</tt>) denotes genotypes of chr1:4793 by two bit-blocks (marked in color). The A, B and C have bit genotypes 10,00 and 11 respectively. The 5th byte (<tt><font color="green">100</font><font color="red">101</font>00</tt> ) denotes genotypes of chr1:53560. The 6th and 7th bytes (<tt><font color="green">100</font><font color="red">000</font><font color="green">00</font></tt> and <tt><font color="green">1</font>0000000 </tt> ) present genotypes of chr1:12887054, which has three alleles.</li>
                                                     <li> New "row" in the VCF file always starts a new byte (8 bits) </li>   
                                                 </ul>
                                                 For each sequence variant, the number of bytes required to present a genotype is determined by the number of alleles and the genotype phase status.<br />
@@ -716,18 +727,18 @@
                                                 I.I Bi-allelic sequence variant (2 bits)
                                                 <table  class="list">
                                                     <tr >
-                                                        <td   valign="top">&nbsp;</td>
-                                                        <td   valign="top">missing</td>
+                                                        <td   valign="top">&nbsp;</td>                                                      
                                                         <td   valign="top">Reference homozygous</td>
                                                         <td  valign="top">Heterozygous </td>
                                                         <td   valign="top">Alternative homozygous</td>
+                                                        <td   valign="top">missing</td>
                                                     </tr>
                                                     <tr >
                                                         <td  valign="top">VCF genotype</td>
-                                                        <td  valign="top">./.</td>
                                                         <td  valign="top">0/0</td>
                                                         <td   valign="top">0/1</td>
                                                         <td  valign="top">1/1</td>
+                                                        <td  valign="top">./.</td>
                                                     </tr>
                                                     <tr  >
                                                         <td width="127" valign="top">Bits</td>
@@ -741,33 +752,30 @@
                                                         <td width="130" valign="top">0</td>
                                                         <td width="127" valign="top">1</td>
                                                         <td width="127" valign="top">2</td>
-                                                        <td width="127" valign="top">3</td>
-
-
-
+                                                        <td width="127" valign="top">3</td> 
                                                     </tr>
                                                 </table>
                                                 I.II Tri-allelic sequence variant (3 bits)
                                                 <table  class="list">
                                                     <tr>
-                                                        <td width="128" valign="top">&nbsp;</td>
-                                                        <td width="82" valign="top">missing</td>
+                                                        <td width="128" valign="top">&nbsp;</td>                                                      
                                                         <td width="115" valign="top">Reference homozygous</td>
                                                         <td width="116" valign="top">Heterozygous </td>
                                                         <td width="119" valign="top">Heterozygous</td>
                                                         <td width="95" valign="top">Alternative homozygous</td>
                                                         <td width="115" valign="top">Heterozygous</td>
                                                         <td width="121" valign="top">Alternative homozygous</td>
+                                                        <td width="82" valign="top">missing</td>
                                                     </tr>
                                                     <tr>
-                                                        <td width="128" valign="top">VCF genotype</td>
-                                                        <td width="82" valign="top">./.</td>
+                                                        <td width="128" valign="top">VCF genotype</td>                                                       
                                                         <td width="115" valign="top">0/0</td>
                                                         <td width="116" valign="top">0/1</td>
                                                         <td width="119" valign="top">0/2</td>
                                                         <td width="95" valign="top">1/1</td>
                                                         <td width="115" valign="top">1/2</td>
                                                         <td width="121" valign="top">2/2</td>
+                                                        <td width="82" valign="top">./.</td>
                                                     </tr>
                                                     <tr>
                                                         <td width="128" valign="top">Bits</td>
@@ -793,24 +801,24 @@
                                                 I.III Quad-allelic sequence variant (4 bits)
                                                 <table class="list">
                                                     <tr>
-                                                        <td width="129" valign="top">&nbsp;</td>
-                                                        <td width="96" valign="top">missing</td>
+                                                        <td width="129" valign="top">&nbsp;</td>                                                        
                                                         <td width="111" valign="top">Reference homozygous</td>
                                                         <td width="106" valign="top">Heterozygous </td>
                                                         <td width="115" valign="top">Heterozygous</td>
                                                         <td width="106" valign="top">Heterozygous</td>
                                                         <td width="100" valign="top">Alternative homozygous</td>
-                                                        <td width="128" valign="top">Heterozygous</td>
+                                                        <td width="128" valign="top">Heterozygous</td>     
+                                                        <td width="88" valign="top">Heterozygous</td>
                                                     </tr>
                                                     <tr>
-                                                        <td width="129" valign="top">VCF genotype</td>
-                                                        <td width="96" valign="top">./.</td>
+                                                        <td width="129" valign="top">VCF genotype</td>                                                       
                                                         <td width="111" valign="top">0/0</td>
                                                         <td width="106" valign="top">0/1</td>
                                                         <td width="115" valign="top">0/2</td>
                                                         <td width="106" valign="top">0/3</td>
                                                         <td width="100" valign="top">1/1</td>
                                                         <td width="128" valign="top">1/2</td>
+                                                        <td width="88" valign="top">1/3</td>
                                                     </tr>
                                                     <tr>
                                                         <td width="129" valign="top">Bits</td>
@@ -836,17 +844,19 @@
                                                 <table class="list">
                                                     <tr>
                                                         <td width="63" valign="top">&nbsp;</td>
-                                                        <td width="88" valign="top">Heterozygous</td>
+
                                                         <td width="88" valign="top">Alternative homozygous</td>
                                                         <td width="88" valign="top">Heterozygous</td>
                                                         <td width="88" valign="top">Alternative homozygous</td>
+                                                        <td width="105" valign="top">missing</td>
                                                     </tr>
                                                     <tr>
                                                         <td width="63" valign="top">VCF genotype</td>
-                                                        <td width="88" valign="top">1/3</td>
+
                                                         <td width="88" valign="top">2/2</td>
                                                         <td width="88" valign="top">2/3</td>
                                                         <td width="88" valign="top">3/3</td>
+                                                        <td width="96" valign="top">./.</td>
                                                     </tr>
                                                     <tr>
                                                         <td width="63" valign="top">Bits</td>
@@ -867,20 +877,20 @@
                                                 II.I Bi-allelic sequence variants (3 bits)
                                                 <table class="list">
                                                     <tr>
-                                                        <td width="106" valign="top">&nbsp;</td>
-                                                        <td width="105" valign="top">missing</td>
+                                                        <td width="106" valign="top">&nbsp;</td>                                                      
                                                         <td width="112" valign="top">Reference homozygous</td>
                                                         <td width="114" valign="top">Heterozygous </td>
                                                         <td width="89" valign="top">Heterozygous </td>
                                                         <td width="112" valign="top">Alternative homozygous</td>
+                                                        <td width="105" valign="top">missing</td>
                                                     </tr>
                                                     <tr>
-                                                        <td width="106" valign="top">VCF genotype</td>
-                                                        <td width="105" valign="top">.|.</td>
+                                                        <td width="106" valign="top">VCF genotype</td>                                                      
                                                         <td width="112" valign="top">0|0</td>
                                                         <td width="114" valign="top">0|1</td>
                                                         <td width="89" valign="top">1|0</td>
                                                         <td width="112" valign="top">1|1</td>
+                                                        <td width="105" valign="top">.|.</td>
                                                     </tr>
                                                     <tr>
                                                         <td width="106" valign="top">Bits</td>
@@ -902,24 +912,25 @@
                                                 II.II          Tri-allelic sequence variant (4 bits)
                                                 <table class="list">
                                                     <tr>
-                                                        <td width="133" valign="top">&nbsp;</td>
-                                                        <td width="93" valign="top">missing</td>
+                                                        <td width="133" valign="top">&nbsp;</td>                                                       
                                                         <td width="107" valign="top">Reference homozygous</td>
                                                         <td width="121" valign="top">Heterozygous </td>
                                                         <td width="100" valign="top">Heterozygous</td>
                                                         <td width="116" valign="top">Heterozygous</td>
                                                         <td width="102" valign="top">Heterozygous</td>
                                                         <td width="119" valign="top">Alternative homozygous</td>
+                                                        <td width="56" valign="top">Heterozygous</td>
                                                     </tr>
                                                     <tr>
                                                         <td width="133" valign="top">VCF genotype</td>
-                                                        <td width="93" valign="top">.|.</td>
+
                                                         <td width="107" valign="top">0|0</td>
                                                         <td width="121" valign="top">0|1</td>
                                                         <td width="100" valign="top">0|2</td>
                                                         <td width="116" valign="top">1|0</td>
                                                         <td width="102" valign="top">1|1</td>
                                                         <td width="119" valign="top">1|2</td>
+                                                        <td width="56" valign="top">2|0</td>
                                                     </tr>
                                                     <tr>
                                                         <td width="133" valign="top">Bits</td>
@@ -930,6 +941,7 @@
                                                         <td width="116" valign="top">0100</td>
                                                         <td width="102" valign="top">0101</td>
                                                         <td width="119" valign="top">0110</td>
+
                                                     </tr>
                                                     <tr>
                                                         <td width="133" valign="top">Decimal</td>
@@ -945,15 +957,17 @@
                                                 <table class="list">
                                                     <tr>
                                                         <td width="63" valign="top">&nbsp;</td>
-                                                        <td width="56" valign="top">Heterozygous</td>
+
                                                         <td width="83" valign="top">Heterozygous</td>
                                                         <td width="88" valign="top">Alternative homozygous</td>
+                                                        <td width="93" valign="top">missing</td>
                                                     </tr>
                                                     <tr>
                                                         <td width="63" valign="top">VCF genotype</td>
-                                                        <td width="56" valign="top">2|0</td>
+
                                                         <td width="83" valign="top">2|1</td>
                                                         <td width="88" valign="top">2|2</td>
+                                                        <td width="93" valign="top">.|.</td>
                                                     </tr>
                                                     <tr>
                                                         <td width="63" valign="top">Bits</td>
@@ -972,24 +986,25 @@
                                                 II.III Quad-allelic sequence variants (5 bits)
                                                 <table class="list">
                                                     <tr>
-                                                        <td width="130" valign="top">&nbsp;</td>
-                                                        <td width="103" valign="top">missing</td>
+                                                        <td width="130" valign="top">&nbsp;</td>                                                    
                                                         <td width="116" valign="top">Reference homozygous</td>
                                                         <td width="104" valign="top">Heterozygous </td>
                                                         <td width="100" valign="top">Heterozygous</td>
                                                         <td width="111" valign="top">Heterozygous</td>
                                                         <td width="102" valign="top">Heterozygous</td>
                                                         <td width="125" valign="top">Heterozygous</td>
+                                                        <td width="119" valign="top">Heterozygous</td>
                                                     </tr>
                                                     <tr>
                                                         <td width="130" valign="top">VCF genotype</td>
-                                                        <td width="103" valign="top">.|.</td>
+
                                                         <td width="116" valign="top">0|0</td>
                                                         <td width="104" valign="top">0|1</td>
                                                         <td width="100" valign="top">0|2</td>
                                                         <td width="111" valign="top">0|3</td>
                                                         <td width="102" valign="top">1|0</td>
                                                         <td width="125" valign="top">1|1</td>
+                                                        <td width="119" valign="top">1|2</td>
                                                     </tr>
                                                     <tr>
                                                         <td width="130" valign="top">Bits</td>
@@ -1007,7 +1022,6 @@
                                                         <td width="116" valign="top">1</td>
                                                         <td width="104" valign="top">2</td>
                                                         <td width="100" valign="top">3</td>
-
                                                         <td width="111" valign="top">4</td>
                                                         <td width="102" valign="top">5</td>
                                                         <td width="125" valign="top">6</td>
@@ -1015,22 +1029,23 @@
                                                 </table>
                                                 <table class="list">
                                                     <tr>
-                                                        <td width="108" valign="top">&nbsp;</td>
-                                                        <td width="119" valign="top">Heterozygous</td>
+                                                        <td width="108" valign="top">&nbsp;</td>                                                     
                                                         <td width="125" valign="top">Alternative homozygous</td>
                                                         <td width="135" valign="top">Heterozygous</td>
                                                         <td width="135" valign="top">Heterozygous</td>
                                                         <td width="135" valign="top">Heterozygous</td>
                                                         <td width="138" valign="top">Heterozygous</td>
+                                                        <td width="88" valign="top">Alternative homozygous</td>
                                                     </tr>
                                                     <tr>
                                                         <td width="108" valign="top">VCF genotype</td>
-                                                        <td width="119" valign="top">1|2</td>
+
                                                         <td width="125" valign="top">1|3</td>
                                                         <td width="135" valign="top">2|0</td>
                                                         <td width="135" valign="top">2|1</td>
                                                         <td width="135" valign="top">2|2</td>
                                                         <td width="138" valign="top">2|3</td>
+                                                        <td width="88" valign="top">3|0</td>
 
                                                     </tr>
                                                     <tr>
@@ -1055,17 +1070,19 @@
                                                 <table class="list">
                                                     <tr>
                                                         <td width="63" valign="top">&nbsp;</td>
-                                                        <td width="88" valign="top">Alternative homozygous</td>
+
                                                         <td width="56" valign="top">Heterozygous</td>
                                                         <td width="83" valign="top">Heterozygous</td>
                                                         <td width="83" valign="top">Alternative homozygous</td>
+                                                        <td width="103" valign="top">missing</td>
                                                     </tr>
                                                     <tr>
                                                         <td width="63" valign="top">VCF genotype</td>
-                                                        <td width="88" valign="top">3|0</td>
+
                                                         <td width="56" valign="top">3|1</td>
                                                         <td width="83" valign="top">3|2</td>
                                                         <td width="83" valign="top">3|3</td>
+                                                        <td width="103" valign="top">.|.</td>
                                                     </tr>
                                                     <tr>
                                                         <td width="63" valign="top">Bits</td>
@@ -1088,7 +1105,6 @@
                             </tr>
                             <tr>
                                 <td>
-
                                     <h2><a name="QualityControl" >Quality Control </a></h2>
                                     <p>After genetic variants were inputed from a variety of data formats, KGGSeq provides a few optional quality control filters on individual genotype, genomic variant and sample phenotype.
                                         By adopting one or a combination of these QCs before performing downstream prioritization/annotation, it could help the user to reduce false positives.</p>
@@ -1193,7 +1209,6 @@
 
                                     <p>Moreover, It's flexible to match the sample size and missingness of genotypes. Here are the options for different study design. (cases = affected subjects ; controls = unaffected subjects)
                                         <table  class="list">
-
                                             <tr>
                                                 <td valign="top"><b>Arguments/values</b></td>
                                                 <td valign="top"><b>Annotation</b></td>
@@ -1676,9 +1691,9 @@
                                         <b>Means: This is a C to T substitution of nucleotide, 61 nucleotides upstream of the ATG translation initiation codon (coding DNA -61).</b><br />                                        
                                     </h4>
                                     <br/>
-                                    <p   >
+                                    <p >
                                         <b> Table: Compare non-synonymous gene feature annotation of three popular tools and two gene models for variants discovered in 1000 Genomes Project AFR panel </b> <br/>
-                                        <img   src="imgs/annotationcmp.png"   /> <br/>
+                                        <img   src="imgs/annotationcmp.png"   width="90%" height="90%"/> <br/>
                                         Note: The RefGene model was provided by UCSC on Oct 10, 2015 for KGGSeq; and for ANNOVAR and the latest RefGene model (by Oct 10, 2015) from their websites was used. a: Because ANNOVAR has no startloss category but annotates startloss as missense, no comparison was made for this category. b:  Because dbSNP has no startloss category, no consistency was calculated for this category. c: rate of consistency with annotations in the dbSNP. The default parameters settings of each tool were used for the annotation. 
                                     </p>
 
@@ -1694,7 +1709,8 @@
                                     <p>                                        
                                         <strong>Note</strong>1. To keep variants in a frequency range,[a,b], please use  <tt>'--allele-freq a,b'</tt> option. The boundaries a and b are included.  <br />
                                         <strong>Note</strong>2. The options, <tt>'--allele-freq' </tt>and <tt>'--rare-allele-freq'</tt>, are mutually exclusive and the latter has higher priority.  <br />
-                                        <strong>Note</strong>3. By default,  <tt>'--rare-allele-freq 0.01'</tt>, will be used if allele frequency cutoff is set.
+                                        <strong>Note</strong>3. By default,  <tt>'--rare-allele-freq 0.01'</tt>, will be used if allele frequency cutoff is set.<br />
+                                        <strong>Note</strong>4. Difference between  <tt>'--rare-allele-freq'</tt> and <tt>'--allele-freq'</tt>: The <tt>'--rare-allele-freq 0,0.01'</tt> does  not consider the variants with missing frequency in public databases, but <tt>'--rare-allele-freq 0.01'</tt> does. So <tt>'--rare-allele-freq 0.01'</tt> returns much more variants than <tt>'--rare-allele-freq 0,0.01'</tt>.
                                     </p>
                                     <br />
                                     List of public databases for allele frequency trimming
@@ -1816,7 +1832,7 @@
                                     Moreover, <tt>'--local-filter-hard' </tt>is use to filter <b>ALL</b>  existing variants in a database.
 
                                     <p>The <tt>'--local-filter'</tt> option sets local datasets for filterating. KGGSeq accepts local dataset files in the following format: each file has 5 columns [Chromosome, Physical Position, Reference Allele, Alternative Allele(s), and Frequency of alternative allele(s)], separated by tab character. KGGSeq provides a function to convert data in VCF format to that in the local dataset format:</p>
-                                    <code>java -jar ./kggseq.jar --make-filter --vcf-file path/to/file --buildver-in hg18 --out test.hg18.var --buildver-out hg19</code>
+                                    <code>java -jar ./kggseq.jar --make-filter --vcf-file path/to/file --out test.var</code>
 
                                     An example file is like:
                                     <h4>
@@ -3534,7 +3550,7 @@
                                     <p><img src="imgs/leaf.gif" width="10" height="8" /> Mine the phenotype of disease: <tt>--phenotype-term searchTerm and --phenolyzer-prediction</tt>
                                         <code>java -jar kggseq.jar --vcf-file path/to/file1 --ped-file path/to/file2 --out path/to/prefixname --excel --db-gene refgene --db-filter 1kg201305 --phenotype-term searchTerm1,searchTerm2 --phenolyzer-prediction  </code>
                                         KGGseq has integrated the advanced tool <a href="http://phenolyzer.usc.edu/" ,target="_blank">phenolyzer</a> as a plugin to implement the function of phenoytpe mining and predection. The score marked by phenolyer will by used to annotate the related genes in the output file. 
-                                        <p><strong> Note</strong> KGGseq will download the phenolyzer tool automatically.</p>
+                                        <p><strong> Note</strong>To run Phenolyzer, your computer need install Perl. Please read the <a href="http://learnperl.scratchcomputing.com/install/" ,target="_blank"> installation instructions. </a> </p>
                                     </p>
                                 </td>
                             </tr>                            
@@ -3548,7 +3564,7 @@
                             </tr>                           
 
                             <tr>
-                                <td><h2><a name="AssociationEnrichment" >Association&amp;enrichment </a></h2>
+                                <td><h2><a name="AssociationEnrichment" >Statistical tests</a></h2>
                                     <h3><a name="AssociationVariant" >Association at variants</a></h3>
 
                                     <p><img src="imgs/leaf.gif" width="10" height="8" />Conventional statistical association tests at each individual variants: <tt> --var-assoc </tt></p>
@@ -3590,6 +3606,32 @@
 
                                     <p><strong>Note</strong> Currently, this function only work for case-control study without confounding factors as covariables. </p>
 
+                                    <p><img src="imgs/leaf.gif" width="10" height="8" /> Variant-based association test by <a href="http://zhanxw.github.io/rvtests/", target="_blank">Rvtests</a>: <tt> --rvtest-var</tt></p>
+                                    <p><code>java -jar ./kggseq.jar --rvtest-var score,wald,exact,... --rvtest-vcf --rvtest-remove-set --vcf-file path/to/vcf/file --ped-file path/to/pedigree/file --phe phenotypeName --cov covariateName1,covariateName2,...,covariateNameN --out path/to/prefixname --excel --db-gene refgene </code>
+                                        KGGSeq will automatically download  the C++ sources codes from  <a href="http://zhanxw.github.io/rvtests/", target="_blank">Github</a> and un-compress them into a folder named "plugin/rvtests-master" under the KGGSeq working folder. Users are required go into the "rvtests-master" to make an executable file  from the C++ source codes. See more in <a  href="http://grass.cgs.hku.hk/limx/kggseq/doc10/demov10.mp4" target="_blank"> a demonstration video</a> .
+                                    </p>
+                                    <table  class="list">
+                                        <tr>
+                                            <td valign="top"><b>Arguments/values</b></td>
+                                            <td valign="top"><b>Annotation</b></td>
+                                        </tr>
+                                        <tr>
+                                            <td valign="top">--rvtest-var model names</td>
+                                            <td valign="top">Initiate the calling of RVTest for gene based association analysis. The model names are defined in <a href="http://zhanxw.github.io/rvtests/#models", target="_blank"><b>Rvtests models</b></a>. Currently, it supports score, wald, exact, dominantExact, famLRT, famScore, famGrammarGamma and firthc models. The default models are "score,wald".                                                                        
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td valign="top">--rvtest-vcf</td>
+                                            <td valign="top">Ask KGGSeq to produce a new VCF file as the input of RVTests. However, this is very time-consuming for large sample. It is advised to use <tt>--o-vcf</tt> to produce a VCF file with good quality once and to use that cleaned VCF file as the new KGGSeq input. In this scenario, the <tt>--rvtest-vcf</tt> is not needed, which may substantially reduce the analysis time.</td>
+                                        </tr>
+                                        <tr>
+                                            <td valign="top">--rvtest-remove-set</td>
+                                            <td valign="top">Remove the intermediate file defining sets of variants for RVTests group-wise test in your hard disk.</td>
+                                        </tr>
+                                    </table>
+                                    <p>An extra file with the suffix ".rvtest.variant.xlsx" will be created in the targeted output path. </p>
+
+
                                     <h3><a name="AssociationGene">Association at gene</a></h3>
                                     <p><img src="imgs/leaf.gif" width="10" height="8" /> Gene-based association test by <a href="http://www.hsph.harvard.edu/skat/", target="_blank">SKAT</a>: <tt> --skat-gene</tt></p>
                                     <p><code>java -jar ./kggseq.jar  --skat-gene --vcf-file path/to/vcf/file --ped-file path/to/pedigree/file --phe phenotypeName --cov covariateName1,covariateName2,...,covariateNameN --out path/to/prefixname --excel --db-gene refgene [--p-value-cutoff 0.01 --multiple-testing benfdr --qqplot]</code>
@@ -3611,17 +3653,31 @@
                                     <p><strong>Note</strong> If the option <tt>--perm-pheno </tt> is added, phenotypes will be permuted prior to association analysis. </p>
 
                                     <p><img src="imgs/leaf.gif" width="10" height="8" /> Gene-based association test by <a href="http://zhanxw.github.io/rvtests/", target="_blank">Rvtests</a>: <tt> --rvtest-gene</tt></p>
-                                    <p><code>java -jar ./kggseq.jar  --rvtest-gene --vcf-file path/to/vcf/file --ped-file path/to/pedigree/file --phe phenotypeName --cov covariateName1,covariateName2,...,covariateNameN --out path/to/prefixname --excel --db-gene refgene [--p-value-cutoff 0.01 --multiple-testing benfdr --qqplot]</code>
-                                        Call  <a href="http://zhanxw.github.io/rvtests/", target="_blank">Rvtests</a> by the corresponding command '--burden cmc --vt price --kernel skat[nPerm=1000:alpha=0.001:beta1=1:beta2=20],kbac'. KGGSeq will automatically download  
+                                    <p><code>java -jar ./kggseq.jar --rvtest-gene cmc,cmat,price,skat[nPerm=1000:alpha=0.001:beta1=1:beta2=20],... --rvtest-vcf --rvtest-remove-set --vcf-file path/to/vcf/file --ped-file path/to/pedigree/file --phe phenotypeName --cov covariateName1,covariateName2,...,covariateNameN --out path/to/prefixname --excel --db-gene refgene </code>
+                                        KGGSeq will automatically download  the C++ sources codes from  <a href="http://zhanxw.github.io/rvtests/", target="_blank">Github</a> and un-compress them into a folder named "plugin/rvtests-master" under the KGGSeq working folder. Users are required go into the "rvtests-master" to make an executable file  from the C++ source codes. See more in <a  href="http://grass.cgs.hku.hk/limx/kggseq/doc10/demov10.mp4" target="_blank"> a demonstration video</a> .
                                     </p>
-                                    <p>An extra file with the suffix ".rvtest.gene.xlsx" will be created in the targeted output path. The <tt>'--rvtest-gene'</tt> will provide the p values of SKAT,SKATO and Burden test.  </p>
+                                    <table  class="list">
+                                        <tr>
+                                            <td valign="top"><b>Arguments/values</b></td>
+                                            <td valign="top"><b>Annotation</b></td>
+                                        </tr>
+                                        <tr>
+                                            <td valign="top">--rvtest-gene model names</td>
+                                            <td valign="top">Initiate the calling of RVTest for gene based association analysis. The model names are defined in <a href="http://zhanxw.github.io/rvtests/#models", target="_blank"><b>Rvtests models</b></a>. Currently, it supports cmc, zeggini, mb, fp, exactCMC, cmcWald, rarecover and cmat models.The default models are "cmc,skato[nPerm=1000:alpha=0.001:beta1=1:beta2=20]".</td>
+                                        </tr>
+                                        <tr>
+                                            <td valign="top">--rvtest-vcf</td>
+                                            <td valign="top">Ask KGGSeq to produce a new VCF file as the input of RVTests. However, this is very time-consuming for large sample. It is advised to use <tt>--o-vcf</tt> to produce a VCF file with good quality once and to use that cleaned VCF file as the new KGGSeq input. In this scenario, the <tt>--rvtest-vcf</tt> is not needed, which may substantially reduce the analysis time.</td>
+                                        </tr>
+                                        <tr>
+                                            <td valign="top">--rvtest-remove-set</td>
+                                            <td valign="top">Remove the intermediate file defining sets of variants for RVTests group-wise test in your hard disk.</td>
+                                        </tr>
+                                    </table>
 
-                                    <h4>                                        
-                                        <b>CMC:</b>The p-value calculated by Collapsing and combine rare variants of Bingshan Li.. <br />
-                                        <b>Kbac:</b>The p-value calculated by Kernel-based adaptive clustering model of Dajiang Liu.. <br />
-                                        <b>VariableThresholdPrice:</b>The p-value calculated by SKAT-O. <br />
-                                        <b>Skat:</b>The p-value calculated by Sequencing kernel association test of Shawn Lee.<br />
-                                    </h4>
+                                    <p>An extra file with the suffix ".rvtest.gene.xlsx" will be created in the targeted output path. </p>
+
+
                                     <h3><a name="MutationRateGene" >Mutation rate test at gene</a></h3>
                                     <br />                                  
                                     Test the certain types mutation rate in a gene by a regression mode <tt>--gene-mutation-rate-test --dependent-gene-feature [variants&apos; gene feature codes] --independent-gene-feature [variants&apos; gene feature codes]</tt> 
@@ -3690,7 +3746,7 @@
 
                                     <p>An extra file with the suffix ".skat.geneset.xlsx" will be created in the targeted output path. The <tt>'--skat-geneset'</tt> will provide the p values of SKAT,SKATO and Burden test. If the phenotype is binary, the option <tt>'--skat-gene binary'</tt> can be used, but the speed will decrease. </p>
 
-                                    <h4>
+                                    <h4> 
                                         <b>SKAT:</b>The p-value calculated by SKAT. <br />
                                         <b>SKATO:</b>The p-value calculated by SKAT-O. <br />
                                         <b>Burden:</b>The p-value calculated by Burden test.<br />
@@ -3704,23 +3760,36 @@
                                     <p><strong>Note</strong> If the option <tt>--perm-pheno </tt> is added, phenotypes will be permuted prior to association analysis. </p>
 
                                     <p><img src="imgs/leaf.gif" width="10" height="8" /> Geneset-based association test by <a href="http://zhanxw.github.io/rvtests/", target="_blank">Rvtests</a>: <tt> --rvtest-geneset</tt></p>
-                                    <p><code>java -jar ./kggseq.jar  --rvtest-geneset --geneset-file path/to/geneset/file --vcf-file path/to/vcf/file --ped-file path/to/pedigree/file --phe phenotypeName --cov covariateName1,covariateName2,...,covariateNameN --out path/to/prefixname --excel --db-gene refgene [--p-value-cutoff 0.01 --multiple-testing benfdr --qqplot]</code>
-                                        Call  <a href="http://zhanxw.github.io/rvtests/", target="_blank">Rvtests</a> by the corresponding command '--burden cmc --vt price --kernel skat[nPerm=100:alpha=0.001:beta1=1:beta2=20],kbac'. KGGSeq will automatically download  
+                                    <p><code>java -jar ./kggseq.jar  --rvtest-geneset cmc,skato[nPerm=1000:alpha=0.001:beta1=1:beta2=20],... --rvtest-vcf --rvtest-remove-set --geneset-file path/to/geneset/file --vcf-file path/to/vcf/file --ped-file path/to/pedigree/file --phe phenotypeName --cov covariateName1,covariateName2,...,covariateNameN --out path/to/prefixname --excel --db-gene refgene [--p-value-cutoff 0.01 --multiple-testing benfdr --qqplot]</code>
+                                        KGGSeq will automatically download  the C++ sources codes from  <a href="http://zhanxw.github.io/rvtests/", target="_blank">Github</a> and un-compress them into a folder named "plugin/rvtests-master" under the KGGSeq working folder. Users are required go into the "rvtests-master" to make an executable file  from the C++ source codes. See more in <a  href="http://grass.cgs.hku.hk/limx/kggseq/doc10/demov10.mp4" target="_blank"> a demonstration video</a> .
                                     </p>
-                                    <p>An extra file with the suffix ".rvtest.geneset.xlsx" will be created in the targeted output path. The <tt>'--rvtest-geneset'</tt> will provide the p values of SKAT,SKATO and Burden test.  </p>
+                                    <table  class="list">
+                                        <tr>
+                                            <td valign="top"><b>Arguments/values</b></td>
+                                            <td valign="top"><b>Annotation</b></td>
+                                        </tr>
+                                        <tr>
+                                            <td valign="top">--rvtest-gene model names</td>
+                                            <td valign="top">Initiate the calling of RVTest for gene based association analysis. The model names are defined in <a href="http://zhanxw.github.io/rvtests/#models", target="_blank"><b>Rvtests models</b></a>. Currently, it supports cmc, zeggini, mb, fp, exactCMC, cmcWald, rarecover and cmat models.The default models are "cmc,skato[nPerm=1000:alpha=0.001:beta1=1:beta2=20]".</td>
+                                        </tr>
+                                        <tr>
+                                            <td valign="top">--rvtest-vcf</td>
+                                            <td valign="top">Ask KGGSeq to produce a new VCF file as the input of RVTests. However, this is very time-consuming for large sample. It is advised to use <tt>--o-vcf</tt> to produce a VCF file with good quality once and to use that cleaned VCF file as the new KGGSeq input. In this scenario, the <tt>--rvtest-vcf</tt> is not needed, which may substantially reduce the analysis time.</td>
+                                        </tr>
+                                        <tr>
+                                            <td valign="top">--rvtest-remove-set</td>
+                                            <td valign="top">Remove the intermediate file defining set of variants for RVTests group-wise test.</td>
+                                        </tr>
+                                    </table>
 
-                                    <h4>
-                                        <b>CMC:</b>The p-value calculated by Collapsing and combine rare variants of Bingshan Li.. <br />
-                                        <b>Kbac:</b>The p-value calculated by Kernel-based adaptive clustering model of Dajiang Liu.. <br />
-                                        <b>VariableThresholdPrice:</b>The p-value calculated by SKAT-O. <br />
-                                        <b>Skat:</b>The p-value calculated by Sequencing kernel association test of Shawn Lee.<br />
-                                    </h4>
+                                    <p>An extra file with the suffix ".rvtest.geneset.xlsx" will be created in the targeted output path. The <tt>'--rvtest-geneset'</tt> will provide the  p values of multiple set-based tests for rare variants.  </p>
+
 
                                     <h3><a name="GeneSetEnrichment" >Enrichment at geneset</a></h3>                                  
                                     <p>Test whether a  set of genes highly ranked in an ordered list of all genes by Wilcoxon rank sum test:<tt> --geneset-enrichment-test </tt>
                                         <code>java -jar kggseq.jar --vcf-file path/to/file1 --ped-file path/to/file2 --out path/to/prefixname [other tags] --geneset-enrichment-test</code>
 
-                                        Basically, this analysis is to examine whether a  set of genes is more highly ranked in an ordered list of all genes than would be expected by chance. Therefore,as the rank of gene is a prerequisite, it should be used together with a gene-based statistical test.<br/>
+                                        Basically, this analysis is to examine whether a  set of genes are more highly ranked in an ordered list of all genes than would be expected by chance. Therefore,as the rank of gene is a prerequisite, it should be used together with a gene-based statistical test.<br/>
 
 
                                         Currently, this enrichment test can only be used together with the gene-based mutation rate test:
@@ -3783,9 +3852,9 @@
                             <tr>
                                 <td><h2><a name="Plotting" >Plotting </a></h2>
                                     <p>Generate a histogram of minor allele frequency (MAF) according to  allele frequencies in reference dataset <tt>--mafplot-ref</tt> or in sample <tt>--mafplot-sample</tt>. 
-                                        <code>java -jar kggseq.jar --vcf-file path/to/file1 --ped-file path/to/file2 --out path/to/prefixname --db-filter hg18_1kgasn2010,hg18_1kgeur2010,hg18_1kgafr2010,hg18_ESP5400  --allele-freq 0,1  --mafplot-ref</code>
+                                        <code>java -jar kggseq.jar --vcf-file path/to/file1 --ped-file path/to/file2 --out path/to/prefixname --db-filter 1kg201204,dbsnp141,ESP6500AA,ESP6500EA  --allele-freq 0,1  --mafplot-ref</code>
                                         <code>java -jar kggseq.jar --vcf-file path/to/file1 --ped-file path/to/file2 --out path/to/prefixname  --mafplot-sample</code>
-                                        <strong> Note</strong> Currently, --mafplot only supports the inputs specified by --vcf-file.<br />
+                                        <strong> Note</strong> Currently, --mafplot-sample only supports the inputs specified by --vcf-file.<br />
                                         <br />
 
                                         Generate a Quantile-Quantile (Q-Q) plot for association p-values <tt>--qqplot</tt>
@@ -3796,6 +3865,30 @@
 
                                 </td>
                             </tr>
+
+                            <tr>
+                                <td><h2><a name="Miscellaneous" >Miscellaneous </a></h2>
+                                    <p>Calculate pair-wise the linkage disequilibrium or genotypic correlation  <tt>--calc-ld</tt>. 
+                                        <code>java -jar kggseq.jar --vcf-file path/to/file --ped-file path/to/file --out path/to/prefixname --calc-ld --db-filter 1kg201204,dbsnp141,ESP6500AA,ESP6500EA  --allele-freq 0.05,0.95   --regions-in chr4:21212-233454</code>                                       
+                                        If the genotypes are phased, KGGSeq will calculate the linkage disequilibrium coefficient r-square. For uphased genotypes, KGGSeq will calculate the Pearson genotypic correlation of variants, in which the genotypes are encoded by the number of alternative alleles.
+                                        <br /> 
+                                        <strong> Note</strong> Currently, --calc-ld only supports variants with two alleles.<br />
+
+                                        <p>The results will be outputted in a text file  with the suffix ".ld" or ".ld.gz".  The following is an exmaple of the output format:
+                                            <h4> 
+                                                [chromsome] [coordinate of the first variant] [coordinate of the second variant] [r-square OR correlation]<br />
+                                                22	16051249	16052962	0.8680002633575351<br />
+                                                22	16051249	16053659	0.13732498950210686<br />
+                                                22	16051249	16053862	0.984494959737711
+                                            </h4>
+                                        </p>
+
+                                    </p>
+
+
+                                </td>
+                            </tr>
+
                             <tr>
                                 <td><hr />                                   
                                     <h1> <a name="faq">FAQ?</a></h1>
@@ -3811,7 +3904,7 @@
                                     <p>The candidate gene list can include any gene interesting to the user. It  may be verified causal gene for the disease, or potential causal gene. The gene  list is used to fish more hidden interesting genes in order to narrow down the  searching region. If no gene list provided, KGGSeq can still perform routine  &lsquo;filtration + sharing&rsquo; strategy for sequencing data.</p>
                                     <p><b>6)Suppose I have in-house control genomes in VCF format, how can I  transform it into KGGSeq acceptable file?</b></p>
                                     <p>There are two alternative ways to allow you use the in-house VCF data (containing  genotypes of multiple individuals) as filter.</p>
-                                    <p>1. Convert the VCF data into a standard KGGSeq local filter format by the  command: <em>--make-filter --vcf-file path/to/vcffile --buildver-in hg18 --out  test.hg19.var --buildver-out hg19 </em>first. And then set the --local-filter <em>test.hg19.var</em></p>
+                                    <p>1. Convert the VCF data into a standard KGGSeq local filter format by the  command: <em>--make-filter --vcf-file path/to/vcffile --out  test.var </em>first. And then set the --local-filter <em>test.hg19.var</em></p>
                                     <p>2. Directly set <em>--local-filter-vcf path/to/vcffile. </em>However, this  way is less efficient than the above way as it will take additional time to  parse the VCF data.</p>
                                     <p><b>7) Is there a practical guidance for MAF  selection?</b></p>
                                     <p> MAF selection is an open question, but generally three suggestions can be adopted: for rare dominant Mendelian disease, MAF cut-off at 0 or 0.005 is reasonable; for rare recessive Mendelian disease, MAF cut-off at 0 or 0.03 is reasonable;

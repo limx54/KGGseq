@@ -34,8 +34,8 @@ public class Chromosome {
     public List<Gene> geneList;
     private boolean hasNotOrderVariantList = true;
     private boolean hasNotOrdermRNAList = true;
-    private final  VariantPositionComparator varPosComp = new VariantPositionComparator();
-    private final  SeqSegmentComparator mRNAPosComp = new SeqSegmentComparator();
+    private final VariantPositionComparator varPosComp = new VariantPositionComparator();
+    private final SeqSegmentComparator mRNAPosComp = new SeqSegmentComparator();
     private final OpenIntIntHashMap posIndexMap = new OpenIntIntHashMap();
     //always start from zeor
     public int genotypeSize = 0;
@@ -75,13 +75,12 @@ public class Chromosome {
 
     public void buildVariantIndexMap() {
         if (hasNotOrderVariantList) {
-            List<Variant> variantList1 = new ArrayList<Variant>();
-            Collections.sort(variantList1, varPosComp);
+            Collections.sort(variantList, varPosComp);
             hasNotOrderVariantList = false;
         }
         int len = variantList.size();
         posIndexMap.clear();
-        for (int i = 0; i < len; i++) {         
+        for (int i = 0; i < len; i++) {
             posIndexMap.put(variantList.get(i).refStartPosition, i + 1);
         }
     }

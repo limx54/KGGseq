@@ -595,10 +595,7 @@ public class ReadGZipFile extends Observable {
         } else {
             throw new FileNotFoundException("Failed to find the file" + fullPath);
         }
-        if (!lineBuffer.isEmpty()) {
-            int sss = 0;
-        }
-        // 通知观察者,当前工作已经完成  
+       
         setChanged();
         notifyObservers(start + "-" + end);
     }

@@ -316,9 +316,7 @@ public class Util {
         int tempLength = (string.length() / 2) + 1;
 
         // System.out.println(string);
-        if (string.startsWith("chr1	14622")) {
-            int sss = 0;
-        }
+    
         if (temp == null || temp.length < tempLength) {
             temp = new String[tempLength];
             tempArray.set(temp);
@@ -374,22 +372,14 @@ public class Util {
         }
 
         while (j >= 0 && i < strLen) {
-            if (wordCount == 386) {
-                int sss = 0;
-            }
+            
             if (tempInt[wordCount] == 0) {
                 tempInt[wordCount] = j;
             } else {
                 //tempInt[wordCount] = (tempInt[wordCount] + j + 1) / 2;
                 tempInt[wordCount] = j;
             }
-            if (i < 0 || j < 0) {
-                int sss = 0;
-            }
-
-            if (tempInt[wordCount] == 12412) {
-                int sss = 0;
-            }
+            
             temp[wordCount++] = string.substring(i, j);
 
             i = j + 1;

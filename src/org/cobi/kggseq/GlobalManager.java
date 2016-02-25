@@ -29,20 +29,20 @@ public class GlobalManager implements Constants {
     public static String RESOURCE_PATH = null;
     public static String PLUGIN_PATH = LOCAL_FOLDER + "plugin/";
     public static String LOCAL_COPY_FOLDER = null;
-    public static Map<String, Character> codonTable = new HashMap<String, Character>();
-    public static Map<String, Byte> VarFeatureIDMap = new HashMap<String, Byte>();
+    public static final Map<String, Character> codonTable = new HashMap<String, Character>();
+    public static final Map<String, Byte> VarFeatureIDMap = new HashMap<String, Byte>();
     public static boolean isConnectInternet = false;
 
-    public static Map<Integer, boolean[]> unphasedGtyCodingMap = new HashMap<Integer, boolean[]>();
-    public static Map<String, int[]> codingUnphasedGtyCodingMap = new HashMap<String, int[]>();
-    public static Map<Integer, boolean[]> phasedGtyCodingMap = new HashMap<Integer, boolean[]>();
-    public static Map<String, int[]> codingPhasedGtyCodingMap = new HashMap<String, int[]>();
+    public static final Map<Integer, boolean[]> unphasedGtyCodingMap = new HashMap<Integer, boolean[]>();
+    public static final Map<String, int[]> codingUnphasedGtyCodingMap = new HashMap<String, int[]>();
+    public static final Map<Integer, boolean[]> phasedGtyCodingMap = new HashMap<Integer, boolean[]>();
+    public static final Map<String, int[]> codingPhasedGtyCodingMap = new HashMap<String, int[]>();
 
-    public static OpenIntIntHashMap unphasedAlleleBitMap = new OpenIntIntHashMap();
-    public static OpenIntIntHashMap phasedAlleleBitMap = new OpenIntIntHashMap();
+    public static final OpenIntIntHashMap unphasedAlleleBitMap = new OpenIntIntHashMap();
+    public static final OpenIntIntHashMap phasedAlleleBitMap = new OpenIntIntHashMap();
     public static List<String> pubMedFilter;
     //& operators
-    public static byte[] byteOpers = new byte[]{-128, 64, 32, 16, 8, 4, 2, 1};
+    public static final byte[] byteOpers = new byte[]{-128, 64, 32, 16, 8, 4, 2, 1};
     public static int[] intOpers = new int[32];
 
     public static int osCode = 0;
@@ -165,6 +165,7 @@ public class GlobalManager implements Constants {
                 intOpers[i] = 1 << (31 - i);
                 //   System.out.println(Integer.toBinaryString(intOpers[i]));
             }
+
             for (int i = 0; i < VAR_FEATURE_NAMES.length; i++) {
                 VarFeatureIDMap.put(VAR_FEATURE_NAMES[i], (byte) i);
             }
@@ -200,8 +201,8 @@ public class GlobalManager implements Constants {
 
                 for (s = 0; s < gtys.length; s++) {
                     int str = gtys[s];
-                    String bitS = CombinationGenerator.toBinaryString(s + 1, base);
-                    unphasedGtyCodingMap.put(str, CombinationGenerator.toBinaryArray(s + 1, base));
+                    String bitS = CombinationGenerator.toBinaryString(s, base);
+                    unphasedGtyCodingMap.put(str, CombinationGenerator.toBinaryArray(s, base));
                     int[] alleles = new int[2];
                     alleles[0] = str & 0XFF;
                     alleles[1] = str & 0XFF00;
@@ -230,9 +231,9 @@ public class GlobalManager implements Constants {
 
                 for (s = 0; s < gtys.length; s++) {
                     str = gtys[s];
-                    String bitS = toBinaryString(s + 1, base);
+                    String bitS = toBinaryString(s, base);
 
-                    phasedGtyCodingMap.put(str, toBinaryArray(s + 1, base));
+                    phasedGtyCodingMap.put(str, toBinaryArray(s, base));
 
                     int[] alleles = new int[2];
                     alleles[0] = str & 0XFF;

@@ -5,6 +5,7 @@
 package org.cobi.kggseq;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
@@ -18,6 +19,7 @@ import java.util.StringTokenizer;
 import java.util.regex.Pattern;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
+import org.cobi.util.file.LocalFileFunc;
 import org.cobi.util.text.LocalFile;
 import org.cobi.util.text.Util;
 
@@ -38,10 +40,12 @@ public class Options implements Constants {
     public String inputFormatSupp = null;
     public String inputFileNameSupp = null;
     public String pedFile = null;
+    public boolean hasTmpPedFile = false;
     public Map<String, Integer> phenotypeColID;
     public String sampleVarHardFilterCode = null;
     public String sampleGtyHardFilterCode = null;
     public boolean noLibCheck = false;
+    public boolean libUpdate = false;
     public int minHetA = -9, minHomA = -9, minHetU = -9, minHomU = -9;
     public int minOBSA = -9, minOBSU = -9;
     public int minOBS = -9;
@@ -53,6 +57,8 @@ public class Options implements Constants {
     public boolean isSeattleSeqOut = false;
     public boolean isANNOVAROut = false;
     public boolean isVCFOut = false;
+    public boolean isSimpleVCFOut = false;
+    public boolean needNewVCFForRVTest = false;
     public boolean isVCFOutFilterd = false;
     public boolean isPlinkPedOut = false;
     public boolean isPlinkBedOut = false;
@@ -65,7 +71,7 @@ public class Options implements Constants {
     public String[] geneDBLabels = null;
     public Map<String, String> PUBDB_URL_MAP = new HashMap<String, String>();
     public Map<String, String> PUBDB_FILE_MAP = new HashMap<String, String>();
-    public boolean noResCheck = false;
+    public boolean resCheck = false;
     public String resourceFolder = null;
     public boolean excelOut = false;
     public Set<String> candidateGeneSet = new HashSet<String>();
@@ -115,7 +121,7 @@ public class Options implements Constants {
     public boolean filterNonEnhancer = false;
     public boolean needRecordEnhancer = false;
     public double pValueThreshold = 0.05;
-    public String multipleTestingMethod = "no";
+    public String multipleTestingMethod = "benfdr";
 
     // Bayes Annotation Source
     public String[] dbncfpFeatureColumn = null;
@@ -132,6 +138,7 @@ public class Options implements Constants {
     public StringBuilder regionsInStr = new StringBuilder();
     public int[][] regionsOutPos = null;
     public StringBuilder regionsOutStr = new StringBuilder();
+    boolean calcLD = false;
 
     public int flankingSequence = 0;
     public String ppidb = null;
@@ -187,8 +194,6 @@ public class Options implements Constants {
 //----------------------------
     public boolean onlyPositive = true;
     public int maxGtyAlleleNum = 4;
-    public boolean needGtyQual = false;
-
     public boolean needRconnection = false;
 //-----------------------------
 
@@ -197,8 +202,10 @@ public class Options implements Constants {
     public boolean skatBinary = false;
     public boolean permutePheno = false;
     public boolean rvtestGene = false;
+    public boolean rvtestVar = false;
     public boolean rvtestGeneset = false;
-    public boolean rvtestKeep = false;
+    public boolean rvtestRemoveSet = false;
+    public String rvtestCommand = null;
     public boolean cov = false;
     String[] covItems = null;
     public boolean phe = false;
@@ -216,6 +223,7 @@ public class Options implements Constants {
     public boolean phenoMouse = false;
     public boolean zebraFish = false;
     public boolean dddPhenotypes = false;
+    boolean hasStandardHeadInPed = false;
 
     public Options() {
         scoreDBLableList = new ArrayList<String>();
@@ -231,12 +239,25 @@ public class Options implements Constants {
         if (id >= 0) {
             noLibCheck = true;
         } else {
-            String info = "To disable library checking, use --no-lib-check.";
+            //String info = "To disable library checking, use --no-lib-check.";
+           // System.out.println(info);
+        }
+
+        id = find("--lib-update");
+        if (id >= 0) {
+            libUpdate = true;
+        } else {
+            String info = "To enable library updated automatically, use --lib-update.";
             System.out.println(info);
         }
-        id = find("--no-resource-check");
+
+       
+        id = find("--resource-update");
         if (id >= 0) {
-            noResCheck = true;
+            resCheck = true;
+        }else {
+            String info = "To enable resource updated automatically, use --resource-update.";
+            System.out.println(info);
         }
 
         id = find("--no-progress-check");
@@ -645,7 +666,7 @@ public class Options implements Constants {
                 String id1 = tokenizer.nextToken();
                 String id2 = tokenizer.nextToken();
                 String delimiter = "\t\" \",/";
-                boolean hasStandardHeadInPed = false;
+
                 //special label  
                 if (id1.equals("fid") && id2.equals("iid")) {
                     hasStandardHeadInPed = true;
@@ -671,44 +692,66 @@ public class Options implements Constants {
                     }
                     id++;
                 }
-                hasStandardHeadInPed = true;
-
                 br.close();
-
-                id = find("--phe");
-                if (id > 0) {
-                    phe = true;
-                    pheItem = options[id + 1].trim();
-                    param.append("--phe");
-                    param.append(" ");
-                    param.append(pheItem);
-                    param.append("\n");
-                    if (!phenotypeColID.containsKey(pheItem)) {
-                        String infor = "The specified phenotyes by \'--phe " + pheItem + "\' is not in the pedigree file!";
-                        throw new Exception(infor);
+                if (!hasStandardHeadInPed) {
+                    //then produce a ped file with standard head
+                    br = new BufferedReader(new FileReader(pedFile));
+                    pedFile += ".tmp";
+                    hasTmpPedFile=true;
+                    BufferedWriter bwPed = LocalFileFunc.getBufferedWriter(pedFile, false);
+                    bwPed.write("fid\tiid\tfatid\tmatid");
+                    for (int i = 0; i < id; i++) {
+                        bwPed.write("\t");
+                        bwPed.write("UnknownPheno" + i);
                     }
+                    bwPed.write("\n");
+                    while ((line = br.readLine()) != null) {
+                        bwPed.write(line);
+                        bwPed.write("\n");
+                    }
+                    bwPed.close();
+                    br.close();
+                    phe = true;
+                    pheItem = "UnknownPheno" + (id - 1);
+                    
                 }
-                id = find("--cov");
-                if (id > 0) {
-                    cov = true;
-                    covItems = options[id + 1].split(",");
-                    param.append("--cov");
-                    param.append(" ");
-                    param.append(options[id + 1]);
-                    param.append("\n");
 
-                    for (String ci : covItems) {
-                        if (!phenotypeColID.containsKey(ci)) {
-                            String infor = "The specified covariable," + ci + ", by \'--cov\' is not in the pedigree file!";
+                if (hasStandardHeadInPed) {
+                    id = find("--phe");
+                    if (id > 0) {
+                        phe = true;
+                        pheItem = options[id + 1].trim();
+                        param.append("--phe");
+                        param.append(" ");
+                        param.append(pheItem);
+                        param.append("\n");
+                        if (!phenotypeColID.containsKey(pheItem)) {
+                            String infor = "The specified phenotye by \'--phe " + pheItem + "\' is not in the pedigree file!";
                             throw new Exception(infor);
                         }
                     }
+                    id = find("--cov");
+                    if (id > 0) {
+                        cov = true;
+                        covItems = options[id + 1].split(",");
+                        param.append("--cov");
+                        param.append(" ");
+                        param.append(options[id + 1]);
+                        param.append("\n");
 
+                        for (String ci : covItems) {
+                            if (!phenotypeColID.containsKey(ci)) {
+                                String infor = "The specified covariable," + ci + ", by \'--cov\' is not in the pedigree file!";
+                                throw new Exception(infor);
+                            }
+                        }
+                    }
                 }
 
             } else // String infor = "Please sepecify the option \' --indiv-pheno NormalIndiv1:1,Patient2:2,Tome:0 \'";
             //  throw new Exception(infor);
-             if (find("--make-filter") < 0) {
+            {
+                if (find("--make-filter") < 0) {
                     id = find("--indiv-pheno");
                     if (id >= 0) {
                         indivPhenos = options[id + 1].split(",");
@@ -763,6 +806,7 @@ public class Options implements Constants {
                     }
 
                 }
+            }
         }
         if (inputFormat == null) {
             String infor = "Please specify input variant file by correct options (e.g., --vcf-file or --annovar-file)!";
@@ -859,8 +903,20 @@ public class Options implements Constants {
             param.append("--o-vcf");
             param.append('\n');
             missingGty = "./.";
-            needGtyQual = true;
+
         }
+        id = find("--o-svcf");
+        if (id >= 0) {
+            if (!inputFormat.equals("--vcf-file")) {
+                String infor = "The \'--o-svcf\' now only supports VCF inputs specified by \'--vcf-file\'";
+                throw new Exception(infor);
+            }
+            isSimpleVCFOut = true;
+            param.append("--o-svcf");
+            param.append('\n');
+            missingGty = "./.";
+        }
+
         id = find("--o-vcf-filtered");
         if (id >= 0) {
             if (!inputFormat.equals("--vcf-file")) {
@@ -882,7 +938,7 @@ public class Options implements Constants {
         id = find("--o-plink-ped");
         if (id >= 0) {
             if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
-                String infor = "The \'--o-plink\' now only supports VCF inputs specified by \'--vcf-file\'";
+                String infor = "The \'--o-plink\' now only supports inputs specified by \'--vcf-file\' or \'--ked-file\'";
                 throw new Exception(infor);
             }
             isPlinkPedOut = true;
@@ -893,8 +949,8 @@ public class Options implements Constants {
 
         id = find("--o-plink-bed");
         if (id >= 0) {
-            if (!inputFormat.equals("--vcf-file")) {
-                String infor = "The \'--o-plink\' now only supports VCF inputs specified by \'--vcf-file\'";
+            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                String infor = "The \'--o-plink\' now only supports inputs specified by \'--vcf-file\' or \'--ked-file\'";
                 throw new Exception(infor);
             }
             isPlinkBedOut = true;
@@ -906,7 +962,7 @@ public class Options implements Constants {
         id = find("--o-ked");
         if (id >= 0) {
             if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
-                String infor = "The \'--o-ked\' now only supports VCF inputs specified by \'--vcf-file\'";
+                String infor = "The \'--o-plink\' now only supports inputs specified by \'--vcf-file\' or \'--ked-file\'";
                 throw new Exception(infor);
             }
             isBinaryGtyOut = true;
@@ -983,8 +1039,8 @@ public class Options implements Constants {
         } else {
             id = find("--hwe-control");
             if (id >= 0) {
-                if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--pileup-file")) {
-                    String infor = "The \'--hwe-control\' now only supports VCF inputs specified by \'--vcf-file\' or \'--pileup-file\'!";
+                if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                    String infor = "The \'--o-plink\' now only supports inputs specified by \'--vcf-file\' or \'--ked-file\'";
                     throw new Exception(infor);
                 }
                 hwdPControl = Double.parseDouble(options[id + 1]);
@@ -999,8 +1055,8 @@ public class Options implements Constants {
 
             id = find("--hwe-case");
             if (id >= 0) {
-                if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--pileup-file")) {
-                    String infor = "The \'--hwe-case\' now only supports VCF inputs specified by \'--vcf-file\' or \'--pileup-file\'!";
+                if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                    String infor = "The \'--o-plink\' now only supports inputs specified by \'--vcf-file\' or \'--ked-file\'";
                     throw new Exception(infor);
                 }
                 hwdPCase = Double.parseDouble(options[id + 1]);
@@ -1015,8 +1071,8 @@ public class Options implements Constants {
 
             id = find("--hwe-all");
             if (id >= 0) {
-                if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--pileup-file")) {
-                    String infor = "The \'--hwe-all\' now only supports VCF inputs specified by \'--vcf-file\' or \'--pileup-file\'!";
+                if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                    String infor = "The \'--o-plink\' now only supports inputs specified by \'--vcf-file\' or \'--ked-file\'";
                     throw new Exception(infor);
                 }
                 hwdPAll = Double.parseDouble(options[id + 1]);
@@ -1035,7 +1091,7 @@ public class Options implements Constants {
             if (id >= 0) {
                 if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--pileup-file")
                         && !inputFormat.equals("--soap-file") && !inputFormat.equals("--no-genotype-vcf-file")) {
-                    String infor = "The \'--seq-qual\' now only supports VCF inputs specified by \'--vcf-file\' or \'--pileup-file\' or \'--soap-file\' or \'--no-genotype-vcf-file\'";
+                    String infor = "The \'--seq-qual\' now only supports VCF inputs specified by \'--vcf-file\' or \'--no-genotype-vcf-file\'";
                     throw new Exception(infor);
                 }
                 seqQual = Double.parseDouble(options[id + 1]);
@@ -1101,9 +1157,9 @@ public class Options implements Constants {
 
             id = find("--max-allele");
             if (id >= 0) {
-                if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--pileup-file")
+                if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")
                         && !inputFormat.equals("--soap-file") && !inputFormat.equals("--no-genotype-vcf-file") && !inputFormat.equals("--ked-file")) {
-                    String infor = "The \'--max-allele\' now only supports VCF inputs specified by \'--vcf-file\'. ";
+                    String infor = "The \'--max-allele\' now only supports VCF inputs specified by \'--vcf-file\' or \'--ked-file\'. ";
                     throw new Exception(infor);
                 }
                 maxGtyAlleleNum = Integer.parseInt(options[id + 1]);
@@ -1276,8 +1332,8 @@ public class Options implements Constants {
 
         id = find("--min-heta");
         if (id >= 0) {
-            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--v-assoc-file")) {
-                String infor = "The \'--min-heta\' now only supports inputs specified by \'--vcf-file\' or \'--v-assoc-file\'";
+            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                String infor = "The \'--min-heta\' now only supports inputs specified by \'--vcf-file\' or \'--ked-file\'";
                 if (inputFormatSupp != null) {
                     if (!inputFormatSupp.equals("--v-assoc-file")) {
                         throw new Exception(infor);
@@ -1298,8 +1354,8 @@ public class Options implements Constants {
 
         id = find("--min-homa");
         if (id >= 0) {
-            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--v-assoc-file")) {
-                String infor = "The \'--min-homa\' now only supports inputs specified by \'--vcf-file\' or \'--v-assoc-file\'";
+            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                String infor = "The \'--min-homa\' now only supports inputs specified by \'--vcf-file\' or \'--ked-file\'";
                 if (inputFormatSupp != null) {
                     if (!inputFormatSupp.equals("--v-assoc-file")) {
                         throw new Exception(infor);
@@ -1320,8 +1376,8 @@ public class Options implements Constants {
 
         id = find("--min-hetu");
         if (id >= 0) {
-            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--v-assoc-file")) {
-                String infor = "The \'--min-hetu\' now only supports inputs specified by \'--vcf-file\' or \'--v-assoc-file\'";
+            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                String infor = "The \'--min-hetu\' now only supports inputs specified by \'--vcf-file\' or \'--ked-file\'";
                 if (inputFormatSupp != null) {
                     if (!inputFormatSupp.equals("--v-assoc-file")) {
                         throw new Exception(infor);
@@ -1342,8 +1398,8 @@ public class Options implements Constants {
 
         id = find("--min-homu");
         if (id >= 0) {
-            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--v-assoc-file")) {
-                String infor = "The \'--min-homu\' now only supports inputs specified by \'--vcf-file\' or \'--v-assoc-file\'";
+            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                String infor = "The \'--min-homu\' now only supports inputs specified by \'--vcf-file\' or \'--ked-file\'";
                 if (inputFormatSupp != null) {
                     if (!inputFormatSupp.equals("--v-assoc-file")) {
                         throw new Exception(infor);
@@ -1364,8 +1420,8 @@ public class Options implements Constants {
 
         id = find("--min-obsa");
         if (id >= 0) {
-            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--v-assoc-file") && !inputFormat.equals("--ked-file")) {
-                String infor = "The \'--min-obsa\' now only supports inputs specified by \'--vcf-file\' or \'--v-assoc-file\'";
+            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                String infor = "The \'--min-obsa\' now only supports inputs specified by \'--vcf-file\' or \'--ked-file\'";
                 if (inputFormatSupp != null) {
                     if (!inputFormatSupp.equals("--v-assoc-file")) {
                         throw new Exception(infor);
@@ -1385,8 +1441,8 @@ public class Options implements Constants {
         }
         id = find("--min-obsu");
         if (id >= 0) {
-            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--v-assoc-file")) {
-                String infor = "The \'--min-obsu\' now only supports inputs specified by \'--vcf-file\' or \'--v-assoc-file\'";
+            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                String infor = "The \'--min-obsu\' now only supports inputs specified by \'--vcf-file\' or \'--ked-file\'";
                 if (inputFormatSupp != null) {
                     if (!inputFormatSupp.equals("--v-assoc-file")) {
                         throw new Exception(infor);
@@ -1407,8 +1463,8 @@ public class Options implements Constants {
 
         id = find("--min-obs");
         if (id >= 0) {
-            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--v-assoc-file")) {
-                String infor = "The \'--min-obs\' now only supports inputs specified by \'--vcf-file\' or \'--v-assoc-file\'";
+            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                String infor = "The \'--min-obs\' now only supports inputs specified by \'--vcf-file\' or \'--ked-file\'";
                 if (inputFormatSupp != null) {
                     if (!inputFormatSupp.equals("--v-assoc-file")) {
                         throw new Exception(infor);
@@ -1449,7 +1505,7 @@ public class Options implements Constants {
         id = find("--genotype-filter");
         if (id >= 0) {
             if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
-                String infor = "The \'--genotype-filter\' now only supports VCF inputs specified by \'--vcf-file\'";
+                String infor = "The \'--genotype-filter\' now only supports inputs specified by \'--vcf-file\'";
                 throw new Exception(infor);
             }
             sampleGtyHardFilterCode = options[id + 1];
@@ -1464,8 +1520,8 @@ public class Options implements Constants {
 
         id = find("--ibs-case-filter");
         if (id >= 0) {
-            if (!inputFormat.equals("--vcf-file")) {
-                String infor = "The \'--ibs-case-filter\' now only supports VCF inputs specified by \'--vcf-file\'";
+            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                String infor = "The \'--ibs-case-filter\' now only supports inputs specified by \'--ked-file\'";
                 throw new Exception(infor);
             }
             ibsCheckCase = Integer.parseInt(options[id + 1]);
@@ -1478,8 +1534,8 @@ public class Options implements Constants {
         }
         id = find("--double-hit-gene-trio-filter");
         if (id >= 0) {
-            if (!inputFormat.equals("--vcf-file")) {
-                String infor = "The \'--double-hit-gene-trio-filter\' now only supports VCF inputs specified by \'--vcf-file\'";
+            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                String infor = "The \'--double-hit-gene-trio-filter\' now only supports inputs specified by \'--vcf-file\' or \'--ked-file\'";
                 throw new Exception(infor);
             }
             if (find("--db-gene") < 0) {
@@ -1553,8 +1609,8 @@ public class Options implements Constants {
 
         id = find("--gene-var-filter");
         if (id >= 0) {
-            if (!inputFormat.equals("--vcf-file")) {
-                String infor = "The \'--gene-var-filter\' now only supports VCF inputs specified by \'--vcf-file\'";
+            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                String infor = "The \'--gene-var-filter\' now only supports inputs specified by \'--vcf-file\' or \'--ked-file\'";
                 throw new Exception(infor);
             }
             if (find("--db-gene") < 0) {
@@ -1572,8 +1628,8 @@ public class Options implements Constants {
 
         id = find("--double-hit-gene-trio-filter-all");
         if (id >= 0) {
-            if (!inputFormat.equals("--vcf-file")) {
-                String infor = "The \'--double-hit-gene-trio-filter\' now only supports VCF inputs specified by \'--vcf-file\'";
+            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                String infor = "The \'--double-hit-gene-trio-filter\' now only supports inputs specified by \'--vcf-file\' or \'--ked-file\'";
                 throw new Exception(infor);
             }
             if (find("--db-gene") < 0) {
@@ -1594,8 +1650,8 @@ public class Options implements Constants {
         }
         id = find("--double-hit-gene-phased-filter");
         if (id >= 0) {
-            if (!inputFormat.equals("--vcf-file")) {
-                String infor = "The \'--double-hit-gene-phased-filter\' now only supports VCF inputs specified by \'--vcf-file\'";
+            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                String infor = "The \'--double-hit-gene-phased-filter\' now only supports inputs specified by \'--vcf-file\' or \'--ked-file\'";
                 throw new Exception(infor);
             }
 
@@ -1613,8 +1669,8 @@ public class Options implements Constants {
 
         id = find("--ignore-homo");
         if (id >= 0) {
-            if (!inputFormat.equals("--vcf-file")) {
-                String infor = "The \'--ignore-homo\' now only supports VCF inputs specified by \'--vcf-file\'";
+            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                String infor = "The \'--ignore-homo\' now only supports inputs specified by \'--vcf-file\' or  \'--ked-file\'";
                 throw new Exception(infor);
             }
             noHomo = true;
@@ -1627,8 +1683,8 @@ public class Options implements Constants {
 
         id = find("--unique-gene-filter");
         if (id >= 0) {
-            if (!inputFormat.equals("--vcf-file")) {
-                String infor = "The \'--unique-gene-filter\' now only supports VCF inputs specified by \'--vcf-file\'";
+            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                String infor = "The \'--unique-gene-filter\' now only supports inputs specified by \'--vcf-file\' or \'--ked-file\'";
                 throw new Exception(infor);
             }
             overlappedGeneFilter = true;
@@ -1641,8 +1697,8 @@ public class Options implements Constants {
 
         id = find("--homozygosity-case-filter");
         if (id >= 0) {
-            if (!inputFormat.equals("--vcf-file")) {
-                String infor = "The \'--homozygosity-case-filter\' now only supports VCF inputs specified by \'--vcf-file\'";
+            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                String infor = "The \'--homozygosity-case-filter\' now only supports inputs specified by \'--vcf-file\' or  \'--ked-file\'";
                 throw new Exception(infor);
             }
             homozygousRegionCase = Integer.parseInt(options[id + 1]);
@@ -2063,8 +2119,8 @@ public class Options implements Constants {
         id = find("--var-assoc");
         if (id >= 0) {
             if (id >= 0) {
-                if (!inputFormat.equals("--vcf-file")) {
-                    String infor = "The \'--var-assoc\' now only supports inputs specified by \'--vcf-file\'!";
+                if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                    String infor = "The \'--var-assoc\' now only supports inputs specified by \'--vcf-file\' or \'--ked-file\'!";
                     throw new Exception(infor);
                 }
             }
@@ -2100,10 +2156,9 @@ public class Options implements Constants {
         }
         id = find("--filter-model");
         if (id >= 0) {
-            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--v-assoc-file") && !inputFormat.equals("--glm-file")
-                    && !inputFormat.equals("--assoc-file") && !inputFormat.equals("--vaast-simple-file")) {
+            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
                 String infor = "The \'--filter-model\' now only supports inputs specified by \'--vcf-file\' "
-                        + "or \'--v-assoc-file\'or \'--assoc-file\'or \'--vaast-simple-file\'";
+                        + "or  \'--ked-file\'.";
                 throw new Exception(infor);
             }
             if (sampleVarHardFilterCode != null) {
@@ -2322,7 +2377,7 @@ public class Options implements Constants {
             param.append("--genes-in");
             boolean hasPrint1 = false;
             while (st.hasMoreTokens()) {
-                String dbLabel = st.nextToken().toString();
+                String dbLabel = st.nextToken();
                 if (Util.isNumeric(dbLabel)) {
                     String infor = "Invalid gene symbol name " + dbLabel + " at --genes-in option";
                     throw new Exception(infor);
@@ -2616,7 +2671,7 @@ public class Options implements Constants {
 
             boolean hasPrint1 = false;
             while (st.hasMoreTokens()) {
-                String dbLabel = st.nextToken().toString().trim();
+                String dbLabel = st.nextToken().trim();
 
                 if (Util.isNumeric(dbLabel)) {
                     String infor = "Invalid term " + dbLabel + " at --pubmed-mining option";
@@ -2855,7 +2910,10 @@ public class Options implements Constants {
                 param.append('\n');
             }
             needRconnection = true;
-
+            if (find("--geneset-db") < 0 && find("--geneset-file") < 0) {
+                String infor = "The candidate genes specified by \'--geneset-db\' or \'--geneset-file\' are required for \'--skat-geneset\'!";
+                throw new Exception(infor);
+            }
         }
 
         id = find("--rvtest-gene");
@@ -2866,15 +2924,44 @@ public class Options implements Constants {
             }
             rvtestGene = true;
             param.append("--rvtest-gene");
-            id = find("--keep");
-            if (id >= 0) {
-                rvtestKeep = true;
-                param.append(" --keep");
+            if ((id + 1) >= options.length) {
+                rvtestCommand = null;
+            } else {
+                rvtestCommand = options[id + 1];
+            }
+            if (rvtestCommand == null || rvtestCommand.startsWith("--")) {
+                rvtestCommand = "cmc,skato[nPerm=1000:alpha=0.001:beta1=1:beta2=20]";
+            } else {
+                param.append(" ").append(rvtestCommand);
             }
             param.append('\n');
-            missingGty = "./.";
-            needGtyQual = true;
+        }
 
+        id = find("--rvtest-var");
+        if (id >= 0) {
+            if (!inputFormat.equals("--vcf-file")) {
+                String infor = "The \'--rvtest-var\' now only supports VCF inputs specified by \'--vcf-file\'";
+                throw new Exception(infor);
+            }
+            rvtestVar = true;
+            param.append("--rvtest-var");
+            if ((id + 1) >= options.length) {
+                rvtestCommand = null;
+            } else {
+                rvtestCommand = options[id + 1];
+            }
+            if (rvtestCommand == null || rvtestCommand.startsWith("--")) {
+                rvtestCommand = "score,wald";
+            } else {
+                param.append(" ").append(rvtestCommand);
+            }
+            param.append('\n');
+        }
+
+        id = find("--rvtest-remove-set");
+        if (id >= 0) {
+            rvtestRemoveSet = true;
+            param.append("--rvtest-remove-set\n");
         }
 
         id = find("--rvtest-geneset");
@@ -2885,13 +2972,45 @@ public class Options implements Constants {
             }
             rvtestGeneset = true;
             param.append("--rvtest-geneset");
+            if ((id + 1) >= options.length) {
+                rvtestCommand = null;
+            } else {
+                rvtestCommand = options[id + 1];
+            }
+            if (rvtestCommand == null || rvtestCommand.startsWith("--")) {
+                rvtestCommand = "cmc,skato[nPerm=1000:alpha=0.001:beta1=1:beta2=20]";
+            } else {
+                param.append(" ").append(rvtestCommand);
+            }
             param.append('\n');
-            missingGty = "./.";
-            needGtyQual = true;
 
+            if (find("--geneset-db") < 0 && find("--geneset-file") < 0) {
+                String infor = "The candidate genes specified by \'--geneset-db\' or \'--geneset-file\' are required for \'--rvtest-geneset\'!";
+                throw new Exception(infor);
+            }
         }
 
+        id = find("--rvtest-vcf");
+        if (id >= 0) {
+            if (!inputFormat.equals("--vcf-file")) {
+                String infor = "The \'--rvtest-vcf\' now only supports VCF inputs specified by \'--vcf-file\'";
+                throw new Exception(infor);
+            }
+            needNewVCFForRVTest = true;
+            isSimpleVCFOut = true;
+            param.append("--rvtest-vcf");
+            param.append('\n');
+            missingGty = "./.";
+
+        }
 //-------------------path-gene-predict------------------
+        id = find("--calc-ld");
+        if (id > 0) {
+            calcLD = true;
+            param.append("--calc-ld");
+            param.append("\n");
+        }
+
         id = find("--patho-gene-predict");
         if (id > 0) {
             mendelGenePatho = true;
@@ -2921,8 +3040,8 @@ public class Options implements Constants {
                 param.append(buildverOut);
                 param.append('\n');
             } else {
-                String info = "To change the genome version of input and output physical positions, use --buildver-in hgXX --buildver-out hgXX";
-                System.out.println(info);
+               // String info = "To change the genome version of input and output physical positions, use --buildver-in hgXX --buildver-out hgXX";
+                //System.out.println(info);
                 //return false;
             }
         }
@@ -2996,8 +3115,8 @@ public class Options implements Constants {
         //----------------------plotting function-----------------       
         id = find("--qqplot");
         if (id >= 0) {
-            if (!varAssoc && !skatGene && !skatGeneset && !rvtestGene && !rvtestGeneset && !geneMutationRateTest && !genesetEnrichmentTest) {
-                String infor = "--qqplot has to be used jointly with \'--var-assoc\' or \'--skat-gene\' or '--gene-mutation-rate-test' or '--geneset-enrichment-test'!";
+            if (!varAssoc && !rvtestVar && !skatGene && !skatGeneset && !rvtestGene && !rvtestGeneset && !geneMutationRateTest && !genesetEnrichmentTest) {
+                String infor = "--qqplot has to be used jointly with \'--var-assoc\'or \'--rvtest-var\' or \'--skat-gene\' or '--gene-mutation-rate-test' or '--geneset-enrichment-test'!";
 
                 throw new Exception(infor);
             }
@@ -3010,10 +3129,7 @@ public class Options implements Constants {
         }
         id = find("--mafplot-ref");
         if (id >= 0) {
-            if (!inputFormat.equals("--vcf-file")) {
-                String infor = "--mafplot-ref does only supports inputs specified by \'--vcf-file\'!";
-                throw new Exception(infor);
-            } else if (inputFormat.equals("--vcf-file")) {
+            if (inputFormat.equals("--vcf-file")) {
                 if (find("--db-filter") < 0 && find("--local-filter") < 0 && find("--local-filter-vcf") < 0) {
                     String infor = "To carry out --mafplot-ref for inputs specified by \'--vcf-file\', "
                             + "you need sepcify refernce variants datasets by \'--db-filter\' or \'--local-filter\' or \'--local-filter-vcf\'!";
@@ -3029,13 +3145,17 @@ public class Options implements Constants {
         }
         id = find("--mafplot-sample");
         if (id >= 0) {
-            if (!inputFormat.equals("--vcf-file")) {
-                String infor = "--mafplot-sample does only supports inputs specified by \'--vcf-file\'!";
+            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                String infor = "--mafplot-sample does only supports inputs specified by \'--vcf-file\' or \'--ked-file\'!";
                 throw new Exception(infor);
             }
             toMAFPlotSample = true;
             param.append("--mafplot-sample");
             param.append('\n');
+        }
+        if (hasStandardHeadInPed && (!phe) && (rvtestGene || rvtestGeneset || skatGene || skatGeneset || varAssoc)) {
+            String infor = "Please specify a phenotye  by \'--phe YourPhenotypeName\'.";
+            throw new Exception(infor);
         }
 
         /*
@@ -3071,7 +3191,7 @@ public class Options implements Constants {
         if (needLog) {
             pros.setProperty("log4j.appender.file", "org.apache.log4j.FileAppender");
             pros.setProperty("log4j.appender.file.File", outputFileName + ".log");
-            // pros.setProperty("log4j.appender.file.Append", "false");
+            pros.setProperty("log4j.appender.file.Append", "false");
             pros.setProperty("log4j.appender.file.layout", "org.apache.log4j.PatternLayout");
             pros.setProperty("log4j.appender.file.layout.ConversionPattern", "%-5p %d{yyyy-MM-dd HH:mm:ss} - %m%n");
         }
