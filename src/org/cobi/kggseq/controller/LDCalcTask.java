@@ -28,11 +28,24 @@ public class LDCalcTask extends Task implements Callable<String> {
     int[] sum12;
     int totalVarNum;
     double[] rArray;
+<<<<<<< HEAD
+=======
 
+>>>>>>> origin/master
     int unitNum;
     boolean isSmallRectangle = true;
     boolean[] hasMissingGty;
     double adjIndivSize;
+<<<<<<< HEAD
+    int[] positions;
+    int maxCalcDistance;
+
+    public void setPositionCutoff(int[] positions, int maxCalcDistance) {
+        this.positions = positions;
+        this.maxCalcDistance = maxCalcDistance;
+    }
+=======
+>>>>>>> origin/master
 
     public boolean isIsSmallRectangle() {
         return isSmallRectangle;
@@ -67,7 +80,11 @@ public class LDCalcTask extends Task implements Callable<String> {
 
     }
 
+<<<<<<< HEAD
+    public void fillSmallRectangleFull() {
+=======
     public void fillSmallRectangle() {
+>>>>>>> origin/master
         double r = 0;
         int x;
         double douSize = totalPedSubjectNum * 2;
@@ -126,9 +143,7 @@ public class LDCalcTask extends Task implements Callable<String> {
                             tmpD1 = (countAB / douSize - mean1[i] * mean1[j]);
                             tmpD2 = mean1[i] * (1 - mean1[i]) * mean1[j] * (1 - mean1[j]);
                             r = tmpD1 / Math.sqrt(tmpD2);
-                            if (Double.isNaN(r)) {
-                                int ssss = 0;
-                            }
+<<<<<<< HEAD
                         }
                         //correction
                         // r = (douSize * r - 1) / (douSize - 3);
@@ -141,6 +156,7 @@ public class LDCalcTask extends Task implements Callable<String> {
             } else {
                 for (int i = startRowIndex; i < endRowIndex; i++) {
                     for (int j = startColIndex; j < endColIndex; j++) {
+
                         countAB = 0;
                         //refecen http://blog.csdn.net/hitwhylz/article/details/10122617
                         for (int k = 0; k < unitNum; k++) {
@@ -197,6 +213,7 @@ public class LDCalcTask extends Task implements Callable<String> {
         } else if (startRowIndex == startColIndex) {
             for (int i = startRowIndex; i < endRowIndex; i++) {
                 for (int j = i + 1; j < endColIndex; j++) {
+
                     countAB = 0;
                     for (int k = 0; k < unitNum; k++) {
                         x = bits1[i][k] & bits1[j][k];
@@ -254,8 +271,8 @@ public class LDCalcTask extends Task implements Callable<String> {
                     // r = (douSize * r - 1) / (douSize - 3);
                     //johny's correction                
                     // r = 1 - (adjIndivSize - 3.0) / (adjIndivSize - 2.0) * (1.0 - r) * (1 + 2.0 * (1 - r) / (adjIndivSize - 3.3));
-                     rArray[(i - startRowIndex) * totalVarNum + j - startColIndex] = r;
-                   
+                    rArray[(i - startRowIndex) * totalVarNum + j - startColIndex] = r;
+
                     //   System.out.print((i - startRowIndex) + "," + (j - startColIndex) + ":" + r + " ");
                 }
                 //  System.out.println();
@@ -264,6 +281,7 @@ public class LDCalcTask extends Task implements Callable<String> {
         } else {
             for (int i = startRowIndex; i < endRowIndex; i++) {
                 for (int j = startColIndex; j < endColIndex; j++) {
+
                     countAB = 0;
                     for (int k = 0; k < unitNum; k++) {
                         x = bits1[i][k] & bits1[j][k];
@@ -319,8 +337,302 @@ public class LDCalcTask extends Task implements Callable<String> {
                     // r = (douSize * r - 1) / (douSize - 3);
                     //johny's correction                
                     // r = 1 - (adjIndivSize - 3.0) / (adjIndivSize - 2.0) * (1.0 - r) * (1 + 2.0 * (1 - r) / (adjIndivSize - 3.3));
+                    rArray[(i - startRowIndex) * totalVarNum + j - startColIndex] = r;
+
+                }
+            }
+        }
+    }
+
+    public void fillSmallRectangleRestrict() {
+        double r = 0;
+        int x;
+        double douSize = totalPedSubjectNum * 2;
+        totalVarNum = endColIndex - startColIndex;
+        int countAB, tmpNum = 0;
+        double tmpD1, tmpD2, tmpD3;
+        int sum1i, sum1j, sum12i, sum12j;
+        int nij = 0;
+        int exsit;
+        int tempInt;
+        if (isPhased) {
+            if (startRowIndex == startColIndex) {
+                for (int i = startRowIndex; i < endRowIndex; i++) {
+                    for (int j = i + 1; j < endColIndex; j++) {
+                        if (positions[j] - positions[i] > maxCalcDistance) {
+                            break;
+                        }
+                        countAB = 0;
+
+                        //refecen http://blog.csdn.net/hitwhylz/article/details/10122617
+                        for (int k = 0; k < unitNum; k++) {
+                            x = bits1[i][k] & bits1[j][k];
+                            countAB += (Integer.bitCount(x));  //returns left 8 bits of x + (x<<8) + (x<<16) + (x<<24) + ... 
+                            x = bits2[i][k] & bits2[j][k];
+                            countAB += (Integer.bitCount(x));
+                        }
+                        if (hasMissingGty[i] || hasMissingGty[j]) {
+                            sum1i = 0;
+                            sum1j = 0;
+                            nij = 0;
+
+                            for (int k = 0; k < unitNum; k++) {
+                                exsit = bits3[i][k] & bits3[j][k];
+                                x = exsit;
+                                nij += (Integer.bitCount(x));
+
+                                x = bits1[i][k] & exsit;
+                                tempInt = Integer.bitCount(x);
+                                sum1i += tempInt;
+                                x = bits2[i][k] & exsit;
+                                tempInt = Integer.bitCount(x);
+                                sum1i += tempInt;
+
+                                x = bits1[j][k] & exsit;
+                                tempInt = Integer.bitCount(x);
+                                sum1j += tempInt;
+                                x = bits2[j][k] & exsit;
+                                tempInt = Integer.bitCount(x);
+                                sum1j += tempInt;
+                            }
+                            nij = nij << 1;
+                            tmpD1 = ((double) sum1i) * sum1j / nij;
+                            tmpD1 = (countAB - tmpD1);
+                            tmpD2 = ((double) sum1i) / nij;
+                            tmpD3 = ((double) sum1j) / nij;
+                            tmpD2 = tmpD2 * (1 - tmpD2) * tmpD3 * (1 - tmpD3);
+                            r = tmpD1 / (nij * Math.sqrt(tmpD2));
+                        } else {
+                            tmpD1 = (countAB / douSize - mean1[i] * mean1[j]);
+                            tmpD2 = mean1[i] * (1 - mean1[i]) * mean1[j] * (1 - mean1[j]);
+                            r = tmpD1 / Math.sqrt(tmpD2);
+
+=======
+                            if (Double.isNaN(r)) {
+                                int ssss = 0;
+                            }
+>>>>>>> origin/master
+                        }
+                        //correction
+                        // r = (douSize * r - 1) / (douSize - 3);
+                        //johny's correction                
+                        //r = 1 - (adjIndivSize - 3.0) / (adjIndivSize - 2.0) * (1.0 - r) * (1.0 + 2 * (1 - r) / (adjIndivSize - 3.3));
+                        rArray[(i - startRowIndex) * totalVarNum + j - startColIndex] = r;
+                        // System.out.println();
+                    }
+                }
+            } else {
+                for (int i = startRowIndex; i < endRowIndex; i++) {
+                    for (int j = startColIndex; j < endColIndex; j++) {
+<<<<<<< HEAD
+                        if (positions[j] - positions[i] > maxCalcDistance) {
+                            break;
+                        }
+=======
+>>>>>>> origin/master
+                        countAB = 0;
+                        //refecen http://blog.csdn.net/hitwhylz/article/details/10122617
+                        for (int k = 0; k < unitNum; k++) {
+                            x = bits1[i][k] & bits1[j][k];
+                            countAB += (Integer.bitCount(x));  //returns left 8 bits of x + (x<<8) + (x<<16) + (x<<24) + ... 
+                            x = bits2[i][k] & bits2[j][k];
+                            countAB += (Integer.bitCount(x));
+                        }
+                        //refecen http://blog.csdn.net/hitwhylz/article/details/10122617
+                        if (hasMissingGty[i] || hasMissingGty[j]) {
+                            sum1i = 0;
+                            sum1j = 0;
+                            nij = 0;
+
+                            for (int k = 0; k < unitNum; k++) {
+                                exsit = bits3[i][k] & bits3[j][k];
+                                x = exsit;
+                                nij += (Integer.bitCount(x));
+
+                                x = bits1[i][k] & exsit;
+                                tempInt = Integer.bitCount(x);
+                                sum1i += tempInt;
+                                x = bits2[i][k] & exsit;
+                                tempInt = Integer.bitCount(x);
+                                sum1i += tempInt;
+
+                                x = bits1[j][k] & exsit;
+                                tempInt = Integer.bitCount(x);
+                                sum1j += tempInt;
+                                x = bits2[j][k] & exsit;
+                                tempInt = Integer.bitCount(x);
+                                sum1j += tempInt;
+                            }
+                            nij = nij << 1;
+                            tmpD1 = ((double) sum1i) * sum1j / nij;
+                            tmpD1 = (countAB - tmpD1);
+                            tmpD2 = ((double) sum1i) / nij;
+                            tmpD3 = ((double) sum1j) / nij;
+                            tmpD2 = tmpD2 * (1 - tmpD2) * tmpD3 * (1 - tmpD3);
+                            r = tmpD1 / (nij * Math.sqrt(tmpD2));
+                        } else {
+                            tmpD1 = (countAB / douSize - mean1[i] * mean1[j]);
+                            tmpD2 = mean1[i] * (1 - mean1[i]) * mean1[j] * (1 - mean1[j]);
+                            r = tmpD1 / Math.sqrt(tmpD2);
+                        }
+                        //correction
+                        // r = (douSize * r - 1) / (douSize - 3);
+                        //johny's correction                
+                        // r = 1 - (adjIndivSize - 3.0) / (adjIndivSize - 2.0) * (1.0 - r) * (1 + 2.0 * (1 - r) / (adjIndivSize - 3.3));
+                        rArray[(i - startRowIndex) * totalVarNum + j - startColIndex] = r;
+                    }
+                }
+            }
+        } else if (startRowIndex == startColIndex) {
+            for (int i = startRowIndex; i < endRowIndex; i++) {
+                for (int j = i + 1; j < endColIndex; j++) {
+<<<<<<< HEAD
+                    if (positions[j] - positions[i] > maxCalcDistance) {
+                        break;
+                    }
+
+=======
+>>>>>>> origin/master
+                    countAB = 0;
+                    for (int k = 0; k < unitNum; k++) {
+                        x = bits1[i][k] & bits1[j][k];
+                        countAB += (Integer.bitCount(x) << 1);
+                        x = bits2[i][k] & bits2[j][k];
+                        countAB += (Integer.bitCount(x) << 1);
+                        x = bits3[i][k] & bits3[j][k];
+                        countAB -= Integer.bitCount(x);
+                    }
+
+                    if (hasMissingGty[i] || hasMissingGty[j]) {
+                        sum1i = 0;
+                        sum1j = 0;
+                        sum12i = 0;
+                        sum12j = 0;
+                        nij = 0;
+
+                        for (int k = 0; k < unitNum; k++) {
+                            exsit = bits4[i][k] & bits4[j][k];
+                            x = exsit;
+                            nij += (Integer.bitCount(x));  //returns left 8 bits of x + (x<<8) + (x<<16) + (x<<24) + ... 
+
+                            x = bits1[i][k] & exsit;
+                            tempInt = Integer.bitCount(x);
+                            sum1i += (tempInt << 1);  //returns left 8 bits of x + (x<<8) + (x<<16) + (x<<24) + ... 
+                            sum12i += (tempInt << 2);  //returns left 8 bits of x + (x<<8) + (x<<16) + (x<<24) + ... 
+                            x = bits3[i][k] & exsit;
+                            tempInt = Integer.bitCount(x);
+                            sum1i += (tempInt);
+                            sum12i += (tempInt);
+
+                            x = bits1[j][k] & exsit;
+                            tempInt = Integer.bitCount(x);
+                            sum1j += (tempInt << 1);  //returns left 8 bits of x + (x<<8) + (x<<16) + (x<<24) + ... 
+                            sum12j += (tempInt << 2);
+                            x = bits3[j][k] & exsit;
+                            tempInt = Integer.bitCount(x);
+                            sum1j += (tempInt);
+                            sum12j += (tempInt);
+                        }
+
+                        countAB = nij * countAB - sum1i * sum1j;
+                        sum12i = nij * sum12i - sum1i * sum1i;
+                        sum12j = nij * sum12j - sum1j * sum1j;
+                        r = (countAB) / Math.sqrt(sum12i * sum12j);
+                        //r = (freqAB - mean1[i] * mean1[j]) / (sum12[i] * sum12[j]);
+                    } else {
+                        //Strange! this formula is even faster
+                        r = (totalPedSubjectNum * countAB - mean1[i] * mean1[j]) / Math.sqrt((totalPedSubjectNum * sum12[i] - mean1[i] * mean1[i]) * (totalPedSubjectNum * sum12[j] - mean1[j] * mean1[j]));
+                        //r = (freqAB - mean1[i] * mean1[j]) / (sum12[i] * sum12[j]);
+                    }
+
+                    //r = r * r;
+                    //correction
+                    // r = (douSize * r - 1) / (douSize - 3);
+                    //johny's correction                
+                    // r = 1 - (adjIndivSize - 3.0) / (adjIndivSize - 2.0) * (1.0 - r) * (1 + 2.0 * (1 - r) / (adjIndivSize - 3.3));
+<<<<<<< HEAD
+                    rArray[(i - startRowIndex) * totalVarNum + j - startColIndex] = r;
+
+=======
+                     rArray[(i - startRowIndex) * totalVarNum + j - startColIndex] = r;
+                   
+>>>>>>> origin/master
+                    //   System.out.print((i - startRowIndex) + "," + (j - startColIndex) + ":" + r + " ");
+                }
+                //  System.out.println();
+
+            }
+        } else {
+            for (int i = startRowIndex; i < endRowIndex; i++) {
+                for (int j = startColIndex; j < endColIndex; j++) {
+<<<<<<< HEAD
+                    if (positions[j] - positions[i] > maxCalcDistance) {
+                        break;
+                    }
+=======
+>>>>>>> origin/master
+                    countAB = 0;
+                    for (int k = 0; k < unitNum; k++) {
+                        x = bits1[i][k] & bits1[j][k];
+                        countAB += (Integer.bitCount(x) << 1);
+                        x = bits2[i][k] & bits2[j][k];
+                        countAB += (Integer.bitCount(x) << 1);
+                        x = bits3[i][k] & bits3[j][k];
+                        countAB -= Integer.bitCount(x);
+                    }
+
+                    if (hasMissingGty[i] || hasMissingGty[j]) {
+                        sum1i = 0;
+                        sum1j = 0;
+                        sum12i = 0;
+                        sum12j = 0;
+                        nij = 0;
+
+                        for (int k = 0; k < unitNum; k++) {
+                            exsit = bits4[i][k] & bits4[j][k];
+                            x = exsit;
+                            nij += (Integer.bitCount(x));  //returns left 8 bits of x + (x<<8) + (x<<16) + (x<<24) + ... 
+
+                            x = bits1[i][k] & exsit;
+                            tempInt = Integer.bitCount(x);
+                            sum1i += (tempInt << 1);  //returns left 8 bits of x + (x<<8) + (x<<16) + (x<<24) + ... 
+                            sum12i += (tempInt << 2);  //returns left 8 bits of x + (x<<8) + (x<<16) + (x<<24) + ... 
+                            x = bits3[i][k] & exsit;
+                            tempInt = Integer.bitCount(x);
+                            sum1i += (tempInt);
+                            sum12i += (tempInt);
+
+                            x = bits1[j][k] & exsit;
+                            tempInt = Integer.bitCount(x);
+                            sum1j += (tempInt << 1);  //returns left 8 bits of x + (x<<8) + (x<<16) + (x<<24) + ... 
+                            sum12j += (tempInt << 2);
+                            x = bits3[j][k] & exsit;
+                            tempInt = Integer.bitCount(x);
+                            sum1j += (tempInt);
+                            sum12j += (tempInt);
+                        }
+                        countAB = nij * countAB - sum1i * sum1j;
+                        sum12i = nij * sum12i - sum1i * sum1i;
+                        sum12j = nij * sum12j - sum1j * sum1j;
+                        r = (countAB) / Math.sqrt(sum12i * sum12j);
+                    } else {
+                        // the mean1 are acuually are sum for unphased genotypes 
+                        r = (totalPedSubjectNum * countAB - mean1[i] * mean1[j]) / Math.sqrt((totalPedSubjectNum * sum12[i] - mean1[i] * mean1[i]) * (totalPedSubjectNum * sum12[j] - mean1[j] * mean1[j]));
+                        //r = (freqAB - mean1[i] * mean1[j]) / (sum12[i] * sum12[j]);
+                    }
+                    // r = r * r;
+
+                    //correction
+                    // r = (douSize * r - 1) / (douSize - 3);
+                    //johny's correction                
+                    // r = 1 - (adjIndivSize - 3.0) / (adjIndivSize - 2.0) * (1.0 - r) * (1 + 2.0 * (1 - r) / (adjIndivSize - 3.3));
+<<<<<<< HEAD
+                    rArray[(i - startRowIndex) * totalVarNum + j - startColIndex] = r;
+
+=======
                       rArray[(i - startRowIndex) * totalVarNum + j - startColIndex] = r;
                    
+>>>>>>> origin/master
                 }
             }
         }
@@ -329,7 +641,15 @@ public class LDCalcTask extends Task implements Callable<String> {
     @Override
     public String call() throws Exception {
         long startTime = System.currentTimeMillis();
+<<<<<<< HEAD
+        if (positions == null) {
+            fillSmallRectangleFull();
+        } else {
+            fillSmallRectangleRestrict();
+        }
+=======
         fillSmallRectangle();
+>>>>>>> origin/master
         fireTaskComplete();
         String info = "  LD vas estimated on block [" + startRowIndex + " , " + startRowIndex + "). Elapsed time: " + (System.currentTimeMillis() - startTime) / 1000 + " seconds.";
         //  System.out.println(info);

@@ -16,6 +16,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -24,6 +26,12 @@ import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpHead;
+<<<<<<< HEAD
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
+=======
 import org.apache.http.impl.client.AbstractHttpClient;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.DefaultHttpClient;
@@ -31,6 +39,7 @@ import org.apache.http.impl.client.DefaultHttpRequestRetryHandler;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.cobi.util.file.Zipper;
+>>>>>>> origin/master
 
 /**
  *
@@ -39,7 +48,7 @@ import org.cobi.util.file.Zipper;
 public class HttpClient4API {
 
     public static long getContentLength(String curUrl) throws IOException, ClientProtocolException, Exception {
-        HttpClient curHttpClient = new DefaultHttpClient();
+        CloseableHttpClient curHttpClient = HttpClients.createDefault();
         HttpHead httpHead = new HttpHead(curUrl);
         try {
             HttpResponse response = curHttpClient.execute(httpHead);
@@ -68,13 +77,13 @@ public class HttpClient4API {
             throw e;
         } finally {
             httpHead.abort();
-            curHttpClient.getConnectionManager().shutdown();
+            curHttpClient.close();
         }
     }
 
     public static String getContent(String curUrl) throws IOException, ClientProtocolException, Exception {
         String content = null;
-        HttpClient curHttpClient = new DefaultHttpClient();
+        CloseableHttpClient curHttpClient = HttpClients.createDefault();
         HttpGet httpGet = new HttpGet(curUrl);
 
         try {
@@ -96,41 +105,42 @@ public class HttpClient4API {
         } catch (Exception e) {
             throw new Exception(e.toString() + " in " + curUrl);
         } finally {
-            curHttpClient.getConnectionManager().shutdown();
+            curHttpClient.close();
         }
         return content;
     }
 
     public static boolean checkConnection(String url) throws Exception {
-        HttpClient curHttpClient = new DefaultHttpClient();
-        HttpHead httpHead = new HttpHead(url);
-        curHttpClient.getParams().setIntParameter("httpclient.socket.timeout", 100);
-        DefaultHttpRequestRetryHandler retryHandler = new DefaultHttpRequestRetryHandler(0, false);
-        ((AbstractHttpClient) curHttpClient).setHttpRequestRetryHandler(retryHandler);
+        HttpURLConnection connection = null;
         try {
-            HttpResponse response = curHttpClient.execute(httpHead);
-            int statusCode = response.getStatusLine().getStatusCode();
-            if (statusCode != 200) {
-                return false;
+            int timeout = 3000;
+            //HttpURLConnection.setFollowRedirects(false);
+            connection = (HttpURLConnection) new URL(url).openConnection();
+
+            connection.setRequestMethod("HEAD");
+            //connection.setReadTimeout(timeout);
+
+            connection.setConnectTimeout(timeout);
+            int responseCode = connection.getResponseCode();
+            return (200 <= responseCode && responseCode <= 399);
+
+        } catch (IOException exception) {
+            exception.printStackTrace();
+            if (connection != null) {
+                connection.disconnect();
             }
-        } catch (Exception ex) {
             return false;
-        } finally {
-            httpHead.abort();
-            // When HttpClient instance is no longer needed,
-            // shut down the connection manager to ensure
-            // immediate deallocation of all system resources
-            curHttpClient.getConnectionManager().shutdown();
         }
-        return true;
     }
 
     public static void simpleRetriever(String url, String outPath) throws Exception {
         //   http://www.genenames.org/cgi-bin/hgnc_downloads.cgi?title=HGNC+output+data&hgnc_dbtag=on&col=gd_hgnc_id&col=gd_app_sym&col=gd_app_name&col=gd_status&col=gd_prev_sym&col=gd_aliases&col=gd_pub_chrom_map&col=gd_pub_acc_ids&col=gd_pub_refseq_ids&status=Approved&status=Entry+Withdrawn&status_opt=2&where=&order_by=gd_pub_chrom_map_sort&format=text&limit=&submit=submit&.cgifields=&.cgifields=chr&.cgifields=status&.cgifields=hgnc_dbtag
 
-        HttpClient httpClient = new DefaultHttpClient();
+        CloseableHttpClient httpClient = HttpClients.createDefault();
+        // HttpClient httpClient = new DefaultHttpClient();
         try {
             HttpGet httpGet = new HttpGet(url);
+            //HttpGet httpGet = new HttpGet(url);
 
             HttpResponse response = httpClient.execute(httpGet);
             int statusCode = response.getStatusLine().getStatusCode();
@@ -151,12 +161,55 @@ public class HttpClient4API {
                 while ((count = inputStream.read(buffer, 0, buffer.length)) > 0) {
                     outputStream.write(buffer, 0, count);
                 }
+                EntityUtils.consume(response.getEntity());
                 outputStream.close();
-                response.getEntity().consumeContent();
+                httpGet.abort();
             }
         } finally {
-            httpClient.getConnectionManager().shutdown();
+            httpClient.close();
         }
+    }
+
+    public static void simpleRetrieverHttps(String strURL, String outPath) throws Exception {
+        CloseableHttpClient httpclient = HttpClients.createDefault();
+        HttpGet httpget = new HttpGet(strURL);
+        HttpResponse response = httpclient.execute(httpget);
+        //System.out.println(response.getStatusLine());
+        HttpEntity entity = response.getEntity();
+        File fleOutput = new File(outPath);
+        if (!fleOutput.getParentFile().exists()) {
+            fleOutput.getParentFile().mkdirs();
+        }
+        long longSize = entity.getContentLength();
+        long longAdd = 0;
+
+        try (InputStream in = entity.getContent()) {
+            BufferedInputStream bis = new BufferedInputStream(in);
+            BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(fleOutput));
+            int intCount;
+            //                    NumberFormat nf=NumberFormat.getPercentInstance();
+            //                    nf.setMinimumFractionDigits(2);
+            //                    nf.setMaximumIntegerDigits(3);
+            //                    System.out.println();
+            byte[] buffer = new byte[10 * 1024];
+            while ((intCount = bis.read(buffer)) != -1) {
+                //                        for(int i=0;i<7;i++)    System.out.print("\b");
+                //                        Thread.sleep(100);
+                //                        System.out.print("\r");
+                bos.write(buffer, 0, intCount);
+                longAdd++;
+                //                        double dbl=longAdd/longSize;
+                //                        System.out.print(nf.format(dbl));
+            }
+            bis.close();
+            bos.close();
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        } catch (RuntimeException ex) {
+            httpget.abort();
+        }
+        httpclient.close();
+
     }
 
     public static void simpleRetrieverHttps(String strURL, String outPath) throws Exception {

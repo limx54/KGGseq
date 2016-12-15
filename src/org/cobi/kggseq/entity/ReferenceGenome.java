@@ -4,6 +4,7 @@
  */
 package org.cobi.kggseq.entity;
 
+import cern.colt.map.OpenIntIntHashMap;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -32,6 +33,7 @@ public class ReferenceGenome implements Constants {
     Map<String, Byte> chromNameIndexMap = new HashMap<String, Byte>();
     private List[] chromosomes = null;
     private List[] chromosomemRNABoundaryIndexList = null;
+
     private Map<String, int[]> geneChromPosMap = new HashMap<String, int[]>();
     boolean hasNotSorted = true;
     int upstreamDis = 1000;
@@ -44,6 +46,7 @@ public class ReferenceGenome implements Constants {
     public ReferenceGenome() {
         chromosomes = new ArrayList[STAND_CHROM_NAMES.length];
         chromosomemRNABoundaryIndexList = new ArrayList[STAND_CHROM_NAMES.length];
+
         for (byte i = 0; i < STAND_CHROM_NAMES.length; i++) {
             fullchromNameIndexMap.put("chr" + STAND_CHROM_NAMES[i], i);
             chromNameIndexMap.put(STAND_CHROM_NAMES[i], i);
@@ -269,6 +272,7 @@ public class ReferenceGenome implements Constants {
         geneChromPosMap.put(cnv.getDescription() + ":" + chrom + ":" + cnv.getStart() + ":" + cnv.getEnd(), new int[]{chromID, chromosomes[chromID].size() - 1});
         hasNotSorted = true;
     }
+
     /*
      * A reference from Annovar
      Feature	Value 	Explanation
@@ -283,7 +287,6 @@ public class ReferenceGenome implements Constants {
      downstream	9	variant overlaps 1-kb region downtream of transcription end site (use -neargene to change this) 
      intergenic	10	variant is in intergenic region     
      */
-
     public GeneFeature getVarFeature(String chrom, Variant var, boolean isForwardStrandInput, Set<Byte> priorFeatureSet, RNABoundaryIndex searchedmRNABoundaryIndex) throws Exception {
         Byte chromID = chromNameIndexMap.get(chrom);
         if (chromID == null) {
@@ -293,6 +296,7 @@ public class ReferenceGenome implements Constants {
         if (hasNotSorted) {
             throw new Exception("The genome has to been sorted before search the gene-feature of a variant.");
         }
+
         List<GeneFeature> featureList = new ArrayList<GeneFeature>();
         // System.out.println(chrom + " : " + var.physicalPosition);
         byte intergID = GlobalManager.VarFeatureIDMap.get("intergenic");
@@ -322,6 +326,7 @@ public class ReferenceGenome implements Constants {
         // System.out.println(pos);
         int headIndex = 0;
         int tailIndex = Collections.binarySearch(chromosomemRNABoundaryIndexList[chromID], searchedmRNABoundaryIndex, rNAGeneBoundaryIndexComparator);
+
         if (tailIndex < 0) {
             tailIndex = -tailIndex - 1;
             if (tailIndex == chromosomemRNABoundaryIndexList[chromID].size()) {
@@ -456,6 +461,202 @@ public class ReferenceGenome implements Constants {
                 return selectGf;
             }
         }
+    }
+
+    /*
+     * A reference from Annovar
+     Feature	Value 	Explanation
+     nonsynonymous	1	Variants result in a codon coding for a different amino acid (missense) and an amino acid codon to a stop codon (stopgain) and a stop codon to an amino acid codon (stoplos)
+     synonymous	2	
+     splicing	3	variant is within 2-bp of a splicing junction (use -splicing_threshold to change this) 
+     ncRNA	4	variant overlaps a transcript without coding annotation in the region definition (see Notes below for more explanation) 
+     5UTR	5	variant overlaps a 5' untranslated region 
+     3UTR	6	variant overlaps a 3' untranslated region 
+     intronic	7	variant overlaps an intron 
+     upstream	8	variant overlaps 1-kb region upstream of transcription start site 
+     downstream	9	variant overlaps 1-kb region downtream of transcription end site (use -neargene to change this) 
+     intergenic	10	variant is in intergenic region     
+     */
+    public boolean getMultiVarFeature(String chrom, List<Variant> vars, boolean isForwardStrandInput, Set<Byte> priorFeatureSet, RNABoundaryIndex searchedmRNABoundaryIndex) throws Exception {
+        Byte chromID = chromNameIndexMap.get(chrom);
+        if (chromID == null) {
+            throw new Exception("Unknown chrosomsome ID " + chrom);
+        }
+        boolean updatedAnnot = false;
+        if (hasNotSorted) {
+            throw new Exception("The genome has to been sorted before search the gene-feature of a variant.");
+        }
+        Variant var = vars.get(0);
+        List<Map<Integer, GeneFeature>> featureList = new ArrayList<Map<Integer, GeneFeature>>();
+        // System.out.println(chrom + " : " + var.physicalPosition);
+        byte intergID = GlobalManager.VarFeatureIDMap.get("intergenic");
+
+        if (chromosomemRNABoundaryIndexList[chromID] == null) {
+            // String info = "Variant at chr" + chrom + ":" + var.refStartPosition + " cannot be annotated by the specified gene annotation database " + name + "!";
+            //System.out.println(info);
+            //  LOG.warn(info);
+            if (var.smallestFeatureID > GlobalManager.VarFeatureIDMap.get("unknown")) {
+                var.smallestFeatureID = GlobalManager.VarFeatureIDMap.get("unknown");
+            }
+            return false;
+        }
+
+        /*
+         if (chrom.equals("6")){
+         var.refStartPosition=	31322303;
+         var.setRefAllele('C');
+         var.setAltAlleles(new String[]{"G"});
+         }
+         * 
+         */
+        //note for forward and reverse strand, the upstream and downsteam could be different
+        int pos = var.refStartPosition;
+        searchedmRNABoundaryIndex.position = pos;
+
+        // System.out.println(pos);
+        int headIndex = 0;
+        int tailIndex = Collections.binarySearch(chromosomemRNABoundaryIndexList[chromID], searchedmRNABoundaryIndex, rNAGeneBoundaryIndexComparator);
+
+        if (tailIndex < 0) {
+            tailIndex = -tailIndex - 1;
+            if (tailIndex == chromosomemRNABoundaryIndexList[chromID].size()) {
+                if (var.smallestFeatureID > intergID) {
+                    var.smallestFeatureID = intergID;
+                }
+                return false;
+            }
+            headIndex = tailIndex - 1;
+            if (headIndex < 0) {
+                if (var.smallestFeatureID > intergID) {
+                    var.smallestFeatureID = intergID;
+                }
+                return false;
+            }
+
+            RNABoundaryIndex rbi1 = (RNABoundaryIndex) chromosomemRNABoundaryIndexList[chromID].get(headIndex);
+            //impossible to be empty; it at least inlude the RefmRNA itselft
+            /*
+             if (rbi1.mRNAIndexList.isEmpty()) {
+             var.geneFeatureID = intergID;
+             return geneSymbs;
+             }
+             * 
+             */
+
+            RNABoundaryIndex rbi2 = (RNABoundaryIndex) chromosomemRNABoundaryIndexList[chromID].get(tailIndex);
+            //impossible to be empty; it at least inlude the RefmRNA itselft
+            /*
+             if (rbi2.mRNAIndexList.isEmpty()) {
+             var.geneFeatureID = intergID;
+             return geneSymbs;
+             }
+             * 
+             */
+
+            int size1 = rbi1.mRNAIndexList.size();
+            int size2 = rbi2.mRNAIndexList.size();
+            if (size1 < size2) {
+                for (int i = 0; i < size1; i++) {
+                    int searchIndex = rbi1.mRNAIndexList.getQuick(i);
+                    if (rbi2.mRNAIndexList.contains(searchIndex)) {
+                        RefmRNA mRNA = (RefmRNA) chromosomes[chromID].get(searchIndex);
+                        Map<Integer, GeneFeature> gf = mRNA.findFeatureMultiVar(chrom, vars, isForwardStrandInput, upstreamDis, donwstreamDis, splicingDis);
+                        if (gf != null) {
+                            //gf.setName(mRNA.geneSymb + ":" + gf.getName());
+                            featureList.add(gf);
+                        }
+                    }
+                }
+            } else {
+                for (int i = 0; i < size2; i++) {
+                    int searchIndex = rbi2.mRNAIndexList.getQuick(i);
+                    if (rbi1.mRNAIndexList.contains(searchIndex)) {
+                        RefmRNA mRNA = (RefmRNA) chromosomes[chromID].get(searchIndex);
+                        Map<Integer, GeneFeature> gf = mRNA.findFeatureMultiVar(chrom, vars, isForwardStrandInput, upstreamDis, donwstreamDis, splicingDis);
+                        if (gf != null) {
+                            //gf.setName(mRNA.geneSymb + ":" + gf.getName());
+                            featureList.add(gf);
+                        }
+                    }
+                }
+            }
+
+        } else {
+            RNABoundaryIndex rbi = (RNABoundaryIndex) chromosomemRNABoundaryIndexList[chromID].get(tailIndex);
+            if (rbi.mRNAIndexList.isEmpty()) {
+                if (var.smallestFeatureID > intergID) {
+                    var.smallestFeatureID = intergID;
+                }
+                return false;
+            }
+            for (int i = 0; i < rbi.mRNAIndexList.size(); i++) {
+                int searchIndex = rbi.mRNAIndexList.getQuick(i);
+                RefmRNA mRNA = (RefmRNA) chromosomes[chromID].get(searchIndex);
+                Map<Integer, GeneFeature> gf = mRNA.findFeatureMultiVar(chrom, vars, isForwardStrandInput, upstreamDis, donwstreamDis, splicingDis);
+                if (gf != null) {
+                    //gf.setName(mRNA.geneSymb + ":" + gf.getName());
+                    featureList.add(gf);
+                }
+            }
+        }
+
+        if (featureList.isEmpty()) {
+            if (var.smallestFeatureID > intergID) {
+                var.smallestFeatureID = intergID;
+            }
+            return false;
+        } else {
+            byte tmpID = (byte) (VAR_FEATURE_NAMES.length - 1);
+            for (Variant var1 : vars) {
+                boolean hasAssignSeledtedID = false;
+
+                byte minID = Byte.MAX_VALUE;
+                String geneNameMinID = null;
+                StringBuilder sbName = new StringBuilder();
+                for (Map<Integer, GeneFeature> gfMap : featureList) {
+                    GeneFeature selectGf = gfMap.get(var1.refStartPosition);
+                    if (selectGf == null) {
+                        continue;
+                    }
+
+                    if (!selectGf.getName().contains("intergenic")) {
+                        sbName.append(selectGf.getName() + ":");
+                    }
+
+                    tmpID = selectGf.id;
+                    if (priorFeatureSet.contains(selectGf.id)) {
+                        hasAssignSeledtedID = true;
+                        if (selectGf.id < minID) {
+                            minID = selectGf.id;
+                            String ftName = selectGf.name;
+                            int index = ftName.indexOf(':');
+                            if (index >= 0) {
+                                geneNameMinID = ftName.substring(0, index);
+                            }
+                        }
+                    }
+                }
+                if (sbName.length() > 0) {                   
+                    var1.smallestFeatureID = minID;
+                    var1.geneSymb = geneNameMinID;
+                    if (this.getName().equals("refgene")) {
+                        var1.setRefGeneAnnot(sbName.substring(0, sbName.length() - 1));
+                    } else if (this.getName().equals("gencode")) {
+                        var1.setgEncodeAnnot(sbName.substring(0, sbName.length() - 1));
+                    } else if (this.getName().equals("knowngene")) {
+                        var1.setKnownGeneAnnot(sbName.substring(0, sbName.length() - 1));
+                    } else if (this.getName().equals("ensembl")) {
+                        var1.setEnsemblGeneAnnot(sbName.substring(0, sbName.length() - 1));
+                    }
+                    if (!hasAssignSeledtedID) {
+                        //given any id to this variant, whichi will be filtered out 
+                        var1.smallestFeatureID = tmpID;
+                    }
+                    updatedAnnot = true;
+                }
+            }
+        }
+        return updatedAnnot;
     }
 
     public List<RefCNV> getCNVFeature(String chrom, Variant var, RNABoundaryIndex searchedmRNABoundaryIndex) throws Exception {
@@ -730,13 +931,13 @@ public class ReferenceGenome implements Constants {
                 } else {
                     chromosomemRNABoundaryIndexList[i].clear();
                 }
+
                 for (int j = 0; j < size; j++) {
                     RefmRNA mrna = (RefmRNA) chromosomes[i].get(j);
                     geneChromPosMap.put(mrna.getRefID() + ":" + STAND_CHROM_NAMES[i] + ":" + mrna.codingStart + ":" + mrna.codingEnd, new int[]{i, j});
                     if (mrna.getStrand() == '-') {
                         RNASegment gns = new RNASegment(mrna.start - donwstreamDis, mrna.end + upstreamDis, j, mrna.getStrand());
                         rNAPositionIndexList.add(gns);
-
                         chromosomemRNABoundaryIndexList[i].add(new RNABoundaryIndex(mrna.start - donwstreamDis));
                         chromosomemRNABoundaryIndexList[i].add(new RNABoundaryIndex(mrna.end + upstreamDis));
                     } else {
@@ -745,6 +946,7 @@ public class ReferenceGenome implements Constants {
                         rNAPositionIndexList.add(gns);
                         chromosomemRNABoundaryIndexList[i].add(new RNABoundaryIndex(mrna.start - upstreamDis));
                         chromosomemRNABoundaryIndexList[i].add(new RNABoundaryIndex(mrna.end + donwstreamDis));
+
                     }
                 }
 
@@ -781,12 +983,10 @@ public class ReferenceGenome implements Constants {
                             if (region.start - donwstreamDis <= pos && region.end + upstreamDis >= pos) {
                                 rbi.addIndexes(region.mRNAIndex);
                             }
-                        } else {
-                            //default is +
-                            if (region.start - upstreamDis <= pos && region.end + donwstreamDis >= pos) {
+                        } else //default is +
+                         if (region.start - upstreamDis <= pos && region.end + donwstreamDis >= pos) {
                                 rbi.addIndexes(region.mRNAIndex);
                             }
-                        }
                     }
                 }
             }
@@ -853,12 +1053,10 @@ public class ReferenceGenome implements Constants {
                             if (region.start - donwstreamDis <= pos && region.end + upstreamDis >= pos) {
                                 rbi.addIndexes(region.mRNAIndex);
                             }
-                        } else {
-                            //default is +
-                            if (region.start - upstreamDis <= pos && region.end + donwstreamDis >= pos) {
+                        } else //default is +
+                         if (region.start - upstreamDis <= pos && region.end + donwstreamDis >= pos) {
                                 rbi.addIndexes(region.mRNAIndex);
                             }
-                        }
                     }
                 }
             }
@@ -925,12 +1123,10 @@ public class ReferenceGenome implements Constants {
                             if (region.start - donwstreamDis <= pos && region.end + upstreamDis >= pos) {
                                 rbi.addIndexes(region.mRNAIndex);
                             }
-                        } else {
-                            //default is +
-                            if (region.start - upstreamDis <= pos && region.end + donwstreamDis >= pos) {
+                        } else //default is +
+                         if (region.start - upstreamDis <= pos && region.end + donwstreamDis >= pos) {
                                 rbi.addIndexes(region.mRNAIndex);
                             }
-                        }
                     }
                 }
             }

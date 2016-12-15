@@ -4,6 +4,8 @@
  */
 package org.cobi.util.text;
 
+import htsjdk.samtools.util.BlockCompressedInputStream;
+import htsjdk.samtools.util.BlockCompressedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -520,10 +522,10 @@ public class LocalFile {
 
     public static void main(String[] args) {
         try {
-            String inFile = "E:/home/mxli/MyJava/kggseq1/espEANoHM.flt.txt";
-            String outFile = "E:/home/mxli/MyJava/kggseq1/espEANoHM.flt1.txt";
-            BufferedReader br = new BufferedReader(new FileReader(inFile));
-            BufferedWriter bw = new BufferedWriter(new FileWriter(outFile));
+            String inFile = "/psychipc01/disk2/references/1000Genome/release/20130502_v5a/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz";
+            String outFile = "/psychipc01/disk2/references/1000Genome/release/20130502_v5a/ALL.chr1.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes1.vcf.gz";
+            BlockCompressedInputStream br = new BlockCompressedInputStream(new File(inFile));
+            BlockCompressedOutputStream bw = new BlockCompressedOutputStream(new File(outFile));
             String line = null;
             String[] cells = null;
 
@@ -537,16 +539,9 @@ public class LocalFile {
                 if (line.trim().length() == 0) {
                     continue;
                 }
-                cells = line.split(delimiter, -1);
-                if (cells[39].equals(".")) {
-                    continue;
-                }
-                bw.write(cells[0]);
-                for (i = 1; i < selectedColNum; i++) {
-                    bw.write("\t");
-                    bw.write(cells[orgIndices[i]]);
-                }
-                bw.write("\n");
+
+                bw.write(line.replaceAll("[|]", "/").getBytes());
+                bw.write("\n".getBytes());
             }
             bw.close();
             br.close();

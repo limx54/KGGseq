@@ -26,6 +26,10 @@ import java.util.concurrent.ScheduledFuture;
 import org.apache.http.client.HttpClient;
 import org.apache.http.impl.client.DefaultHttpClient;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.client.LaxRedirectStrategy;
+import org.apache.poi.util.IOUtils;
 
 /**
  *
@@ -35,11 +39,15 @@ public class HttpClient4DownloadTask extends DownloadTask implements Callable {
 
     /**
      * ��ʼ����
+     *
      * @throws Exception
      */
     @Override
     public String call() throws Exception {
-        HttpClient httpClient = new DefaultHttpClient();
+        CloseableHttpClient httpClient = HttpClients.custom()
+                .setRedirectStrategy(new LaxRedirectStrategy()) // adds HTTP REDIRECT support to GET and POST methods 
+                .build();
+        // HttpClient httpClient = new DefaultHttpClient();
         File trueSavedFile = new File(localPath);
         try {
             done = false;
@@ -92,7 +100,7 @@ public class HttpClient4DownloadTask extends DownloadTask implements Callable {
             }
 
             //do something after donwload
-            if (receivedCount >= (totalContentLength[0] - availalableCount)) {
+            if (receivedCount.get() >= (totalContentLength[0] - availalableCount)) {
                 if (taskFile.exists()) {
                     taskFile.delete();
                 }
@@ -109,13 +117,25 @@ public class HttpClient4DownloadTask extends DownloadTask implements Callable {
                         done = true;
                         showInfo(availalableCount, totalContentLength[0]);
                         fireTaskComplete();
+                        File indexFile = new File(trueSavedFile.getCanonicalPath() + ".idx");
+                        if (indexFile.exists()) {
+                            indexFile.delete();
+                        }
                     } else {
                         repeatTime++;
+                    }
+                    File indexFile = new File(trueSavedFile.getCanonicalPath() + ".idx");
+                    if (indexFile.exists()) {
+                        indexFile.delete();
                     }
                 } else {
                     done = true;
                     showInfo(availalableCount, totalContentLength[0]);
                     fireTaskComplete();
+                    File indexFile = new File(trueSavedFile.getCanonicalPath() + ".idx");
+                    if (indexFile.exists()) {
+                        indexFile.delete();
+                    }
                 }
             }
 
@@ -141,7 +161,7 @@ public class HttpClient4DownloadTask extends DownloadTask implements Callable {
                     taskRandomFile.close();
                 }
                 //do something after donwload
-                if (receivedCount >= (totalContentLength[0] - availalableCount)) {
+                if (receivedCount.get() >= (totalContentLength[0] - availalableCount)) {
                     if (taskFile.exists()) {
                         taskFile.delete();
                     }
@@ -158,6 +178,10 @@ public class HttpClient4DownloadTask extends DownloadTask implements Callable {
                             done = true;
                             showInfo(availalableCount, totalContentLength[0]);
                             fireTaskComplete();
+                            File indexFile = new File(trueSavedFile.getCanonicalPath() + ".idx");
+                            if (indexFile.exists()) {
+                                indexFile.delete();
+                            }
                         } else {
                             repeatTime++;
                         }
@@ -165,6 +189,10 @@ public class HttpClient4DownloadTask extends DownloadTask implements Callable {
                         done = true;
                         showInfo(availalableCount, totalContentLength[0]);
                         fireTaskComplete();
+                        File indexFile = new File(trueSavedFile.getCanonicalPath() + ".idx");
+                        if (indexFile.exists()) {
+                            indexFile.delete();
+                        }
                     }
                 }
             }
@@ -177,7 +205,9 @@ public class HttpClient4DownloadTask extends DownloadTask implements Callable {
                 if (taskRandomFile != null) {
                     taskRandomFile.close();
                 }
-                httpClient.getConnectionManager().shutdown();
+                // httpClient.getConnectionManager().shutdown();
+                //httpClient.close();
+                IOUtils.closeQuietly(httpClient);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -186,7 +216,7 @@ public class HttpClient4DownloadTask extends DownloadTask implements Callable {
     }
 
     /**
-    
+     *
      * @throws IOException
      * @throws FileNotFoundException
      */
@@ -196,9 +226,9 @@ public class HttpClient4DownloadTask extends DownloadTask implements Callable {
 
             @Override
             public void afterPerDown(DownloadThreadEvent event) {
+                HttpClient4DownloadTask.this.receivedCount.addAndGet(event.getCount());
                 synchronized (object) {
                     try {
-                        HttpClient4DownloadTask.this.receivedCount += event.getCount();
                         writeOffsetTaskBean(taskRandomFile, taskBean);
                     } catch (Exception ex) {
                     }
@@ -209,7 +239,7 @@ public class HttpClient4DownloadTask extends DownloadTask implements Callable {
             public void downCompleted(DownloadThreadEvent event) {
                 threads.remove(event.getTarget());
                 if (getDebug()) {
-                    System.out.println("ʣ���߳���" + threads.size());
+                    System.out.println("Finished Thread: " + threads.size());
                 }
             }
         };
@@ -217,7 +247,6 @@ public class HttpClient4DownloadTask extends DownloadTask implements Callable {
         long startPosition = 0;
         long endPosition = 0;
         int secCount = 0;
-
 
         secCount = 0;
 //create download threads, here the thread pool is used
@@ -403,7 +432,6 @@ public class HttpClient4DownloadTask extends DownloadTask implements Callable {
                     } else {
                         task.setLocalPath(filePath.getCanonicalPath());
                     }
-
 
                     task.addTaskListener(new DownloadTaskListener() {
 

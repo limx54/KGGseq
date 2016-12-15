@@ -9,6 +9,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -124,8 +125,9 @@ public class Options implements Constants {
     public String multipleTestingMethod = "benfdr";
 
     // Bayes Annotation Source
-    public String[] dbncfpFeatureColumn = null;
-    public String cellLineName = "GM12878";
+    public String[] usedDBncfpFeatureName = null;
+    public int[] usedDBncfpFeatureIndex = null;
+    public String cellLineName = null;
     // --------------------------------
     public boolean toQQPlot = false;
     public boolean toMAFPlotRef = false;
@@ -138,8 +140,13 @@ public class Options implements Constants {
     public StringBuilder regionsInStr = new StringBuilder();
     public int[][] regionsOutPos = null;
     public StringBuilder regionsOutStr = new StringBuilder();
+<<<<<<< HEAD
+    public boolean calcLD = false;
+    public double ldR2Out = 0.01;
+=======
     boolean calcLD = false;
 
+>>>>>>> origin/master
     public int flankingSequence = 0;
     public String ppidb = null;
     public String genesetdb = null;
@@ -159,8 +166,15 @@ public class Options implements Constants {
     public boolean useCompositeSubjectID = false;
     //  public static String[] REF_CHROM_NAMES = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "X", "Y", "M", "1_random", "2_random", "3_random", "4_random", "5_h2_hap1", "5_random", "6_cox_hap1", "6_qbl_hap2", "6_random", "7_random", "8_random", "9_random", "10_random", "11_random", "13_random", "15_random", "16_random", "17_random", "18_random", "19_random", "21_random", "22_h2_hap1", "22_random", "X_random"};
     public short causingNSPredType = -1;
+<<<<<<< HEAD
+    public boolean ncFuncPred = false;
+    public boolean ncRegPred = false;
+=======
     public short causingNCPredType = -1;
+>>>>>>> origin/master
     public String predictExplanatoryVar = "all";
+    public int mendelBestModelNum = 10;
+    public List<String> exacPopLables;
     public boolean needProgressionIndicator = false;
     public boolean needVerboseNoncode = false;
     public boolean pubmedMiningGene = false;
@@ -172,6 +186,8 @@ public class Options implements Constants {
     public double hwdPCase = 0;
     public double hwdPControl = 0;
     public double hwdPAll = 0;
+    public boolean doubleHitGeneTriosCasePsudo = false;
+    public boolean doubleHitGeneTriosCaseControl = false;
     public boolean doubleHitGeneTriosFilter = false;
     public boolean doubleHitGenePhasedFilter = false;
     public boolean countGeneVar = false;
@@ -183,13 +199,15 @@ public class Options implements Constants {
     public boolean needReads = false;
     public boolean noHomo = false;
     public boolean countAllPsudoControl = false;
-    public String dbsnfpVersion = "3.0";
+    public String dbnsfpVersion = "3.0";
     public boolean needLog = true;
+    public boolean needInternetChecking = true;
     public boolean noQC = false;
     public String missingGty = "./.";
     public double sampleMafOver = -1;
     public double sampleMafLess = 1.1;
     public boolean varAssoc = false;
+    public boolean forced2Unphased = false;
 
 //----------------------------
     public boolean onlyPositive = true;
@@ -224,6 +242,15 @@ public class Options implements Constants {
     public boolean zebraFish = false;
     public boolean dddPhenotypes = false;
     boolean hasStandardHeadInPed = false;
+<<<<<<< HEAD
+
+    public boolean ldPruning = false;
+    public int ldPrunWindowSize = 10000000;
+    public double ldPrunR2 = 0.8;
+
+    public boolean simulGeneRegionsGty = true;
+=======
+>>>>>>> origin/master
 
     public Options() {
         scoreDBLableList = new ArrayList<String>();
@@ -240,7 +267,11 @@ public class Options implements Constants {
             noLibCheck = true;
         } else {
             //String info = "To disable library checking, use --no-lib-check.";
+<<<<<<< HEAD
+            // System.out.println(info);
+=======
            // System.out.println(info);
+>>>>>>> origin/master
         }
 
         id = find("--lib-update");
@@ -251,11 +282,18 @@ public class Options implements Constants {
             System.out.println(info);
         }
 
+<<<<<<< HEAD
+        id = find("--resource-update");
+        if (id >= 0) {
+            resCheck = true;
+        } else {
+=======
        
         id = find("--resource-update");
         if (id >= 0) {
             resCheck = true;
         }else {
+>>>>>>> origin/master
             String info = "To enable resource updated automatically, use --resource-update.";
             System.out.println(info);
         }
@@ -263,6 +301,14 @@ public class Options implements Constants {
         id = find("--no-progress-check");
         if (id >= 0) {
             needProgressionIndicator = false;
+        }
+
+        id = find("--no-web");
+        if (id >= 0) {
+            needInternetChecking = false;
+        } else {
+            String info = "To disable internet checking, use --no-web.";
+            System.out.println(info);
         }
 
         id = find("--no-log");
@@ -340,7 +386,7 @@ public class Options implements Constants {
         PUBDB_URL_MAP.put("ESP5400", KGGSeq_URL + "download/resources/" + refGenomeVersion + "/" + refGenomeVersion + "_ESP5400.snps.txt.gz");
         PUBDB_URL_MAP.put("ESP6500AA", KGGSeq_URL + "download/resources/" + refGenomeVersion + "/" + refGenomeVersion + "_ESP6500AA.txt.gz");
         PUBDB_URL_MAP.put("ESP6500EA", KGGSeq_URL + "download/resources/" + refGenomeVersion + "/" + refGenomeVersion + "_ESP6500EA.txt.gz");
-        PUBDB_URL_MAP.put("exac", KGGSeq_URL + "download/resources/" + refGenomeVersion + "/" + refGenomeVersion + "_exac.r0.2.sites.gz");
+        PUBDB_URL_MAP.put("exac", KGGSeq_URL + "download/resources/" + refGenomeVersion + "/" + refGenomeVersion + "_ExAC.r0.3.1.vcf.gz");
         PUBDB_URL_MAP.put("dbscSNV", KGGSeq_URL + "download/resources/" + refGenomeVersion + "/" + refGenomeVersion + "_mdbscSNV1.1.gz");
 
         PUBDB_URL_MAP.put("proteindomain", KGGSeq_URL + "download/resources/UniprotDomain.txt.gz");
@@ -408,12 +454,27 @@ public class Options implements Constants {
 
             PUBDB_URL_MAP.put("refgene", KGGSeq_URL + "download/resources/hg38/kggseq_hg38_refGene.txt.gz");
             PUBDB_URL_MAP.put("gencode", KGGSeq_URL + "download/resources/hg38/kggseq_hg38_GEncode.txt.gz");
+<<<<<<< HEAD
+//            PUBDB_URL_MAP.put("ensembl", KGGSeq_URL + "download/resources/hg38/kggseq_hg38_ensGene.txt.gz");
+=======
             PUBDB_URL_MAP.put("ensembl", KGGSeq_URL + "download/resources/hg38/kggseq_hg38_ensGene.txt.gz");
+>>>>>>> origin/master
             PUBDB_URL_MAP.put("knowngene", KGGSeq_URL + "download/resources/hg38/kggseq_hg38_knownGene.txt.gz");
 
             PUBDB_URL_MAP.put("superdup", KGGSeq_URL + "download/resources/hg38/genomicSuperDups.txt.gz");
             PUBDB_URL_MAP.put("ideogram", KGGSeq_URL + "download/resources/hg38/hg38_ideogram.gz");
 
+<<<<<<< HEAD
+//            PUBDB_URL_MAP.put("enhancer", KGGSeq_URL + "download/resources/hg38/vistaEnhancers.txt.gz");
+//            PUBDB_URL_MAP.put("tfbs", KGGSeq_URL + "download/resources/hg38/tfbsConsSites.txt.gz");
+            PUBDB_URL_MAP.put("cosmicdb", KGGSeq_URL + "download/resources/hg38/hg38_CosmicV71.tsv.cp.gz");
+            PUBDB_URL_MAP.put("dgvcnv", KGGSeq_URL + "download/resources/hg38/GRCh38_hg38_variants_2015-07-23.txt.gz");
+            PUBDB_URL_MAP.put("rsid", KGGSeq_URL + "download/resources/hg38/b147_SNPChrPosOnRef_GRCh38p107.bcp.gz");
+
+//            PUBDB_URL_MAP.put("noncoding1", KGGSeq_URL + "download/resources/hg38/hg38_noncode_region.gz");
+//            PUBDB_URL_MAP.put("noncoding2", KGGSeq_URL + "download/resources/hg38/hg38_noncode_point.gz");
+//            PUBDB_URL_MAP.put("dgvcnv", KGGSeq_URL + "download/resources/hg38/GRCh38_hg38_variants_2015-07-23.txt.gz");
+=======
             PUBDB_URL_MAP.put("enhancer", KGGSeq_URL + "download/resources/hg38/vistaEnhancers.txt.gz");
             PUBDB_URL_MAP.put("tfbs", KGGSeq_URL + "download/resources/hg19/tfbsConsSites.txt.gz");
 
@@ -423,12 +484,13 @@ public class Options implements Constants {
             PUBDB_URL_MAP.put("noncoding1", KGGSeq_URL + "download/resources/hg19/hg19_noncode_region.gz");
             PUBDB_URL_MAP.put("noncoding2", KGGSeq_URL + "download/resources/hg19/hg19_noncode_point.gz");
             PUBDB_URL_MAP.put("dgvcnv", KGGSeq_URL + "download/resources/hg19/GRCh38_hg38_variants_2015-07-23.txt.gz");
+>>>>>>> origin/master
         } else {
             throw new Exception("No resource data for reference genome in version " + refGenomeVersion);
         }
 
         //dataset reference genome version free
-        PUBDB_URL_MAP.put("dbnsfp", KGGSeq_URL + "download/resources/" + refGenomeVersion + "/" + refGenomeVersion + "_mdbNSFP" + dbsnfpVersion + ".chr");
+        PUBDB_URL_MAP.put("dbnsfp", KGGSeq_URL + "download/resources/" + refGenomeVersion + "/" + refGenomeVersion + "_mdbNSFP" + dbnsfpVersion + ".chr");
         PUBDB_URL_MAP.put("cura", KGGSeq_URL + "download/resources/c2.all.v3.1.symbols.gmt.gz");
         PUBDB_URL_MAP.put("cano", KGGSeq_URL + "download/resources/c2.cp.v3.1.symbols.gmt.gz");
         PUBDB_URL_MAP.put("onco", KGGSeq_URL + "download/resources/c6.all.v3.1.symbols.gmt.gz");
@@ -438,9 +500,9 @@ public class Options implements Constants {
         PUBDB_URL_MAP.put("impcmouse", KGGSeq_URL + "download/resources/ALL_genotype_phenotype.mouse.gz");
 
         PUBDB_URL_MAP.put("morbidmap", KGGSeq_URL + "download/resources/morbidmap.gz");
-        PUBDB_URL_MAP.put("mendelcausalrare.param", KGGSeq_URL + "download/resources/mendelcausalrare" + dbsnfpVersion + ".param.gz");
+        PUBDB_URL_MAP.put("mendelcausalrare.param", KGGSeq_URL + "download/resources/mendelcausalrare" + dbnsfpVersion + ".param.gz");
         //PUBDB_URL_MAP.put("cancer.param", KGGSeq_URL + "download/resources/cancersomaticdriver.param.gz");
-        PUBDB_URL_MAP.put("cancer.param", KGGSeq_URL + "download/resources/CancerRandomForests" + dbsnfpVersion + ".zip");
+        PUBDB_URL_MAP.put("cancer.param", KGGSeq_URL + "download/resources/CancerRandomForests" + dbnsfpVersion + ".zip");
         PUBDB_URL_MAP.put("cancer.mutsig", KGGSeq_URL + "download/resources/mutsig.gene.covariates.txt");
         PUBDB_URL_MAP.put("mendelgene", KGGSeq_URL + "download/resources/ModeSpecificPredicMendelGene.txt.gz");
 
@@ -697,7 +759,11 @@ public class Options implements Constants {
                     //then produce a ped file with standard head
                     br = new BufferedReader(new FileReader(pedFile));
                     pedFile += ".tmp";
+<<<<<<< HEAD
+                    hasTmpPedFile = true;
+=======
                     hasTmpPedFile=true;
+>>>>>>> origin/master
                     BufferedWriter bwPed = LocalFileFunc.getBufferedWriter(pedFile, false);
                     bwPed.write("fid\tiid\tfatid\tmatid");
                     for (int i = 0; i < id; i++) {
@@ -713,7 +779,11 @@ public class Options implements Constants {
                     br.close();
                     phe = true;
                     pheItem = "UnknownPheno" + (id - 1);
+<<<<<<< HEAD
+
+=======
                     
+>>>>>>> origin/master
                 }
 
                 if (hasStandardHeadInPed) {
@@ -808,7 +878,7 @@ public class Options implements Constants {
                 }
             }
         }
-        if (inputFormat == null) {
+        if (!libUpdate && inputFormat == null) {
             String infor = "Please specify input variant file by correct options (e.g., --vcf-file or --annovar-file)!";
             throw new Exception(infor);
         }
@@ -904,6 +974,20 @@ public class Options implements Constants {
             param.append('\n');
             missingGty = "./.";
 
+<<<<<<< HEAD
+        }
+        id = find("--o-svcf");
+        if (id >= 0) {
+            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                String infor = "The \'--o-svcf\' now only supports VCF inputs specified by \'--vcf-file\'";
+                throw new Exception(infor);
+            }
+            isSimpleVCFOut = true;
+            param.append("--o-svcf");
+            param.append('\n');
+            missingGty = "./.";
+        }
+=======
         }
         id = find("--o-svcf");
         if (id >= 0) {
@@ -916,6 +1000,7 @@ public class Options implements Constants {
             param.append('\n');
             missingGty = "./.";
         }
+>>>>>>> origin/master
 
         id = find("--o-vcf-filtered");
         if (id >= 0) {
@@ -1490,6 +1575,7 @@ public class Options implements Constants {
             param.append(' ');
             param.append(Util.doubleToString(sampleMafOver, 5));
             param.append('\n');
+            //needRecordAltFreq = true;
         }
 
         id = find("--filter-sample-maf-oe");
@@ -1499,6 +1585,7 @@ public class Options implements Constants {
             param.append(' ');
             param.append(Util.doubleToString(sampleMafLess, 5));
             param.append('\n');
+            //needRecordAltFreq = true;
         }
 
         //------------------------------genetic checking and scanning
@@ -1517,6 +1604,12 @@ public class Options implements Constants {
             //String infor = "To do straightforward filtering by genotypes according to inheritance pattern, please specify \'--genotype-filter [numbers]'";
             //System.out.println(infor);
         }
+        id = find("--force-gty-unphased");
+        if (id >= 0) {
+            forced2Unphased = true;
+            param.append("--force-gty-unphased");
+            param.append('\n');
+        }
 
         id = find("--ibs-case-filter");
         if (id >= 0) {
@@ -1532,6 +1625,49 @@ public class Options implements Constants {
             //String infor = "To check longest ibs region around each variant, use the \'--ibs-check \' option";
             //System.out.println(infor);
         }
+
+        id = find("--double-hit-gene-trio-case-pseudo");
+        if (id >= 0) {
+            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                String infor = "The \'--double-hit-gene-trio-case-pseudo\' now only supports inputs specified by \'--vcf-file\' or \'--ked-file\'";
+                throw new Exception(infor);
+            }
+            if (find("--db-gene") < 0) {
+                String infor = "The \'--double-hit-gene-trio-case-pseudo\' requires reference gene database specified by \'--db-gene\'";
+                throw new Exception(infor);
+            }
+
+            doubleHitGeneTriosCasePsudo = true;
+            param.append("--double-hit-gene-trio-case-pseudo");
+            param.append('\n');
+            //force to  check genotype of sudo-control
+            countAllPsudoControl = true;
+        } else {
+            //String infor = "To check longest ibs region around each variant, use the \'--ibs-check \' option";
+            //System.out.println(infor);
+        }
+
+        id = find("--double-hit-gene-trio-case-control");
+        if (id >= 0) {
+            if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
+                String infor = "The \'--double-hit-gene-trio-case-control\' now only supports inputs specified by \'--vcf-file\' or \'--ked-file\'";
+                throw new Exception(infor);
+            }
+            if (find("--db-gene") < 0) {
+                String infor = "The \'--double-hit-gene-trio-case-control\' requires reference gene database specified by \'--db-gene\'";
+                throw new Exception(infor);
+            }
+
+            doubleHitGeneTriosCaseControl = true;
+            param.append("--double-hit-gene-trio-case-control");
+            param.append('\n');
+            //force to  check genotype of sudo-control
+            countAllPsudoControl = true;
+        } else {
+            //String infor = "To check longest ibs region around each variant, use the \'--ibs-check \' option";
+            //System.out.println(infor);
+        }
+
         id = find("--double-hit-gene-trio-filter");
         if (id >= 0) {
             if (!inputFormat.equals("--vcf-file") && !inputFormat.equals("--ked-file")) {
@@ -1546,8 +1682,12 @@ public class Options implements Constants {
             doubleHitGeneTriosFilter = true;
             param.append("--double-hit-gene-trio-filter");
             param.append('\n');
+<<<<<<< HEAD
+
+=======
             //force to  check genotype of sudo-control
             countAllPsudoControl = true;
+>>>>>>> origin/master
         } else {
             //String infor = "To check longest ibs region around each variant, use the \'--ibs-check \' option";
             //System.out.println(infor);
@@ -1729,8 +1869,12 @@ public class Options implements Constants {
 
             for (String geneDBLabel : geneDBLabels) {
                 if (!PUBDB_FILE_MAP.containsKey(geneDBLabel)) {
-                    String infor = "Invalid gene database name " + geneDBLabel + " at  --db-gene option! The valid name is refgene.";
-                    throw new Exception(infor);
+                    File filePath = new File(geneDBLabel);
+                    if (!filePath.exists()) {
+                        String infor = "Invalid gene database name " + geneDBLabel + " or non-existing file at  --db-gene option!";
+                        throw new Exception(infor);
+                    }
+
                 }
                 /*
                  if (geneDBLabel.equals("gencode") && refGenomeVersion.equals("hg18")) {
@@ -1875,7 +2019,7 @@ public class Options implements Constants {
 
             int index = 0;
             while (st.hasMoreTokens()) {
-                String dbLabel = st.nextToken().toString();
+                String dbLabel = st.nextToken();
                 index = dbLabel.indexOf('_');
                 if (index >= 0) {
                     dbLabel = dbLabel.substring(index + 1);
@@ -1884,19 +2028,43 @@ public class Options implements Constants {
                     String infor = "Sorry, the referece sequence variant database \'" + dbLabel + "\' is not in use anymore at --db-filter option";
                     throw new Exception(infor);
                 }
+
+                if (!hasPrint1) {
+                    param.append(' ');
+                    hasPrint1 = true;
+                } else {
+                    param.append(',');
+                }
+                param.append(dbLabel);
+
+                if (dbLabel.startsWith("exac")) {
+                    index = dbLabel.indexOf(".");
+                    if (index < 0) {
+                        //include all popus
+                        exacPopLables = Arrays.asList(new String[]{"AFR", "AMR", "FIN", "NFE", "EAS", "SAS", "OTH"});
+                    } else {
+                        if (exacPopLables == null) {
+                            exacPopLables = new ArrayList();
+                        }
+
+                        String label1 = dbLabel.substring(index + 1);
+                        String[] labels1 = label1.split("\\.");
+                        for (String lb : labels1) {
+                            lb = lb.toUpperCase();
+                            if (!exacPopLables.contains(lb)) {
+                                exacPopLables.add(lb);
+                            }
+                        }
+                        dbLabel = dbLabel.substring(0, index);
+                    }
+                }
+
                 String dbFileName = PUBDB_FILE_MAP.get(dbLabel);
 
                 if (dbFileName == null) {
                     String infor = "Invalid sequence variant database name " + dbLabel + " at  --db-filter option";
                     throw new Exception(infor);
-                } else {
-                    if (!hasPrint1) {
-                        param.append(' ');
-                        hasPrint1 = true;
-                    } else {
-                        param.append(',');
-                    }
-                    param.append(dbLabel);
+                } else if (!varaintDBLableList.contains(dbLabel)) {
                     varaintDBLableList.add(dbLabel);
                 }
             }
@@ -2127,32 +2295,32 @@ public class Options implements Constants {
             varAssoc = true;
             param.append("--var-assoc");
             param.append('\n');
-            id = find("--p-value-cutoff");
-            if (id >= 0) {
-                pValueThreshold = Double.parseDouble(options[id + 1]);
-                param.append("--p-value-cutoff");
-                param.append(' ');
-                param.append(pValueThreshold);
-                param.append('\n');
+        }
 
-                id = find("--multiple-testing");
-                if (id >= 0) {
-                    multipleTestingMethod = options[id + 1];
-                    param.append("--multiple-testing");
-                    param.append(' ');
-                    param.append(multipleTestingMethod);
-                    param.append('\n');
-                } else {
-                    String infor = "To sepecify a multiple testing approach to filter variants, please use \'--multiple-testing <method name>\';"
-                            + " it is --multiple-testing " + multipleTestingMethod;
-                    System.out.println(infor);
-                }
+        id = find("--p-value-cutoff");
+        if (id >= 0) {
+            pValueThreshold = Double.parseDouble(options[id + 1]);
+            param.append("--p-value-cutoff");
+            param.append(' ');
+            param.append(pValueThreshold);
+            param.append('\n');
 
-            } else {
-                String infor = "To sepecify p-value threshold to filter variants, please use \'--p-value-cutoff <a number between 0 and 1>\';"
-                        + " it is --p-value-cutoff " + pValueThreshold;
-                // System.out.println(infor);
-            }
+        } else {
+            String infor = "To sepecify p-value threshold to filter variants, please use \'--p-value-cutoff <a number between 0 and 1>\';"
+                    + " it is --p-value-cutoff " + pValueThreshold;
+            // System.out.println(infor);
+        }
+        id = find("--multiple-testing");
+        if (id >= 0) {
+            multipleTestingMethod = options[id + 1];
+            param.append("--multiple-testing");
+            param.append(' ');
+            param.append(multipleTestingMethod);
+            param.append('\n');
+        } else {
+            String infor = "To sepecify a multiple testing approach to filter variants, please use \'--multiple-testing <method name>\';"
+                    + " it is --multiple-testing " + multipleTestingMethod;
+            //  System.out.println(infor);
         }
         id = find("--filter-model");
         if (id >= 0) {
@@ -2706,8 +2874,8 @@ public class Options implements Constants {
             boolean hasPrint1 = false;
             while (st.hasMoreTokens()) {
                 String dbLabel = st.nextToken();
-                if (dbLabel.equals("noncoding")) {
-                    scoreDBLableList.add("noncoding");
+                if (dbLabel.equals("dbncfp_known") || dbLabel.equals("dbncfp_all")) {
+                    scoreDBLableList.add(dbLabel);
                     if (!hasPrint1) {
                         param.append(' ');
                         hasPrint1 = true;
@@ -2715,19 +2883,16 @@ public class Options implements Constants {
                         param.append(',');
                     }
                     param.append(dbLabel);
-                    if ((id = find("--regulatory-pathogenic-predict")) < 0 && (id = find("--complex-pathogenic-predict")) < 0) {
-                        String infor = "please provide paramter --complex-pathogenic-predict or --regulatory-pathogenic-predict function";
+                    if ((id = find("--regulatory-causing-predict")) < 0 && (id = find("--ldgf-func-predict")) < 0) {
+                        String infor = "please provide paramter --ldgf-func-predict or --regulatory-causing-predict function";
                         throw new Exception(infor);
                     }
-                    if ((id = find("--regulatory-pathogenic-predict")) >= 0 && (id = find("--complex-pathogenic-predict")) >= 0) {
-                        String infor = "only one function will be available at each run time";
-                        throw new Exception(infor);
-                    }
-                    if ((id = find("--regulatory-pathogenic-predict")) >= 0) {
+
+                    if ((id = find("--regulatory-causing-predict")) >= 0) {
                         needDBScoreInfo = false;
                     }
-                } else if (dbLabel.equals("dbncfp")) {
-                    scoreDBLableList.add("dbncfp");
+                } else if (dbLabel.equals("dbncfp_known") || dbLabel.equals("dbncfp_all")) {
+                    scoreDBLableList.add(dbLabel);
                     param.append(" " + dbLabel);
                     needDBScoreInfo = false;
                 } else {
@@ -2780,10 +2945,15 @@ public class Options implements Constants {
                     predictExplanatoryVar = "all";
                     param.append(predictExplanatoryVar);
                     param.append('\n');
-                } else if (predictExplanatoryVar.indexOf("best") >= 0) {
-                    predictExplanatoryVar = "best";
+                    String infor = "The option \'all\' for --mendel-causing-predict has been revoked due to inflated false positive rate. Please use the option,\' --mendel-causing-predict best\', for more accurate prediction.";
+                    throw new Exception(infor);
+                } else if (predictExplanatoryVar.startsWith("best")) {
                     param.append(predictExplanatoryVar);
                     param.append('\n');
+                    if (predictExplanatoryVar.length() > 4) {
+                        mendelBestModelNum = Integer.parseInt(predictExplanatoryVar.substring(4));
+                    }
+
                 } else {
                     StringBuilder sb = new StringBuilder();
                     String[] expVar = new String[]{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14"};
@@ -2822,6 +2992,43 @@ public class Options implements Constants {
                 throw new Exception(infor);
             }
 
+<<<<<<< HEAD
+            if ((id = find("--regulatory-causing-predict")) > 0) {
+                ncRegPred = true;
+                //Make this consisten with ZC's approach 
+                //String[] sourceName = {"GWAVA_region_score", "GWAVA_TSS_score", "GWAVA_unmatched_score", "CADD_cscore", "DANN_score", "Fathmm_MKL_score", "FunSeq_score", "FunSeq2_score", "GWAS3D_score", "SuRFR_score"};
+                //  String[] sourceName = {"CADD.CScore", "CADD_PHRED", "DANN", "FunSeq_score", "FunSeq2", "GWAS3D", "GWAVA_region_score", "GWAVA_TSS_score", "GWAVA_unmatched_score", "SuRFR_score", "fathmm_MKL"};
+                String selectionColumn = options[id + 1];
+                param.append("--regulatory-causing-predict ");
+                if (selectionColumn.indexOf(",") > 0) {
+                    String[] sp = selectionColumn.trim().split(",");
+                    usedDBncfpFeatureName = new String[sp.length];
+                    usedDBncfpFeatureIndex = new int[sp.length];
+                    for (int i = 0; i < sp.length; i++) {
+                        if (Integer.parseInt(sp[i]) > ReguPredicNames.length) {
+                            throw new Exception("Indexes are too large for current annotation source!");
+                        }
+                        usedDBncfpFeatureName[i] = ReguPredicNames[Integer.parseInt(sp[i]) - 1];
+                        usedDBncfpFeatureIndex[i] = Integer.parseInt(sp[i]) - 1;
+                        param.append(sp[i]);
+                        param.append(',');
+                    }
+                    param.setCharAt(param.length() - 1, '\n');
+                } else {
+                    usedDBncfpFeatureName = ReguPredicNames;
+                    usedDBncfpFeatureIndex = new int[ReguPredicNames.length];
+                    for (int i = 0; i < ReguPredicNames.length; i++) {
+                        usedDBncfpFeatureIndex[i] = i;
+                    }
+                    selectionColumn = "all";
+                    param.append(" all");
+                    param.append('\n');
+                }
+            }
+            if ((id = find("--ldgf-func-predict")) >= 0) {
+                ncFuncPred = true;
+                predType = "--ldgf-func-predict";
+=======
             if ((id = find("--regulatory-pathogenic-predict")) > 0) {
                 causingNCPredType = 3;
                 String[] sourceName = {"CADD_cscore", "CADD_PHRED", "DANN_score", "FunSeq_score", "FunSeq2_score", "GWAS3D_score", "GWAVA_region_score", "GWAVA_TSS_score", "GWAVA_unmatched_score", "SuRFR_score", "Fathmm_MKL_score"};
@@ -2844,6 +3051,7 @@ public class Options implements Constants {
             } else if ((id = find("--complex-pathogenic-predict")) >= 0) {
                 causingNCPredType = 1;
                 predType = "--complex-pathogenic-predict";
+>>>>>>> origin/master
                 param.append(predType);
                 param.append('\n');
             }
@@ -2889,6 +3097,7 @@ public class Options implements Constants {
                 permutePheno = true;
                 param.append("--perm-pheno\n");
             }
+<<<<<<< HEAD
 
         }
         id = find("--skat-geneset");
@@ -3010,6 +3219,148 @@ public class Options implements Constants {
             param.append("--calc-ld");
             param.append("\n");
         }
+        id = find("--ld-out");
+        if (id > 0) {
+            ldR2Out = Double.parseDouble(options[id + 1]);
+            param.append("--ld-out " + options[id + 1]);
+            param.append("\n");
+        }
+
+        id = find("--ld-prune");
+        if (id > 0) {
+            ldPruning = true;
+            ldPrunR2 = Double.parseDouble(options[id + 1]);
+            param.append("--ld-prune " + options[id + 1]);
+            param.append("\n");
+        }
+
+        id = find("--ld-win");
+        if (id > 0) {
+            ldPrunWindowSize = Integer.parseInt(options[id + 1]);
+            param.append("--ld-win " + options[id + 1]);
+=======
+
+        }
+        id = find("--skat-geneset");
+        if (id > 0) {
+            skatGeneset = true;
+            param.append("--skat-geneset");
+            if ((id + 1) != options.length) {
+                skatBinary = options[id + 1].equals("binary");
+            }
+            if (skatBinary) {
+                param.append(" binary");
+            }
+            param.append('\n');
+            id = find("--skat-cutoff");
+            if (id > 0) {
+                param.append("--skat-cutoff ");
+                skatCutoff = Integer.valueOf(options[id + 1]);
+                param.append(skatCutoff);
+                param.append('\n');
+            }
+            needRconnection = true;
+            if (find("--geneset-db") < 0 && find("--geneset-file") < 0) {
+                String infor = "The candidate genes specified by \'--geneset-db\' or \'--geneset-file\' are required for \'--skat-geneset\'!";
+                throw new Exception(infor);
+            }
+        }
+
+        id = find("--rvtest-gene");
+        if (id >= 0) {
+            if (!inputFormat.equals("--vcf-file")) {
+                String infor = "The \'--rvtest-gene\' now only supports VCF inputs specified by \'--vcf-file\'";
+                throw new Exception(infor);
+            }
+            rvtestGene = true;
+            param.append("--rvtest-gene");
+            if ((id + 1) >= options.length) {
+                rvtestCommand = null;
+            } else {
+                rvtestCommand = options[id + 1];
+            }
+            if (rvtestCommand == null || rvtestCommand.startsWith("--")) {
+                rvtestCommand = "cmc,skato[nPerm=1000:alpha=0.001:beta1=1:beta2=20]";
+            } else {
+                param.append(" ").append(rvtestCommand);
+            }
+            param.append('\n');
+        }
+
+        id = find("--rvtest-var");
+        if (id >= 0) {
+            if (!inputFormat.equals("--vcf-file")) {
+                String infor = "The \'--rvtest-var\' now only supports VCF inputs specified by \'--vcf-file\'";
+                throw new Exception(infor);
+            }
+            rvtestVar = true;
+            param.append("--rvtest-var");
+            if ((id + 1) >= options.length) {
+                rvtestCommand = null;
+            } else {
+                rvtestCommand = options[id + 1];
+            }
+            if (rvtestCommand == null || rvtestCommand.startsWith("--")) {
+                rvtestCommand = "score,wald";
+            } else {
+                param.append(" ").append(rvtestCommand);
+            }
+            param.append('\n');
+        }
+
+        id = find("--rvtest-remove-set");
+        if (id >= 0) {
+            rvtestRemoveSet = true;
+            param.append("--rvtest-remove-set\n");
+        }
+
+        id = find("--rvtest-geneset");
+        if (id >= 0) {
+            if (!inputFormat.equals("--vcf-file")) {
+                String infor = "The \'--rvtest-geneset\' now only supports VCF inputs specified by \'--vcf-file\'";
+                throw new Exception(infor);
+            }
+            rvtestGeneset = true;
+            param.append("--rvtest-geneset");
+            if ((id + 1) >= options.length) {
+                rvtestCommand = null;
+            } else {
+                rvtestCommand = options[id + 1];
+            }
+            if (rvtestCommand == null || rvtestCommand.startsWith("--")) {
+                rvtestCommand = "cmc,skato[nPerm=1000:alpha=0.001:beta1=1:beta2=20]";
+            } else {
+                param.append(" ").append(rvtestCommand);
+            }
+            param.append('\n');
+
+            if (find("--geneset-db") < 0 && find("--geneset-file") < 0) {
+                String infor = "The candidate genes specified by \'--geneset-db\' or \'--geneset-file\' are required for \'--rvtest-geneset\'!";
+                throw new Exception(infor);
+            }
+        }
+
+        id = find("--rvtest-vcf");
+        if (id >= 0) {
+            if (!inputFormat.equals("--vcf-file")) {
+                String infor = "The \'--rvtest-vcf\' now only supports VCF inputs specified by \'--vcf-file\'";
+                throw new Exception(infor);
+            }
+            needNewVCFForRVTest = true;
+            isSimpleVCFOut = true;
+            param.append("--rvtest-vcf");
+            param.append('\n');
+            missingGty = "./.";
+
+        }
+//-------------------path-gene-predict------------------
+        id = find("--calc-ld");
+        if (id > 0) {
+            calcLD = true;
+            param.append("--calc-ld");
+>>>>>>> origin/master
+            param.append("\n");
+        }
 
         id = find("--patho-gene-predict");
         if (id > 0) {
@@ -3040,7 +3391,11 @@ public class Options implements Constants {
                 param.append(buildverOut);
                 param.append('\n');
             } else {
+<<<<<<< HEAD
+                // String info = "To change the genome version of input and output physical positions, use --buildver-in hgXX --buildver-out hgXX";
+=======
                // String info = "To change the genome version of input and output physical positions, use --buildver-in hgXX --buildver-out hgXX";
+>>>>>>> origin/master
                 //System.out.println(info);
                 //return false;
             }
@@ -3153,7 +3508,11 @@ public class Options implements Constants {
             param.append("--mafplot-sample");
             param.append('\n');
         }
+<<<<<<< HEAD
+        if (hasStandardHeadInPed && (!phe) && (rvtestGene || rvtestGeneset || skatGene || skatGeneset || rvtestVar)) {
+=======
         if (hasStandardHeadInPed && (!phe) && (rvtestGene || rvtestGeneset || skatGene || skatGeneset || varAssoc)) {
+>>>>>>> origin/master
             String infor = "Please specify a phenotye  by \'--phe YourPhenotypeName\'.";
             throw new Exception(infor);
         }

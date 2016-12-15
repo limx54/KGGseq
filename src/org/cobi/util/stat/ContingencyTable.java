@@ -4,6 +4,8 @@
  */
 package org.cobi.util.stat;
 
+import cern.jet.random.Binomial;
+import cern.jet.random.engine.DRand;
 import cern.jet.stat.Gamma;
 import cern.jet.stat.Probability;
 
@@ -323,11 +325,13 @@ public class ContingencyTable {
          }
          * 
          */
+        System.out.println(ContingencyTable.binomialPValueGreater(34, 3116, 0.011921459));
+        System.out.println(ContingencyTable.binomialPValueTwoTailed(49, 235, 1.0 / 6));
         System.out.println(Probability.poissonComplemented(0, 0.02));
-       long[][] counts1 = {{122, 158, 100}, {59, 125, 19}};
+        long[][] counts1 = {{122, 158, 100}, {59, 125, 19}};
         // long[][] counts1 = {{122, 158}, {59, 125}};
         System.out.println(ContingencyTable.chiSquareTest(counts1));
-        System.out.println(Probability.chiSquareComplemented(2,ContingencyTable.chiSquareTest(counts1)));
+        System.out.println(Probability.chiSquareComplemented(2, ContingencyTable.chiSquareTest(counts1)));
     }
 
     public ContingencyTable() {
@@ -384,9 +388,15 @@ public class ContingencyTable {
     /**
      * Fill in the count1 and count2 arrays.
      */
+<<<<<<< HEAD
+    public static final double fisherExact22(long[][] contigencyTable22, int rowNum, int colNum, int tails) {
+        //  int rowNum = contigencyTable22.length;
+        // int colNum = contigencyTable22[0].length;
+=======
     public static final double fisherExact22(long[][] contigencyTable22,int rowNum,int colNum, int tails) {
       //  int rowNum = contigencyTable22.length;
        // int colNum = contigencyTable22[0].length;
+>>>>>>> origin/master
         int[] Rs = new int[rowNum];
         int[] Cs = new int[colNum];
         int totalAccount = 0;
@@ -496,5 +506,27 @@ public class ContingencyTable {
         }
         // Lancaster?? correction
         //tail2P = 0.5
+    }
+
+    public static double binomialPValueGreater(double k, double n, double p) {
+        if (n == 0 || p <= 0) {
+            return Double.NaN;
+        }
+        double pval = 1;
+        Binomial b = new Binomial((int) Math.ceil(n), p, new DRand());
+        pval = b.cdf(((int) Math.ceil(k)) - 1);
+        return (1 - pval);
+    }
+
+    //I do not know why this produce slightly different p-values from binom.test(51,235,(1/6),alternative="two.sided") in R
+    public static double binomialPValueTwoTailed(double k, double n, double p) {
+        if (n == 0) {
+            return Double.NaN;
+        }
+        double pval = 1;
+        Binomial b = new Binomial((int) Math.ceil(n), p, new DRand());
+        pval = 1 - b.cdf(((int) Math.ceil(k)) - 1);
+        pval += (1 - b.cdf(((int) Math.ceil(k))));
+        return (pval);
     }
 }

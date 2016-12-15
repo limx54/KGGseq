@@ -14,6 +14,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+<<<<<<< HEAD
+import java.nio.channels.FileChannel;
+=======
+>>>>>>> origin/master
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -27,6 +31,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
+<<<<<<< HEAD
+import org.apache.http.client.config.RequestConfig;
+=======
+>>>>>>> origin/master
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -198,7 +206,11 @@ public class NetUtils implements Constants {
             exec.shutdown();
             LOG.info("The library of has been updated! Please re-initiate this application!");
             updateLocal();
+<<<<<<< HEAD
+        } else if (!autoUpdate && !updatedLocalFiles.isEmpty()) {
+=======
         } else if (!autoUpdate) {            
+>>>>>>> origin/master
             LOG.info("A new version of KGGSeq is available! Please visit http://grass.cgs.hku.hk/limx/kggseq/download.php to see the updates\n and enable library updated automatically by '--lib-update'. To disable library checking, add '--no-lib-check'.");
         }
         return hasUpdated;
@@ -228,10 +240,30 @@ public class NetUtils implements Constants {
             }
 
             if (needDownload) {
+<<<<<<< HEAD
+                CloseableHttpClient httpclient = HttpClients.custom()
+                        .setDefaultRequestConfig(RequestConfig.custom()
+                                // Waiting for a connection from connection manager
+                                .setConnectionRequestTimeout(10000)
+                                // Waiting for connection to establish
+                                .setConnectTimeout(5000)
+                                .setExpectContinueEnabled(false)
+                                // Waiting for data
+                                .setSocketTimeout(5000)
+                                .setCookieSpec("easy")
+                                .build())
+                        .setMaxConnPerRoute(20)
+                        .setMaxConnTotal(100)
+                        .build();
+                HttpGet httpget = new HttpGet(strURL);
+                HttpResponse response = httpclient.execute(httpget);
+                //System.out.println(response.getStatusLine());
+=======
                 CloseableHttpClient httpclient = HttpClients.createDefault();
                 HttpGet httpget = new HttpGet(strURL);
                 HttpResponse response = httpclient.execute(httpget);
                 System.out.println(response.getStatusLine());
+>>>>>>> origin/master
                 HttpEntity entity = response.getEntity();
 
                 if (entity != null) {
@@ -334,10 +366,31 @@ public class NetUtils implements Constants {
             }
 
             if (needDownload) {
+<<<<<<< HEAD
+                CloseableHttpClient httpclient = HttpClients.custom()
+                        .setDefaultRequestConfig(RequestConfig.custom()
+                                // Waiting for a connection from connection manager
+                                .setConnectionRequestTimeout(10000)
+                                // Waiting for connection to establish
+                                .setConnectTimeout(5000)
+                                .setExpectContinueEnabled(false)
+                                // Waiting for data
+                                .setSocketTimeout(5000)
+                                .setCookieSpec("easy")
+                                .build())
+                        .setMaxConnPerRoute(20)
+                        .setMaxConnTotal(100)
+                        .build();
+
+                HttpGet httpget = new HttpGet(strURL);
+                HttpResponse response = httpclient.execute(httpget);
+                // System.out.println(response.getStatusLine());
+=======
                 CloseableHttpClient httpclient = HttpClients.createDefault();
                 HttpGet httpget = new HttpGet(strURL);
                 HttpResponse response = httpclient.execute(httpget);
                 System.out.println(response.getStatusLine());
+>>>>>>> origin/master
                 HttpEntity entity = response.getEntity();
 
                 if (entity != null) {
@@ -414,7 +467,11 @@ public class NetUtils implements Constants {
             java.util.logging.Logger.getLogger(Phenolyzer.class.getName()).log(Level.SEVERE, null, ex);
         }
         if (needDownload) {
+<<<<<<< HEAD
+            String infor = "Please go to the folder by typing 'cd " + params[1] + "' and complile the cpp codes by typing 'make all'";
+=======
             String infor = "Please go to the folder by typing 'cd " + params[1] + "' and complile the cpp codes by typing 'make'";
+>>>>>>> origin/master
             LOG.info(infor);
         }
         return needDownload;
@@ -426,7 +483,6 @@ public class NetUtils implements Constants {
         ExecutorService exec = Executors.newFixedThreadPool(MAX_TASK);
         CompletionService serv = new ExecutorCompletionService(exec);
         int runningThread = 0;
-
         try {
             long startTime = System.currentTimeMillis();
             List<String> checkLabels = new ArrayList<String>();
@@ -447,10 +503,10 @@ public class NetUtils implements Constants {
                 }
             }
             String refGenomeVersion = options.refGenomeVersion;
-            if (options.scoreDBLableList.contains("noncoding")) {
+
+            if (options.ncFuncPred) {
                 // download resources from gene-feature specific annotation function
-                String[] annotationScore = {"funcnote_CADD.CScore.gz", "funcnote_DANN.gz", "funcnote_fathmm-MKL.gz", "funcnote_FunSeq.gz",
-                    "funcnote_FunSeq2.gz", "funcnote_GWAS3D.gz", "funcnote_GWAVA.gz", "funcnote_SuRFR.gz", "funcnote_all.footprints.bed.gz.cmp.gz",
+                String[] annotationScore = {"funcnote_all.footprints.bed.gz.cmp.gz",
                     "funcnote_encode_megamix.bed.gz.DNase-seq.cmp.gz", "funcnote_encode_megamix.bed.gz.FAIRE-seq.cmp.gz",
                     "funcnote_encode_megamix.bed.gz.Histone.cmp.gz", "funcnote_encode_megamix.bed.gz.Tfbs.cmp.gz"};
                 for (int j = 0; j < annotationScore.length; j++) {
@@ -463,26 +519,41 @@ public class NetUtils implements Constants {
                 options.PUBDB_URL_MAP.put("hgmd_model", KGGSeq_URL + "/download/resources/modelFile/" + "hgmd_model.obj");
                 checkLabels.add("hgmd_model");
             }
+            /*
+            String[] dbncfpAnnotationScore = new String[]{"known_SNV_dbNCFP.aa", "known_SNV_dbNCFP.ab", "known_SNV_dbNCFP.ac",
+                "known_SNV_dbNCFP.ad", "known_SNV_dbNCFP.ae", "known_SNV_dbNCFP.af", "known_SNV_dbNCFP.ag",
+                "known_SNV_dbNCFP.ah", "known_SNV_dbNCFP.ai", "known_SNV_dbNCFP.aj"};
+             */
 
-            if (options.scoreDBLableList.contains("dbncfp")) {
-                // download resources for cell-type specific annotation function
-                String[] annotationScore = new String[]{"funcnote_CADD_cscore.gz", "funcnote_CADD_PHRED.gz", "funcnote_DANN_score.gz", "funcnote_Fathmm_MKL_score.gz",
-                    "funcnote_FunSeq_score.gz", "funcnote_FunSeq2_score.gz", "funcnote_GWAS3D_score.gz", "funcnote_GWAVA_region_score.gz",
-                    "funcnote_GWAVA_TSS_score.gz", "funcnote_GWAVA_unmatched_score.gz", "funcnote_SuRFR_score.gz"};
-                for (int j = 0; j < 11; j++) {
-                    String newLabel = "regulartory_pathogenic" + j;
-                    options.PUBDB_FILE_MAP.put(newLabel, refGenomeVersion + "/" + refGenomeVersion + "_" + annotationScore[j]);
-                    options.PUBDB_URL_MAP.put(newLabel, KGGSeq_URL + "/download/resources/" + refGenomeVersion + "/" + refGenomeVersion + "_" + annotationScore[j]);
-                    checkLabels.add(newLabel);
-                }
+            String[] dbncfpAnnotationScore = new String[]{"known_SNV_dbNCFP.a.aa.gz", "known_SNV_dbNCFP.a.ab.gz", "known_SNV_dbNCFP.a.ac.gz",
+                "known_SNV_dbNCFP.a.ad.gz", "known_SNV_dbNCFP.a.ae.gz", "known_SNV_dbNCFP.a.af.gz", "known_SNV_dbNCFP.a.ag.gz",
+                "known_SNV_dbNCFP.a.ah.gz", "known_SNV_dbNCFP.a.ai.gz"};
+
+            boolean needMergeDncfp = false;
+            if (options.scoreDBLableList.contains("dbncfp_known")) {
+                File rfFile = new File(GlobalManager.RESOURCE_PATH + "/" + refGenomeVersion + "/" + refGenomeVersion + "_known_SNV_dbNCFP.gz");
+                if (!rfFile.exists()) {
+                    // download resources for cell-type specific annotation function             
+                    for (int j = 0; j < dbncfpAnnotationScore.length; j++) {
+                        String newLabel = "dbncfp_known" + j;
+                        options.PUBDB_FILE_MAP.put(newLabel, refGenomeVersion + "/" + refGenomeVersion + "_" + dbncfpAnnotationScore[j]);
+                        options.PUBDB_URL_MAP.put(newLabel, KGGSeq_URL + "/download/resources/" + refGenomeVersion + "/" + refGenomeVersion + "_" + dbncfpAnnotationScore[j]);
+                        checkLabels.add(newLabel);
+                    }
+                    /*
                 String newLabel = "cell_signal";
                 options.PUBDB_FILE_MAP.put(newLabel, refGenomeVersion + "/all_cell_signal/" + options.cellLineName + ".zip");
                 options.PUBDB_URL_MAP.put(newLabel, KGGSeq_URL + "/download/resources/" + refGenomeVersion + "/all_cell_signal/" + options.cellLineName + ".zip");
                 checkLabels.add(newLabel);
+                     */
+                }
+
+            }
+            if (options.ncRegPred) {
                 options.PUBDB_FILE_MAP.put("all_causal_distribution", "all_causal_distribution.zip");
-                options.PUBDB_URL_MAP.put("all_causal_distribution", KGGSeq_URL + "/download/resources/hg19/" + "all_causal_distribution.zip");
+                options.PUBDB_URL_MAP.put("all_causal_distribution", KGGSeq_URL + "/download/resources/" + "all_causal_distribution.zip");
                 options.PUBDB_FILE_MAP.put("all_neutral_distribution", "all_neutral_distribution.zip");
-                options.PUBDB_URL_MAP.put("all_neutral_distribution", KGGSeq_URL + "/download/resources/hg19/" + "all_neutral_distribution.zip");
+                options.PUBDB_URL_MAP.put("all_neutral_distribution", KGGSeq_URL + "/download/resources/" + "all_neutral_distribution.zip");
                 checkLabels.add("all_causal_distribution");
                 checkLabels.add("all_neutral_distribution");
             }
@@ -517,7 +588,6 @@ public class NetUtils implements Constants {
                     }
                 }
             }
-
             //force to download the small database 
             checkLabels.add("cano");
             checkLabels.add("cura");
@@ -602,9 +672,9 @@ public class NetUtils implements Constants {
                         Date fileData = new Date(time * 1000);
                         Date today = new Date();
                         //if too small or too early
-                        if (fleMouse1.length() < 3.2 * 1024 * 1024 || today.after(fileData)) {
-                            //an incomplete file
-                            resourceFile.delete();
+                        if (fleMouse1.length() < 0.2 * 1024 * 1024 || today.after(fileData)) {
+                            //an incomplete file                            
+                            fleMouse1.delete();
                             toDownloadMousePheno = true;
                         }
                     }
@@ -614,9 +684,9 @@ public class NetUtils implements Constants {
                         Date fileData = new Date(time * 1000);
                         Date today = new Date();
                         //if too small or too early
-                        if (fleMouse2.length() < 3.2 * 1024 * 1024 || today.after(fileData)) {
+                        if (fleMouse2.length() < 0.2 * 1024 * 1024 || today.after(fileData)) {
                             //an incomplete file
-                            resourceFile.delete();
+                            fleMouse2.delete();
                             toDownloadMousePheno = true;
                         }
                     }
@@ -657,6 +727,32 @@ public class NetUtils implements Constants {
                     ftp.closeFTP();
                 }
                  */
+<<<<<<< HEAD
+            }
+            if (options.dddPhenotypes) {
+                boolean needDownload = false;
+                File rfFile = new File(GlobalManager.RESOURCE_PATH + "/DDG2P.csv.gz");
+                if (!rfFile.exists()) {
+                    needDownload = true;
+                } else {
+                    //one month later
+                    long time = rfFile.lastModified() / 1000 + 30 * 24 * 60 * 60;
+                    Date fileData = new Date(time * 1000);
+                    Date today = new Date();
+                    //if too small or too early
+                    if (rfFile.length() < 0.2 * 1024 || today.after(fileData)) {
+                        //an incomplete file
+                        rfFile.delete();
+                        needDownload = true;
+                    }
+                }
+
+                if (needDownload) {
+                    HttpClient4API.simpleRetriever("http://www.ebi.ac.uk/gene2phenotype/downloads/DDG2P.csv.gz", rfFile.getCanonicalPath());
+
+                }
+            }
+=======
             }
             if (options.dddPhenotypes) {
                 boolean needDownload = false;
@@ -683,13 +779,17 @@ public class NetUtils implements Constants {
                 }
 
             }
+>>>>>>> origin/master
 
             if (options.flankingSequence > 0) {
                 for (int i = 0; i < STAND_CHROM_NAMES.length; i++) {
+                    if (STAND_CHROM_NAMES[i].equals("XY") || STAND_CHROM_NAMES[i].equals("Un")) {
+                        continue;
+                    }
                     File fastAFile = new File(GlobalManager.RESOURCE_PATH + "/" + options.refGenomeVersion + "/chr" + STAND_CHROM_NAMES[i] + ".fa.gz");
                     if (!fastAFile.exists()) {
                         String[] fileURL = new String[2];
-                        fileURL[0] = fastAFile.getCanonicalPath();
+                        fileURL[0] = options.refGenomeVersion + "/chr" + STAND_CHROM_NAMES[i] + ".fa.gz";
                         fileURL[1] = "http://hgdownload.cse.ucsc.edu/goldenPath/" + options.refGenomeVersion + "/chromosomes/chr" + STAND_CHROM_NAMES[i] + ".fa.gz";
 
                         String newLabel = "fasta" + STAND_CHROM_NAMES[i];
@@ -724,7 +824,12 @@ public class NetUtils implements Constants {
             }
 
             //downloading does not support multiple thread 
+<<<<<<< HEAD
+            //String url = "http://www.genenames.org/cgi-bin/hgnc_downloads?col=gd_hgnc_id&col=gd_app_sym&col=gd_app_name&col=gd_status&col=gd_prev_sym&col=gd_aliases&col=gd_pub_chrom_map&col=gd_pub_acc_ids&col=gd_pub_refseq_ids&col=gd_pub_eg_id&status=Approved&status_opt=2&where=&order_by=gd_hgnc_id&format=text&limit=&hgnc_dbtag=on&submit=submit";
+            String url = "http://www.genenames.org/cgi-bin/download?col=gd_hgnc_id&col=gd_app_sym&col=gd_app_name&col=gd_status&col=gd_prev_sym&col=gd_aliases&col=gd_pub_chrom_map&col=gd_pub_acc_ids&col=gd_pub_refseq_ids&col=gd_pub_eg_id&status=Approved&status_opt=2&where=&order_by=gd_hgnc_id&format=text&limit=&hgnc_dbtag=on&submit=submit";
+=======
             String url = "http://www.genenames.org/cgi-bin/hgnc_downloads?col=gd_hgnc_id&col=gd_app_sym&col=gd_app_name&col=gd_status&col=gd_prev_sym&col=gd_aliases&col=gd_pub_chrom_map&col=gd_pub_acc_ids&col=gd_pub_refseq_ids&col=gd_pub_eg_id&status=Approved&status_opt=2&where=&order_by=gd_hgnc_id&format=text&limit=&hgnc_dbtag=on&submit=submit";
+>>>>>>> origin/master
 
             if (toDownloadHGNC) {
                 resourceFile = new File(GlobalManager.RESOURCE_PATH + "/" + hgncFileName);
@@ -752,66 +857,78 @@ public class NetUtils implements Constants {
                 if (i == 0) {
                     LOG.info("Downloading resource " + dbLabelName);
                 }
-                final HttpClient4DownloadTask task = new HttpClient4DownloadTask(options.PUBDB_URL_MAP.get(dbLabelName), 20);
-                task.setDataMd5(HttpClient4API.getContent(options.PUBDB_URL_MAP.get(dbLabelName) + ".md5"));
-                File filePath = new File(GlobalManager.RESOURCE_PATH);
-                if (!filePath.exists()) {
-                    filePath.mkdirs();
+                if (dbLabelName.startsWith("dbncfp_known")) {
+                    needMergeDncfp = true;
                 }
-                task.setLocalPath(resourceFile.getCanonicalPath());
-                final String dbLabel = dbLabelName;
-                task.addTaskListener(new DownloadTaskListener() {
+                final HttpClient4DownloadTask task = new HttpClient4DownloadTask(options.PUBDB_URL_MAP.get(dbLabelName), 20);
 
-                    @Override
-                    public void autoCallback(DownloadTaskEvent event) {
-                        int progess = (int) (event.getTotalDownloadedCount() * 100.0 / event.getTotalCount());
-                        String infor = progess + "%     Realtime Speed:" + event.getRealTimeSpeed() + " Global Speed:" + event.getGlobalSpeed();
-                        System.out.print(infor);
-                        char[] bs = new char[infor.length()];
-                        Arrays.fill(bs, '\b');
-                        System.out.print(bs);
+                String urlT = options.PUBDB_URL_MAP.get(dbLabelName);
+                if (urlT != null) {
+                    if (urlT.startsWith("http://grass.cgs.hku.hk/")) {
+                        task.setDataMd5(HttpClient4API.getContent(urlT + ".md5"));
                     }
+                    File filePath = new File(GlobalManager.RESOURCE_PATH);
+                    if (!filePath.exists()) {
+                        filePath.mkdirs();
+                    }
+                    task.setLocalPath(resourceFile.getCanonicalPath());
+                    final String dbLabel = dbLabelName;
+                    task.addTaskListener(new DownloadTaskListener() {
 
-                    @Override
-                    public void taskCompleted() throws Exception {
-                        // File savedFile = new File(task.getLocalPath()); 
-                        if (task.getLocalPath().endsWith(".tar")) {
-                            Tar.untar(task.getLocalPath(), GlobalManager.RESOURCE_PATH + options.refGenomeVersion + File.separator);
-                            File file = new File(task.getLocalPath());
-                            // file.delete();
-                        } else if (task.getLocalPath().endsWith(".zip")) {
-                            Zipper ziper = new Zipper();
-                            File file = new File(task.getLocalPath());
-                            ziper.extractZip(task.getLocalPath(), file.getParent() + File.separator);
-                            // file.delete();
+                        @Override
+                        public void autoCallback(DownloadTaskEvent event) {
+                            int progess = (int) (event.getTotalDownloadedCount() * 100.0 / event.getTotalCount());
+                            String infor = progess + "%     Realtime Speed:" + event.getRealTimeSpeed() + " Global Speed:" + event.getGlobalSpeed();
+                            System.out.print(infor);
+                            char[] bs = new char[infor.length()];
+                            Arrays.fill(bs, '\b');
+                            System.out.print(bs);
                         }
 
-                        /**
-                         * File file = new File(task.getLocalPath() + ".md5");
-                         * // if file doesnt exists, then create it if
-                         * (!file.exists()) { file.createNewFile(); }
-                         *
-                         * FileWriter fw = new
-                         * FileWriter(file.getAbsoluteFile()); BufferedWriter bw
-                         * = new BufferedWriter(fw);
-                         * bw.write(task.getDataMd5()); bw.close();
-                         */
-                        String msg1 = "Resource " + dbLabel + " has been downloaded!";
-                        LOG.info(msg1);
-                    }
-                });
-                runningThread++;
-                TimeUnit.MILLISECONDS.sleep(500);
-                serv.submit(task);
-                toDownload = true;
-                i++;
+                        @Override
+                        public void taskCompleted() throws Exception {
+                            // File savedFile = new File(task.getLocalPath()); 
+                            if (task.getLocalPath().endsWith(".tar")) {
+                                Tar.untar(task.getLocalPath(), GlobalManager.RESOURCE_PATH + options.refGenomeVersion + File.separator);
+                                File file = new File(task.getLocalPath());
+                                // file.delete();
+                            } else if (task.getLocalPath().endsWith(".zip")) {
+                                Zipper ziper = new Zipper();
+                                File file = new File(task.getLocalPath());
+                                ziper.extractZip(task.getLocalPath(), file.getParent() + File.separator);
+                                // file.delete();
+                            }
+
+                            /**
+                             * File file = new File(task.getLocalPath() +
+                             * ".md5"); // if file doesnt exists, then create it
+                             * if (!file.exists()) { file.createNewFile(); }
+                             *
+                             * FileWriter fw = new
+                             * FileWriter(file.getAbsoluteFile());
+                             * BufferedWriter bw = new BufferedWriter(fw);
+                             * bw.write(task.getDataMd5()); bw.close();
+                             */
+                            String msg1 = "Resource " + dbLabel + " has been downloaded!";
+                            LOG.info(msg1);
+                        }
+                    });
+
+                    runningThread++;
+                    TimeUnit.MILLISECONDS.sleep(500);
+                    serv.submit(task);
+                    toDownload = true;
+                    i++;
+                }
             }
             for (int index = 0; index < runningThread; index++) {
                 Future task = serv.take();
                 String download = (String) task.get();
             }
             exec.shutdown();
-
+            if (needMergeDncfp) {
+                concatenateFiles(GlobalManager.RESOURCE_PATH + refGenomeVersion + "/" + refGenomeVersion + "_", dbncfpAnnotationScore, "known_SNV_dbNCFP.gz");
+            }
             if (toDownload) {
                 StringBuilder inforString = new StringBuilder();
                 inforString.append("The lapsed time for downloading is : ");
@@ -901,12 +1018,11 @@ public class NetUtils implements Constants {
     }
 
     public static void checkLatestResource(final Options options) {
-        int MAX_TASK = 2;
+        int MAX_TASK = 1;
         boolean toDownload = false;
-        ExecutorService exec = Executors.newFixedThreadPool(MAX_TASK);
-        CompletionService serv = new ExecutorCompletionService(exec);
+
         int runningThread = 0;
-        int i = 0;
+
         try {
             long startTime = System.currentTimeMillis();
             List<String> checkLabels = new ArrayList<String>();
@@ -957,10 +1073,9 @@ public class NetUtils implements Constants {
             }
 
             String refGenomeVersion = options.refGenomeVersion;
-            if (options.scoreDBLableList.contains("noncoding")) {
+            if (options.ncFuncPred) {
                 // download resources from gene-feature specific annotation function
-                String[] annotationScore = {"funcnote_CADD.CScore.gz", "funcnote_DANN.gz", "funcnote_fathmm-MKL.gz", "funcnote_FunSeq.gz",
-                    "funcnote_FunSeq2.gz", "funcnote_GWAS3D.gz", "funcnote_GWAVA.gz", "funcnote_SuRFR.gz", "funcnote_all.footprints.bed.gz.cmp.gz",
+                String[] annotationScore = {"funcnote_all.footprints.bed.gz.cmp.gz",
                     "funcnote_encode_megamix.bed.gz.DNase-seq.cmp.gz", "funcnote_encode_megamix.bed.gz.FAIRE-seq.cmp.gz",
                     "funcnote_encode_megamix.bed.gz.Histone.cmp.gz", "funcnote_encode_megamix.bed.gz.Tfbs.cmp.gz"};
                 for (int j = 0; j < annotationScore.length; j++) {
@@ -973,22 +1088,44 @@ public class NetUtils implements Constants {
                 options.PUBDB_URL_MAP.put("hgmd_model", KGGSeq_URL + "/download/resources/modelFile/" + "hgmd_model.obj");
                 checkLabels.add("hgmd_model");
             }
+            /*
+            String[] dbncfpAnnotationScore = new String[]{"hg19_known_SNV_dbNCFP.aa", "hg19_known_SNV_dbNCFP.ab", "hg19_known_SNV_dbNCFP.ac",
+                "hg19_known_SNV_dbNCFP.ad", "hg19_known_SNV_dbNCFP.ae", "hg19_known_SNV_dbNCFP.af", "hg19_known_SNV_dbNCFP.ag",
+                "hg19_known_SNV_dbNCFP.ah", "hg19_known_SNV_dbNCFP.ai", "hg19_known_SNV_dbNCFP.aj"};
+             */
+            String[] dbncfpAnnotationScore = new String[]{"known_SNV_dbNCFP.a.aa.gz", "known_SNV_dbNCFP.a.ab.gz", "known_SNV_dbNCFP.a.ac.gz",
+                "known_SNV_dbNCFP.a.ad.gz", "known_SNV_dbNCFP.a.ae.gz", "known_SNV_dbNCFP.a.af.gz", "known_SNV_dbNCFP.a.ag.gz",
+                "known_SNV_dbNCFP.a.ah.gz", "known_SNV_dbNCFP.a.ai.gz"};
 
-            if (options.scoreDBLableList.contains("dbncfp")) {
-                // download resources for cell-type specific annotation function
-                String[] annotationScore = new String[]{"funcnote_CADD_cscore.gz", "funcnote_CADD_PHRED.gz", "funcnote_DANN_score.gz", "funcnote_Fathmm_MKL_score.gz",
-                    "funcnote_FunSeq_score.gz", "funcnote_FunSeq2_score.gz", "funcnote_GWAS3D_score.gz", "funcnote_GWAVA_region_score.gz",
-                    "funcnote_GWAVA_TSS_score.gz", "funcnote_GWAVA_unmatched_score.gz", "funcnote_SuRFR_score.gz"};
-                for (int j = 0; j < 11; j++) {
-                    String newLabel = "regulartory_pathogenic" + j;
-                    options.PUBDB_FILE_MAP.put(newLabel, refGenomeVersion + "/" + refGenomeVersion + "_" + annotationScore[j]);
-                    options.PUBDB_URL_MAP.put(newLabel, KGGSeq_URL + "/download/resources/" + refGenomeVersion + "/" + refGenomeVersion + "_" + annotationScore[j]);
-                    checkLabels.add(newLabel);
+            boolean needMergeDncfp = false;
+            if (options.scoreDBLableList.contains("dbncfp_known")) {
+                File rfFile = new File(GlobalManager.RESOURCE_PATH + "/" + refGenomeVersion + "/" + refGenomeVersion + "_known_SNV_dbNCFP.gz");
+                if (!rfFile.exists()) // download resources for cell-type specific annotation function
+                {
+                    needMergeDncfp = true;
+                } else {
+                    long fileSize = rfFile.length();
+                    long netFileLen = HttpClient4API.getContentLength(KGGSeq_URL + "/download/resources/" + refGenomeVersion + "/" + refGenomeVersion + "_known_SNV_dbNCFP.gz");
+                    if (netFileLen <= 1024 || fileSize == netFileLen) {
+                        needMergeDncfp = true;
+                    }
                 }
+                if (needMergeDncfp) {
+                    for (int j = 0; j < dbncfpAnnotationScore.length; j++) {
+                        String newLabel = "dbncfp_known" + j;
+                        options.PUBDB_FILE_MAP.put(newLabel, refGenomeVersion + "/" + refGenomeVersion + "_" + dbncfpAnnotationScore[j]);
+                        options.PUBDB_URL_MAP.put(newLabel, KGGSeq_URL + "/download/resources/" + refGenomeVersion + "/" + refGenomeVersion + "_" + dbncfpAnnotationScore[j]);
+                        checkLabels.add(newLabel);
+                    }
+                }
+                /*
                 String newLabel = "cell_signal";
                 options.PUBDB_FILE_MAP.put(newLabel, refGenomeVersion + "/all_cell_signal/" + options.cellLineName + ".zip");
                 options.PUBDB_URL_MAP.put(newLabel, KGGSeq_URL + "/download/resources/" + refGenomeVersion + "/all_cell_signal/" + options.cellLineName + ".zip");
                 checkLabels.add(newLabel);
+                 */
+            }
+            if (options.ncRegPred) {
                 options.PUBDB_FILE_MAP.put("all_causal_distribution", "all_causal_distribution.zip");
                 options.PUBDB_URL_MAP.put("all_causal_distribution", KGGSeq_URL + "/download/resources/" + "all_causal_distribution.zip");
                 options.PUBDB_FILE_MAP.put("all_neutral_distribution", "all_neutral_distribution.zip");
@@ -1080,7 +1217,7 @@ public class NetUtils implements Constants {
                         //if too small or too early
                         if (fleMouse1.length() < 0.2 * 1024 * 1024 || today.after(fileData)) {
                             //an incomplete file
-                            resourceFile.delete();
+                            fleMouse1.delete();
                             toDownloadMousePheno = true;
                         }
                     }
@@ -1092,7 +1229,7 @@ public class NetUtils implements Constants {
                         //if too small or too early
                         if (fleMouse2.length() < 0.2 * 1024 * 1024 || today.after(fileData)) {
                             //an incomplete file
-                            resourceFile.delete();
+                            fleMouse2.delete();
                             toDownloadMousePheno = true;
                         }
                     }
@@ -1134,6 +1271,27 @@ public class NetUtils implements Constants {
                     ftp.closeFTP();
                 }
                  */
+<<<<<<< HEAD
+            }
+
+            if (options.dddPhenotypes) {
+                boolean needDownload = false;
+                File rfFile = new File(GlobalManager.RESOURCE_PATH + "/DDG2P.csv.gz");
+                if (!rfFile.exists()) {
+                    needDownload = true;
+                } else {
+                    //one month later
+                    long time = rfFile.lastModified() / 1000 + 30 * 24 * 60 * 60;
+                    Date fileData = new Date(time * 1000);
+                    Date today = new Date();
+                    //if too small or too early
+                    if (rfFile.length() < 0.2 * 1024 || today.after(fileData)) {
+                        //an incomplete file
+                        rfFile.delete();
+                        needDownload = true;
+                    }
+                }
+=======
             }
 
             if (options.dddPhenotypes) {
@@ -1163,7 +1321,16 @@ public class NetUtils implements Constants {
 
             //downloading does not support multiple thread 
             String url = "http://www.genenames.org/cgi-bin/hgnc_downloads?col=gd_hgnc_id&col=gd_app_sym&col=gd_app_name&col=gd_status&col=gd_prev_sym&col=gd_aliases&col=gd_pub_chrom_map&col=gd_pub_acc_ids&col=gd_pub_refseq_ids&col=gd_pub_eg_id&status=Approved&status_opt=2&where=&order_by=gd_hgnc_id&format=text&limit=&hgnc_dbtag=on&submit=submit";
+>>>>>>> origin/master
 
+                if (needDownload) {
+                    HttpClient4API.simpleRetriever("http://www.ebi.ac.uk/gene2phenotype/downloads/DDG2P.csv.gz", rfFile.getCanonicalPath());
+                }
+            }
+
+            //downloading does not support multiple thread 
+            //String url = "http://www.genenames.org/cgi-bin/hgnc_downloads?col=gd_hgnc_id&col=gd_app_sym&col=gd_app_name&col=gd_status&col=gd_prev_sym&col=gd_aliases&col=gd_pub_chrom_map&col=gd_pub_acc_ids&col=gd_pub_refseq_ids&col=gd_pub_eg_id&status=Approved&status_opt=2&where=&order_by=gd_hgnc_id&format=text&limit=&hgnc_dbtag=on&submit=submit";
+            String url = "http://www.genenames.org/cgi-bin/download?col=gd_hgnc_id&col=gd_app_sym&col=gd_app_name&col=gd_status&col=gd_prev_sym&col=gd_aliases&col=gd_pub_chrom_map&col=gd_pub_acc_ids&col=gd_pub_refseq_ids&col=gd_pub_eg_id&status=Approved&status_opt=2&where=&order_by=gd_hgnc_id&format=text&limit=&hgnc_dbtag=on&submit=submit";
             if (toDownloadHGNC) {
                 resourceFile = new File(GlobalManager.RESOURCE_PATH + "/" + hgncFileName);
                 String msg1 = "Donwloading HGNC gene annotations ... ";
@@ -1177,15 +1344,19 @@ public class NetUtils implements Constants {
             }
 
             if (!checkLabels.isEmpty()) {
-                LOG.info("Checking the latest resources (to disable this checking, use --no-resource-check option)...");
+                LOG.info("Checking the latest resources ...");
             }
 
             if (options.flankingSequence > 0) {
                 for (int t = 0; t < STAND_CHROM_NAMES.length; t++) {
+                    if (STAND_CHROM_NAMES[t].equals("XY") || STAND_CHROM_NAMES[t].equals("Un")) {
+                        continue;
+                    }
                     File fastAFile = new File(GlobalManager.RESOURCE_PATH + "/" + options.refGenomeVersion + "/chr" + STAND_CHROM_NAMES[t] + ".fa.gz");
+
                     if (!fastAFile.exists()) {
                         String[] fileURL = new String[2];
-                        fileURL[0] = fastAFile.getCanonicalPath();
+                        fileURL[0] = options.refGenomeVersion + "/chr" + STAND_CHROM_NAMES[t] + ".fa.gz";
                         fileURL[1] = "http://hgdownload.cse.ucsc.edu/goldenPath/" + options.refGenomeVersion + "/chromosomes/chr" + STAND_CHROM_NAMES[t] + ".fa.gz";
 
                         String newLabel = "fasta" + STAND_CHROM_NAMES[t];
@@ -1196,7 +1367,9 @@ public class NetUtils implements Constants {
                     }
                 }
             }
-
+            ExecutorService exec = Executors.newFixedThreadPool(MAX_TASK);
+            CompletionService serv = new ExecutorCompletionService(exec);
+            int downloadCount = 0;
             for (String dbLabelName : checkLabels) {
                 String dbFileName = options.PUBDB_FILE_MAP.get(dbLabelName);
                 resourceFile = new File(GlobalManager.RESOURCE_PATH + "/" + dbFileName);
@@ -1210,20 +1383,30 @@ public class NetUtils implements Constants {
                     }
                 }
                 // System.out.println(dbLabelName);
+<<<<<<< HEAD
+                if (downloadCount == 0) {
+=======
                 if (i == 0) {
+>>>>>>> origin/master
                     LOG.info("Downloading resources ...");
                 }
 
                 final HttpClient4DownloadTask task = new HttpClient4DownloadTask(options.PUBDB_URL_MAP.get(dbLabelName), 20);
-                task.setDataMd5(HttpClient4API.getContent(options.PUBDB_URL_MAP.get(dbLabelName) + ".md5"));
+                String urlT = options.PUBDB_URL_MAP.get(dbLabelName);
+                if (urlT.startsWith("http://grass.cgs.hku.hk/")) {
+                    task.setDataMd5(HttpClient4API.getContent(urlT + ".md5"));
+                }
+
                 File filePath = new File(GlobalManager.RESOURCE_PATH);
                 if (!filePath.exists()) {
                     filePath.mkdirs();
                 }
                 task.setLocalPath(resourceFile.getCanonicalPath());
                 final String dbLabel = dbLabelName;
+                if (dbLabel.startsWith("dbncfp")) {
+                    needMergeDncfp = true;
+                }
                 task.addTaskListener(new DownloadTaskListener() {
-
                     @Override
                     public void autoCallback(DownloadTaskEvent event) {
                         int progess = (int) (event.getTotalDownloadedCount() * 100.0 / event.getTotalCount());
@@ -1257,13 +1440,17 @@ public class NetUtils implements Constants {
                 serv.submit(task);
                 toDownload = true;
 
-                i++;
+                downloadCount++;
             }
             for (int index = 0; index < runningThread; index++) {
                 Future task = serv.take();
                 String download = (String) task.get();
             }
             exec.shutdown();
+
+            if (needMergeDncfp) {
+                concatenateFiles(GlobalManager.RESOURCE_PATH + refGenomeVersion + "/" + refGenomeVersion + "_", dbncfpAnnotationScore, "known_SNV_dbNCFP.gz");
+            }
             if (toDownload) {
                 StringBuilder inforString = new StringBuilder();
                 inforString.append("The lapsed time for downloading is : ");
@@ -1278,4 +1465,21 @@ public class NetUtils implements Constants {
         }
     }
 
+    public static boolean concatenateFiles(String path, String[] altFiles, String outFile) {
+        try {
+            FileChannel fclOutput = new FileOutputStream(path + outFile).getChannel();
+            for (String strFile : altFiles) {
+                FileChannel fclInput = new FileInputStream(path + strFile).getChannel();
+                fclInput.transferTo(0, fclInput.size(), fclOutput);
+            }
+            fclOutput.force(true);
+            return true;
+        } catch (FileNotFoundException ex) {
+            ex.printStackTrace();
+            return false;
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            return false;
+        }
+    }
 }

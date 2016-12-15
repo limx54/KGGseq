@@ -6,12 +6,14 @@
 package org.cobi.kggseq.controller;
 
 import cern.colt.list.IntArrayList;
+import cern.colt.map.OpenIntIntHashMap;
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.StringTokenizer;
 import java.util.zip.GZIPInputStream;
@@ -149,6 +151,7 @@ public class BinaryGtyProcessor implements Constants {
             bits[i] = (gtys[byteIndex1] & GlobalManager.byteOpers[byteIndex2]) == GlobalManager.byteOpers[byteIndex2];
             bitNum += blockSize;
         }
+
         switch (base) {
             case 2:
                 /*       
@@ -246,11 +249,19 @@ public class BinaryGtyProcessor implements Constants {
         return null;
     }
 
+<<<<<<< HEAD
+    public static final void getUnphasedGtyAt1(byte[] gtys, int base, int indivID, boolean[] bits1, int blockSize) {
+        bitNum = indivID;
+        for (int i = 0; i < base; i++) {
+            byteIndex1 = (bitNum) / 8;
+            byteIndex2 = (bitNum) % 8;
+=======
     public static final void getUnphasedGtyAt1(byte[] gtys, int base, int indivID, boolean[] bits1,int blockSize) {
         bitNum = indivID;
         for (int i = 0; i < base; i++) {
             byteIndex1 = (bitNum ) / 8;
             byteIndex2 = (bitNum ) % 8;
+>>>>>>> origin/master
             bits1[i] = (gtys[byteIndex1] & GlobalManager.byteOpers[byteIndex2]) == GlobalManager.byteOpers[byteIndex2];
             bitNum += blockSize;
         }
@@ -410,6 +421,12 @@ public class BinaryGtyProcessor implements Constants {
         boolean incomplete;
         double maf;
         final int gtyLen = 8;
+<<<<<<< HEAD
+        int codeI;
+        byte[] tmpBytes;
+
+=======
+>>>>>>> origin/master
         for (int chromID = 0; chromID < chroms.length; chromID++) {
             if (chroms[chromID] == null) {
                 continue;
@@ -420,6 +437,20 @@ public class BinaryGtyProcessor implements Constants {
                 alleleNum = var.getAltAlleles().length + 1;
 
                 if (isPhased) {
+<<<<<<< HEAD
+                    if (var.compressedGtyLabel < 0) {
+                        base = GlobalManager.phasedAlleleBitMap.get(alleleNum);
+                        bitNum = base * indiviNum;
+                        intNum = bitNum / gtyLen;
+                        if (bitNum % gtyLen != 0) {
+                            intNum++;
+                        }
+                    } else {
+                        intNum = var.compressedGtyLabel;
+                    }
+
+                    var.encodedGty = new byte[intNum];
+=======
                     base = GlobalManager.phasedAlleleBitMap.get(alleleNum);
                     bitNum = base * indiviNum;
                     intNum = bitNum / gtyLen;
@@ -432,6 +463,7 @@ public class BinaryGtyProcessor implements Constants {
                         var.encodedGty[i] = in.readByte();
                     }
                      */
+>>>>>>> origin/master
                     intNum = in.read(var.encodedGty);
                     if (intNum != var.encodedGty.length) {
                         String infor = "Error occurred when reading binary genotypes. Your binary genotypes may be broken!";
@@ -439,12 +471,95 @@ public class BinaryGtyProcessor implements Constants {
                         System.exit(1);
                     }
                 } else {
-                    base = GlobalManager.unphasedAlleleBitMap.get(alleleNum);
+                    if (var.compressedGtyLabel < 0) {
+                        base = GlobalManager.unphasedAlleleBitMap.get(alleleNum);
+                        bitNum = base * indiviNum;
+                        intNum = bitNum / gtyLen;
+                        if (bitNum % gtyLen != 0) {
+                            intNum++;
+                        }
+                    } else {
+                        intNum = var.compressedGtyLabel;
+                    }
+                    var.encodedGty = new byte[intNum];
+                    intNum = in.read(var.encodedGty);
+                    if (intNum != var.encodedGty.length) {
+                        String infor = "Error occurred when reading binary genotypes. Your binary genotypes may be broken!";
+                        LOG.error(infor);
+                        System.exit(1);
+                    }
+                }
+                //In any case, it must read the binary genotype data
+                if (alleleNum > maxGtyAlleleNum) {
+                    ignoredVarBymaxGtyAlleleNum++;
+                    continue;
+                }
+                if (!considerSNP || !considerIndel) {
+                    //a lazy point 
+                    incomplete = true;
+
+                    //only consider Indel
+                    if (!considerSNP && var.isIndel) {
+                        incomplete = false;
+                    } else if (!considerIndel && !var.isIndel) {
+                        incomplete = false;
+                    }
+
+                    if (incomplete) {
+                        continue;
+                    }
+                }
+
+                if (var.compressedGtyLabel >= 0) {
+                    if (isPhased) {
+                        base = GlobalManager.phasedAlleleBitMap.get(alleleNum);
+                    } else {
+                        base = GlobalManager.unphasedAlleleBitMap.get(alleleNum);
+                    }
                     bitNum = base * indiviNum;
                     intNum = bitNum / gtyLen;
                     if (bitNum % gtyLen != 0) {
                         intNum++;
                     }
+<<<<<<< HEAD
+
+                    tmpBytes = new byte[intNum];
+                    Arrays.fill(tmpBytes, (byte) 0);
+                    for (int j = 0; j < var.compressedGtyLabel; j += 3) {
+                        codeI = (var.encodedGty[j + 2] & 0xFF) | ((var.encodedGty[j + 1] & 0xFF) << 8) | ((var.encodedGty[j] & 0x0F) << 16);
+                        byteIndex1 = (codeI) / 8;
+                        byteIndex2 = (codeI) % 8;
+                        tmpBytes[byteIndex1] = (byte) (tmpBytes[byteIndex1] | GlobalManager.byteOpers[byteIndex2]);
+                    }
+                    var.encodedGty = tmpBytes;
+                }
+
+                obsS = 0;
+                g11 = 0;
+                g12 = 0;
+                g22 = 0;
+                missingG = 0;
+                for (int j = 0; j < indiSize; j++) {
+                    subID = j;
+                    if (isPhased) {
+                        gtys = BinaryGtyProcessor.getPhasedGtyAt(var.encodedGty, alleleNum, base, subID, indiSize);
+                    } else {
+                        gtys = BinaryGtyProcessor.getUnphasedGtyAt(var.encodedGty, alleleNum, base, subID, indiSize);
+                    }
+                    if (gtys == null) {
+                        missingG++;
+                        continue;
+                    }
+                    if (gtys[0] != gtys[1]) {
+                        g12++;
+                    } else if (gtys[0] == 0) {
+                        g11++;
+                    } else {
+                        g22++;
+                    }
+                    obsS++;
+                }
+=======
                     var.encodedGty = new byte[intNum];
                     /*                   
                     for (int i = 0; i < intNum; i++) {
@@ -506,6 +621,7 @@ public class BinaryGtyProcessor implements Constants {
                     }
                     obsS++;
                 }
+>>>>>>> origin/master
                 var.setAffectedRefHomGtyNum(g11);
                 var.setAffectedHetGtyNum(g12);
                 var.setAffectedAltHomGtyNum(g22);
@@ -652,7 +768,8 @@ public class BinaryGtyProcessor implements Constants {
         int positionIndex = 3;
         int refIndex = 4;
         int altIndex = 5;
-        int maxIndex = altIndex;
+        int codeIndex = 6;
+        int maxIndex = codeIndex;
 
         Genome genome = new Genome("KGGSeqGenome", "ked");
         genome.removeTempFileFromDisk();
@@ -661,6 +778,7 @@ public class BinaryGtyProcessor implements Constants {
         String label = null;
         String ref = null;
         String alt = null;
+        String code = null;
         StringBuilder tmpBuffer = new StringBuilder();
         int index;
         int effectiveSNPNum = 0;
@@ -680,6 +798,7 @@ public class BinaryGtyProcessor implements Constants {
                 label = null;
                 ref = null;
                 alt = null;
+                code = null;
                 while (tokenizer.hasMoreTokens()) {
                     tmpBuffer.delete(0, tmpBuffer.length());
                     tmpBuffer.append(tokenizer.nextToken().trim());
@@ -694,6 +813,8 @@ public class BinaryGtyProcessor implements Constants {
                         ref = tmpBuffer.toString();
                     } else if (index == altIndex) {
                         alt = tmpBuffer.toString();
+                    } else if (index == codeIndex) {
+                        code = tmpBuffer.toString();
                     }
 
                     if (index == maxIndex) {
@@ -709,6 +830,7 @@ public class BinaryGtyProcessor implements Constants {
                     var.isIndel = true;
                 }
 
+                var.compressedGtyLabel = Integer.parseInt(code);
                 var.setLabel(label);
                 genome.addVariant(chrom, var);
             }

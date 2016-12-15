@@ -30,6 +30,32 @@ public class Util {
     //  private static String[] temp = null;
     private static ThreadLocal<int[]> tempIntArray = new ThreadLocal<int[]>();
 
+    public static String[] splitCVS(String string) {
+        String[] temp = tempArray.get();
+        int tempLength = (string.length() / 2) + 1;
+
+        if (temp == null || temp.length < tempLength) {
+            temp = new String[tempLength];
+            tempArray.set(temp);
+        }
+
+        int wordCount = 0;
+        boolean notInsideComma = true;
+        int start = 0, end = 0;
+        for (int i = 0; i < string.length() - 1; i++) {
+            if (string.charAt(i) == ',' && notInsideComma) {
+                temp[wordCount++] = (string.substring(start, i));
+                start = i + 1;
+            } else if (string.charAt(i) == '"') {
+                notInsideComma = !notInsideComma;
+            }
+        }
+        temp[wordCount++] = (string.substring(start));
+        String[] result = new String[wordCount];
+        System.arraycopy(temp, 0, result, 0, wordCount);
+        return result;
+    }
+
     public static String[] tokenize(String string, char delimiter) {
         String[] temp = tempArray.get();
         int tempLength = (string.length() / 2) + 1;
@@ -316,7 +342,10 @@ public class Util {
         int tempLength = (string.length() / 2) + 1;
 
         // System.out.println(string);
+<<<<<<< HEAD
+=======
     
+>>>>>>> origin/master
         if (temp == null || temp.length < tempLength) {
             temp = new String[tempLength];
             tempArray.set(temp);
@@ -372,14 +401,22 @@ public class Util {
         }
 
         while (j >= 0 && i < strLen) {
+<<<<<<< HEAD
+
+=======
             
+>>>>>>> origin/master
             if (tempInt[wordCount] == 0) {
                 tempInt[wordCount] = j;
             } else {
                 //tempInt[wordCount] = (tempInt[wordCount] + j + 1) / 2;
                 tempInt[wordCount] = j;
             }
+<<<<<<< HEAD
+
+=======
             
+>>>>>>> origin/master
             temp[wordCount++] = string.substring(i, j);
 
             i = j + 1;
@@ -616,6 +653,7 @@ public class Util {
 
     public static void main(String[] args) {
         try {
+            float f = Util.parseFloat("9.18274E".getBytes(), 0, "9.18274E".getBytes().length);
             long start = System.nanoTime();
             long start2, time2;
             int num = 1000000000;
@@ -899,6 +937,9 @@ public class Util {
 
     public static float parseFloat(String f) {
         final int len = f.length();
+        if (len == 0) {
+            return Float.NaN;
+        }
         float ret = 0f;         // return value
         int pos = 0;          // read pointer position
         int part = 0;          // the current part (int, float and sci parts of the number)
@@ -1081,16 +1122,18 @@ public class Util {
         // scientific part
         if (pos < end && (f[pos] == 101 || f[pos] == 69)) {
             pos++;
-            neg = (f[pos] == 45);
-            pos++;
-            part = 0;
-            while (pos < end && !(f[pos] > 57 || f[pos] < 48)) {
-                part = part * 10 + (f[pos++] - 48);
-            }
-            if (neg) {
-                ret = ret / (float) Math.pow(10, part);
-            } else {
-                ret = ret * (float) Math.pow(10, part);
+            if (pos < end) {
+                neg = (f[pos] == 45);
+                pos++;
+                part = 0;
+                while (pos < end && !(f[pos] > 57 || f[pos] < 48)) {
+                    part = part * 10 + (f[pos++] - 48);
+                }
+                if (neg) {
+                    ret = ret / (float) Math.pow(10, part);
+                } else {
+                    ret = ret * (float) Math.pow(10, part);
+                }
             }
         }
         return ret;

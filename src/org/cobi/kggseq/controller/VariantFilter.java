@@ -5,11 +5,16 @@
  */
 package org.cobi.kggseq.controller;
 
+import cern.colt.list.DoubleArrayList;
 import cern.colt.list.FloatArrayList;
 import cern.colt.list.IntArrayList;
 import cern.colt.map.OpenIntIntHashMap;
+<<<<<<< HEAD
+=======
 import cern.colt.map.OpenLongObjectHashMap;
+>>>>>>> origin/master
 import cern.jet.stat.Probability;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -26,11 +31,17 @@ import org.cobi.kggseq.entity.Genome;
 import org.cobi.kggseq.entity.Individual;
 import org.cobi.kggseq.entity.RNABoundaryIndex;
 import org.cobi.kggseq.entity.RefDup;
+import org.cobi.kggseq.entity.RefGene;
 import org.cobi.kggseq.entity.ReferenceGenome;
+import org.cobi.kggseq.entity.SeqSegment;
 import org.cobi.kggseq.entity.Variant;
 import org.cobi.util.net.NCBIRetriever;
 import org.cobi.util.stat.ContingencyTable;
+import org.cobi.util.stat.SimpleLinearRegression;
+import org.cobi.util.text.BGZFInputStream;
+import org.cobi.util.text.BZPartReader;
 import org.cobi.util.text.Util;
+import static umontreal.iro.lecuyer.util.PrintfFormat.s;
 
 /**
  *
@@ -75,9 +86,265 @@ public class VariantFilter {
         }
     }
 
-    public boolean checkCompoundHeteroGeneSudo(IntArrayList effectiveIndivIDs, List<Individual> sortedSubjectList, int[] pedEncodeGytIDMap, List<int[]> triosIDList, List<Variant> geneDisVars,
+    final private void extractGenotypes(Variant tVar, boolean isPhasedGty, int[] pedEncodeGytIDMap, List<int[]> triosIDList,
+            int index, int[] childGty, int[] fatherGty, int[] motherGty) {
+
+        int[] childGtyT = null;
+        int[] fatherGtyT = null;
+        int[] motherGtyT = null;
+
+        int alleleNum = tVar.getAltAlleles().length + 1;
+        int base, startIndex;
+        boolean[] bits = new boolean[32];
+        if (isPhasedGty) {
+            base = GlobalManager.phasedAlleleBitMap.get(alleleNum);
+            if (tVar.compressedGtyLabel >= 0) {
+                startIndex = pedEncodeGytIDMap[triosIDList.get(index)[0]];
+                if (tVar.compressedGtyLabel > 0) {
+                    for (int i = 0; i < base; i++) {
+                        if (startIndex > tVar.compressedGty[tVar.compressedGty.length - 1]) {
+                            bits[i] = false;
+                        } else if (startIndex < tVar.compressedGty[0]) {
+                            bits[i] = false;
+                        } else if (startIndex == tVar.compressedGty[tVar.compressedGty.length - 1]) {
+                            bits[i] = true;
+                        } else if (startIndex == tVar.compressedGty[0]) {
+                            bits[i] = true;
+                        } else {
+                            bits[i] = (Arrays.binarySearch(tVar.compressedGty, startIndex) >= 0);
+                        }
+                        startIndex += pedEncodeGytIDMap.length;
+                    }
+                } else if (tVar.compressedGtyLabel == 0) {
+                    Arrays.fill(bits, 0, base, false);
+                }
+                childGtyT = BinaryGtyProcessor.getPhasedGtyBool(bits, alleleNum, base, pedEncodeGytIDMap[triosIDList.get(index)[0]]);
+
+                startIndex = pedEncodeGytIDMap[triosIDList.get(index)[1]];
+                if (tVar.compressedGtyLabel > 0) {
+                    for (int i = 0; i < base; i++) {
+                        if (startIndex > tVar.compressedGty[tVar.compressedGty.length - 1]) {
+                            bits[i] = false;
+                        } else if (startIndex < tVar.compressedGty[0]) {
+                            bits[i] = false;
+                        } else if (startIndex == tVar.compressedGty[tVar.compressedGty.length - 1]) {
+                            bits[i] = true;
+                        } else if (startIndex == tVar.compressedGty[0]) {
+                            bits[i] = true;
+                        } else {
+                            bits[i] = (Arrays.binarySearch(tVar.compressedGty, startIndex) >= 0);
+                        }
+                        startIndex += pedEncodeGytIDMap.length;
+                    }
+                } else if (tVar.compressedGtyLabel == 0) {
+                    Arrays.fill(bits, 0, base, false);
+                }
+                fatherGtyT = BinaryGtyProcessor.getPhasedGtyBool(bits, alleleNum, base, pedEncodeGytIDMap[triosIDList.get(index)[1]]);
+
+                startIndex = pedEncodeGytIDMap[triosIDList.get(index)[2]];
+                if (tVar.compressedGtyLabel > 0) {
+                    for (int i = 0; i < base; i++) {
+                        if (startIndex > tVar.compressedGty[tVar.compressedGty.length - 1]) {
+                            bits[i] = false;
+                        } else if (startIndex < tVar.compressedGty[0]) {
+                            bits[i] = false;
+                        } else if (startIndex == tVar.compressedGty[tVar.compressedGty.length - 1]) {
+                            bits[i] = true;
+                        } else if (startIndex == tVar.compressedGty[0]) {
+                            bits[i] = true;
+                        } else {
+                            bits[i] = (Arrays.binarySearch(tVar.compressedGty, startIndex) >= 0);
+                        }
+                        startIndex += pedEncodeGytIDMap.length;
+                    }
+                } else if (tVar.compressedGtyLabel == 0) {
+                    Arrays.fill(bits, 0, base, false);
+                }
+                motherGtyT = BinaryGtyProcessor.getPhasedGtyBool(bits, alleleNum, base, pedEncodeGytIDMap[triosIDList.get(index)[2]]);
+            } else {
+                childGtyT = BinaryGtyProcessor.getPhasedGtyAt(tVar.encodedGty, alleleNum, base, pedEncodeGytIDMap[triosIDList.get(index)[0]], pedEncodeGytIDMap.length);
+                fatherGtyT = BinaryGtyProcessor.getPhasedGtyAt(tVar.encodedGty, alleleNum, base, pedEncodeGytIDMap[triosIDList.get(index)[1]], pedEncodeGytIDMap.length);
+                motherGtyT = BinaryGtyProcessor.getPhasedGtyAt(tVar.encodedGty, alleleNum, base, pedEncodeGytIDMap[triosIDList.get(index)[2]], pedEncodeGytIDMap.length);
+            }
+
+        } else {
+            base = GlobalManager.unphasedAlleleBitMap.get(alleleNum);
+            if (tVar.compressedGtyLabel >= 0) {
+                startIndex = pedEncodeGytIDMap[triosIDList.get(index)[0]];
+                if (tVar.compressedGtyLabel > 0) {
+                    for (int i = 0; i < base; i++) {
+                        if (startIndex > tVar.compressedGty[tVar.compressedGty.length - 1]) {
+                            bits[i] = false;
+                        } else if (startIndex < tVar.compressedGty[0]) {
+                            bits[i] = false;
+                        } else if (startIndex == tVar.compressedGty[tVar.compressedGty.length - 1]) {
+                            bits[i] = true;
+                        } else if (startIndex == tVar.compressedGty[0]) {
+                            bits[i] = true;
+                        } else {
+                            bits[i] = (Arrays.binarySearch(tVar.compressedGty, startIndex) >= 0);
+                        }
+                        startIndex += pedEncodeGytIDMap.length;
+                    }
+                } else if (tVar.compressedGtyLabel == 0) {
+                    Arrays.fill(bits, 0, base, false);
+                }
+                childGtyT = BinaryGtyProcessor.getUnphasedGtyBool(bits, alleleNum, base, pedEncodeGytIDMap[triosIDList.get(index)[0]]);
+                startIndex = pedEncodeGytIDMap[triosIDList.get(index)[1]];
+                if (tVar.compressedGtyLabel > 0) {
+                    for (int i = 0; i < base; i++) {
+                        if (startIndex > tVar.compressedGty[tVar.compressedGty.length - 1]) {
+                            bits[i] = false;
+                        } else if (startIndex < tVar.compressedGty[0]) {
+                            bits[i] = false;
+                        } else if (startIndex == tVar.compressedGty[tVar.compressedGty.length - 1]) {
+                            bits[i] = true;
+                        } else if (startIndex == tVar.compressedGty[0]) {
+                            bits[i] = true;
+                        } else {
+                            bits[i] = (Arrays.binarySearch(tVar.compressedGty, startIndex) >= 0);
+                        }
+                        startIndex += pedEncodeGytIDMap.length;
+                    }
+                } else if (tVar.compressedGtyLabel == 0) {
+                    Arrays.fill(bits, 0, base, false);
+                }
+                fatherGtyT = BinaryGtyProcessor.getUnphasedGtyBool(bits, alleleNum, base, pedEncodeGytIDMap[triosIDList.get(index)[1]]);
+                startIndex = pedEncodeGytIDMap[triosIDList.get(index)[2]];
+                if (tVar.compressedGtyLabel > 0) {
+                    for (int i = 0; i < base; i++) {
+                        if (startIndex > tVar.compressedGty[tVar.compressedGty.length - 1]) {
+                            bits[i] = false;
+                        } else if (startIndex < tVar.compressedGty[0]) {
+                            bits[i] = false;
+                        } else if (startIndex == tVar.compressedGty[tVar.compressedGty.length - 1]) {
+                            bits[i] = true;
+                        } else if (startIndex == tVar.compressedGty[0]) {
+                            bits[i] = true;
+                        } else {
+                            bits[i] = (Arrays.binarySearch(tVar.compressedGty, startIndex) >= 0);
+                        }
+                        startIndex += pedEncodeGytIDMap.length;
+                    }
+                } else if (tVar.compressedGtyLabel == 0) {
+                    Arrays.fill(bits, 0, base, false);
+                }
+                motherGtyT = BinaryGtyProcessor.getUnphasedGtyBool(bits, alleleNum, base, pedEncodeGytIDMap[triosIDList.get(index)[2]]);
+            } else {
+                childGtyT = BinaryGtyProcessor.getUnphasedGtyAt(tVar.encodedGty, alleleNum, base, pedEncodeGytIDMap[triosIDList.get(index)[0]], pedEncodeGytIDMap.length);
+                fatherGtyT = BinaryGtyProcessor.getUnphasedGtyAt(tVar.encodedGty, alleleNum, base, pedEncodeGytIDMap[triosIDList.get(index)[1]], pedEncodeGytIDMap.length);
+                motherGtyT = BinaryGtyProcessor.getUnphasedGtyAt(tVar.encodedGty, alleleNum, base, pedEncodeGytIDMap[triosIDList.get(index)[2]], pedEncodeGytIDMap.length);
+            }
+        }
+        if (childGtyT == null) {
+            childGty[0] = -1;
+            childGty[1] = -1;
+        } else {
+            childGty[0] = childGtyT[0];
+            childGty[1] = childGtyT[1];
+        }
+        if (fatherGtyT == null) {
+            fatherGty[0] = -1;
+            fatherGty[1] = -1;
+        } else {
+            fatherGty[0] = fatherGtyT[0];
+            fatherGty[1] = fatherGtyT[1];
+        }
+        if (motherGtyT == null) {
+            motherGty[0] = -1;
+            motherGty[1] = -1;
+        } else {
+            motherGty[0] = motherGtyT[0];
+            motherGty[1] = motherGtyT[1];
+        }
+    }
+
+    private boolean doubleHitGeneScore(int commonAllele, int[] childGty, int[] fatherGty, int[] motherGty, double[] transmitAltFromFa, double[] transmitAltFromMo, double weight) {
+        boolean isEffective = false;
+        // assume the reference allele has no causal effect.
+        if (childGty[0] == commonAllele && childGty[1] != commonAllele) {
+            // Warning: this will exclude the F:0/1 & M:0/1->O:0/1
+            // genotypes of parents
+            if ((childGty[1] == fatherGty[0] || childGty[1] == fatherGty[1]) && childGty[1] != motherGty[0] && childGty[1] != motherGty[1]) {
+                //father is homozygous you may have to ignore this if you assume a full penetrance
+                /*
+                        if (fatherGty[0] != commonAllele && fatherGty[1] != commonAllele) {
+                            
+                        }
+                 */
+                transmitAltFromFa[0] += weight;
+                isEffective = true;
+            } else if ((childGty[1] == motherGty[0] || childGty[1] == motherGty[1]) && childGty[1] != fatherGty[0] && childGty[1] != fatherGty[1]) {
+                /*
+                        if (motherGty[0] != commonAllele && motherGty[1] != commonAllele) {
+                          
+                        }
+                 */
+                transmitAltFromMo[0] += weight;
+                isEffective = true;
+            } else if ((childGty[1] == fatherGty[0] || childGty[1] == fatherGty[1]) && (childGty[1] == motherGty[0] || childGty[1] == motherGty[1])) {
+                //transmitAltFromFa[0] += (weight / 4);
+                // transmitAltFromMo[0] += (weight / 4);
+                //  isEffective = true;
+            }
+
+        } else if (childGty[0] != commonAllele && childGty[1] != commonAllele) {
+            //father are homozygous as well
+            /*
+                    if (fatherGty[0] != commonAllele && fatherGty[1] != commonAllele) {
+                        
+                    }
+                    if (motherGty[0] != commonAllele && motherGty[1] != commonAllele) {
+                         
+                    }
+             */
+            // then offspreing is homozygous  Mendelian error will be ingored
+            if ((childGty[0] == fatherGty[0] || childGty[0] == fatherGty[1]) && (childGty[1] == motherGty[0] || childGty[1] == motherGty[1])) {
+                transmitAltFromFa[0] += weight;
+                transmitAltFromMo[0] += weight;
+                isEffective = true;
+            } else if ((childGty[1] == fatherGty[0] || childGty[1] == fatherGty[1]) && (childGty[0] == motherGty[0] || childGty[0] == motherGty[1])) {
+                transmitAltFromFa[0] += weight;
+                transmitAltFromMo[0] += weight;
+                isEffective = true;
+            }
+        } else if (childGty[0] != commonAllele) {
+            // Warning: this will exclude the F:0/1 & M:0/1->O:0/1
+            // genotypes of parents
+            if ((childGty[0] == fatherGty[0] || childGty[0] == fatherGty[1]) && childGty[0] != motherGty[0] && childGty[0] != motherGty[1]) {
+                /*
+                if (fatherGty[0] != commonAllele && fatherGty[1] != commonAllele) {
+                     
+                }
+                 */
+                transmitAltFromFa[0] += weight;
+                isEffective = true;
+            } else if ((childGty[0] == motherGty[0] || childGty[0] == motherGty[1]) && childGty[0] != fatherGty[0] && childGty[0] != fatherGty[1]) {
+                /*
+                if (motherGty[0] != commonAllele && motherGty[1] != commonAllele) {
+                    
+                }
+                 */
+                transmitAltFromMo[0] += weight;
+                isEffective = true;
+            } else if ((childGty[0] == fatherGty[0] || childGty[0] == fatherGty[1]) && (childGty[0] == motherGty[0] || childGty[0] == motherGty[1])) {
+                // transmitAltFromFa[0] += (weight / 4);
+                //  transmitAltFromMo[0] += (weight / 4);
+                //  isEffective = true;
+            }
+        }
+        return isEffective;
+    }
+
+    SimpleLinearRegression sl = new SimpleLinearRegression();
+
+    public boolean checkCompoundHeteroGeneSudoControl(IntArrayList effectiveIndivIDs, List<Individual> sortedSubjectList, int[] pedEncodeGytIDMap, List<int[]> triosIDList, List<Variant> geneDisVars,
             int chromID, boolean isPhasedGty, boolean noNeedHomo, String lastGeneSymb, Set<String> caseGenes, Set<String> controlGenes,
+<<<<<<< HEAD
+            List<Variant> tmpVarListGene, int[] hitIndivCount1, Set<String> effectiveVarSet, String[] countsStr, String[] gtyStr,
+=======
             List<Variant> tmpVarListGene, OpenLongObjectHashMap wahBit, int[] hitIndivCount1, Set<String> effectiveVarSet, String[] couts1, String[] couts2,
+>>>>>>> origin/master
             boolean allPsudoControl, int fixedColNum) {
 
         int effectiveIndivSize = effectiveIndivIDs.size();
@@ -88,9 +355,33 @@ public class VariantFilter {
         boolean hasADouble = false;
         StringBuilder varLabel = new StringBuilder();
 
+        int totalGeneCounts = 0;
         int caseGeneCounts = 0;
         int sudoControlGeneCounts = 0;
         List<Variant> tmpVarListIndiv = new ArrayList<Variant>();
+<<<<<<< HEAD
+
+        int availableGtyVar = 0;
+        int commonAllele = 0;
+        double[] transmitAltFromFa = new double[1];
+        double[] transmitAltFromMo = new double[1];
+        double[] transmitAltFromFaSudo = new double[1];
+        double[] transmitAltFromMoSudo = new double[1];
+
+        int varLen = geneDisVars.size();
+        int[][] faGtys = new int[varLen][2];
+        int[][] moGtys = new int[varLen][2];
+        int[][] ofGtys = new int[varLen][2];
+
+        DoubleArrayList yList = new DoubleArrayList();
+        DoubleArrayList xList = new DoubleArrayList();
+        double weight = 1;
+        boolean testScore = false;
+        double prob;
+        int totalCount = 0;
+        boolean hasLess5;
+        long[][] counts1 = new long[2][2];
+=======
         int[] childGty = null;
         int[] fatherGty = null;
         int[] motherGty = null;
@@ -98,27 +389,92 @@ public class VariantFilter {
         int alleleNum = 0;
         boolean[] bits = new boolean[32];
         int startIndex;
+>>>>>>> origin/master
         for (int j = 0; j < effectiveIndivSize; j++) {
             int index = effectiveIndivIDs.getQuick(j);
             Individual mIndivChild = sortedSubjectList.get(triosIDList.get(index)[0]);
 
-            int countN = 0;
-            boolean transmitAltFromFa = false;
-            boolean transmitAltFromMo = false;
+            transmitAltFromFa[0] = 0;
+            transmitAltFromMo[0] = 0;
 
-            boolean transmitAltFromFaSudo = false;
-            boolean transmitAltFromMoSudo = false;
+            transmitAltFromFaSudo[0] = 0;
+            transmitAltFromMoSudo[0] = 0;
+
             varTransmitInfo.delete(0, varTransmitInfo.length());
             varUntransmitInfo.delete(0, varUntransmitInfo.length());
             tmpVarListIndiv.clear();
-
-            for (Variant tVar : geneDisVars) {
+            for (int i = 0; i < varLen; i++) {
+                Variant tVar = geneDisVars.get(i);
+                extractGenotypes(tVar, isPhasedGty, pedEncodeGytIDMap, triosIDList, index, ofGtys[i], faGtys[i], moGtys[i]);
+            }
+            int[][] sudoOfGtys = unTransmittedHaplo(faGtys, moGtys, ofGtys);
+            availableGtyVar = 0;
+            for (int i = 0; i < varLen; i++) {
+                Variant tVar = geneDisVars.get(i);
                 isEffective = false;
                 isEffectiveUntransm = false;
+                if (tVar.refStartPosition == 225454386 && mIndivChild.getLabelInChip().equals("C083_0")) {
+                    int sss = 0;
+                }
 
-                alleleNum = tVar.getAltAlleles().length + 1;
-
+                if (ofGtys[i][0] < 0 || faGtys[i][0] < 0 || moGtys[i][0] < 0) {
+                    continue;
+                }
+                if (noNeedHomo && ofGtys[i][0] == ofGtys[i][1]) {
+                    continue;
+                }
+                availableGtyVar++;
+                if (tVar.getUnaffectedAltHomGtyNum() > tVar.getUnaffectedRefHomGtyNum()) {
+                    commonAllele = 1;
+                } else {
+                    commonAllele = 0;
+                }
+                weight = 1;
                 if (isPhasedGty) {
+<<<<<<< HEAD
+                    if (ofGtys[i][0] != commonAllele) {
+                        transmitAltFromFa[0] += weight;
+                        isEffective = true;
+                    }
+                    if (ofGtys[i][1] != commonAllele) {
+                        transmitAltFromMo[0] += weight;
+                        isEffective = true;
+                    }
+                } else {
+                    isEffective = doubleHitGeneScore(commonAllele, ofGtys[i], faGtys[i], moGtys[i], transmitAltFromFa, transmitAltFromMo, weight);
+                }
+
+                //int[] uchildGty = unTransmittedGty(fatherGty, motherGty, childGty);
+                if (sudoOfGtys[i][0] >= 0) {
+                    if (isPhasedGty) {
+                        if (sudoOfGtys[i][0] != commonAllele) {
+                            transmitAltFromFaSudo[0] += weight;
+                            isEffectiveUntransm = true;
+                        }
+                        if (sudoOfGtys[i][1] != commonAllele) {
+                            transmitAltFromMoSudo[0] += weight;
+                            isEffectiveUntransm = true;
+                        }
+                    } else {
+                        isEffectiveUntransm = doubleHitGeneScore(commonAllele, sudoOfGtys[i], faGtys[i], moGtys[i], transmitAltFromFaSudo, transmitAltFromMoSudo, weight);
+                    }
+                }
+
+                if (isEffectiveUntransm) {
+                    varUntransmitInfo.append(tVar.refStartPosition).append(":");
+                    varUntransmitInfo.append(faGtys[i][0]);
+                    varUntransmitInfo.append(isPhasedGty ? '|' : '/');
+                    varUntransmitInfo.append(faGtys[i][1]);
+                    varUntransmitInfo.append(',');
+                    varUntransmitInfo.append(moGtys[i][0]);
+                    varUntransmitInfo.append(isPhasedGty ? '|' : '/');
+                    varUntransmitInfo.append(moGtys[i][1]);
+                    varUntransmitInfo.append(',');
+                    varUntransmitInfo.append(sudoOfGtys[i][0]);
+                    varUntransmitInfo.append(isPhasedGty ? '|' : '/');
+                    varUntransmitInfo.append(sudoOfGtys[i][1]);
+                    varUntransmitInfo.append(";");
+=======
                     base = GlobalManager.phasedAlleleBitMap.get(alleleNum);
                     if (tVar.compressedGty) {
                         startIndex = tVar.encodedGty[0] + pedEncodeGytIDMap[triosIDList.get(index)[0]];
@@ -172,31 +528,218 @@ public class VariantFilter {
                         motherGty = BinaryGtyProcessor.getUnphasedGtyAt(tVar.encodedGty, alleleNum, base, pedEncodeGytIDMap[triosIDList.get(index)[2]], pedEncodeGytIDMap.length);
                     }
 
+>>>>>>> origin/master
                 }
-                if (childGty == null || fatherGty == null || motherGty == null) {
+
+                if (isEffective) {
+                    varTransmitInfo.append(tVar.refStartPosition).append(":");
+                    varTransmitInfo.append(faGtys[i][0]);
+                    varTransmitInfo.append(isPhasedGty ? '|' : '/');
+                    varTransmitInfo.append(faGtys[i][1]);
+                    varTransmitInfo.append(',');
+                    varTransmitInfo.append(moGtys[i][0]);
+                    varTransmitInfo.append(isPhasedGty ? '|' : '/');
+                    varTransmitInfo.append(moGtys[i][1]);
+                    varTransmitInfo.append(',');
+                    varTransmitInfo.append(ofGtys[i][0]);
+                    varTransmitInfo.append(isPhasedGty ? '|' : '/');
+                    varTransmitInfo.append(ofGtys[i][1]);
+                    varTransmitInfo.append(";");
+                    tmpVarListIndiv.add(tVar);
+                }
+                /*
+                 * if (fatherGty[0] != fatherGty[1] && motherGty[0] !=
+                 * motherGty[1] && childGty[0] != 0 && childGty[1] != 0) {
+                 * System.out.println(lastGeneSymb + "\t" +
+                 * mIndivChild.getLabelInChip() + "\t" + varInfo.toString()); }
+                 */
+            }
+            if (mIndivChild.getAffectedStatus() == 2) {
+                yList.add(1);
+                yList.add(0);
+            } else {
+                yList.add(0);
+                yList.add(1);
+            }
+            xList.add(transmitAltFromFa[0] * transmitAltFromMo[0]);
+            xList.add(transmitAltFromFaSudo[0] * transmitAltFromMoSudo[0]);
+
+            if (transmitAltFromFa[0] > 0 && transmitAltFromMo[0] > 0) {
+                countsStr[j + fixedColNum] = String.valueOf(1);
+                if (gtyStr[j + fixedColNum] != null) {
+                    gtyStr[j + fixedColNum] += varTransmitInfo.substring(0, varTransmitInfo.length() - 1);
+                } else {
+                    gtyStr[j + fixedColNum] = varTransmitInfo.substring(0, varTransmitInfo.length() - 1);
+                }
+
+                if (mIndivChild.getAffectedStatus() == 2) {
+                    caseGenes.add(lastGeneSymb);
+                    caseGeneCounts++;
+                }
+                hasADouble = true;
+                for (Variant tVar : tmpVarListIndiv) {
+                    varLabel.append(tVar.refStartPosition).append(":").append(tVar.getRefAllele());
+                    for (String altA : tVar.getAltAlleles()) {
+                        varLabel.append(":");
+                        varLabel.append(altA);
+                    }
+                    if (!effectiveVarSet.contains(varLabel.toString())) {
+                        tmpVarListGene.add(tVar);
+                        effectiveVarSet.add(varLabel.toString());
+                    }
+                    varLabel.delete(0, varLabel.length());
+                }
+                hitIndivCount1[j]++;
+            } else {
+                countsStr[j + fixedColNum] = "0";
+                if (gtyStr[j + fixedColNum] == null) {
+                    gtyStr[j + fixedColNum] = ".";
+                }
+            }
+
+            if (transmitAltFromFaSudo[0] > 0 && transmitAltFromMoSudo[0] > 0) {
+                // controlDoubleHitGenes.add(lastGeneSymb);
+                sudoControlGeneCounts++;
+                if (allPsudoControl) {
+                    hasADouble = true;
+                    if (gtyStr[j + fixedColNum] != null) {
+                        gtyStr[j + fixedColNum] = gtyStr[j + fixedColNum] + "Sudo: " + varUntransmitInfo.substring(0, varUntransmitInfo.length() - 1);
+                    } else {
+                        gtyStr[j + fixedColNum] = "Sudo: " + varUntransmitInfo.substring(0, varUntransmitInfo.length() - 1);
+                    }
+                }
+
+                // System.out.println(mIndivFather.getLabelInChip() + "," +
+                // mIndivMother.getLabelInChip() + "," +
+                // mIndivChild.getLabelInChip() + ";" + varUntransmitInfo);
+            }
+
+            if (noNeedHomo) {
+                //in this senario, we need at least two variants
+                if (availableGtyVar > 1) {
+                    totalGeneCounts++;
+                }
+            } else if (availableGtyVar > 0) {
+                totalGeneCounts++;
+            }
+        }// end of scan at all individuals
+
+        countsStr[3] = String.valueOf(caseGeneCounts);
+        gtyStr[3] = String.valueOf(caseGeneCounts);
+        if (allPsudoControl) {
+            countsStr[4] = String.valueOf(sudoControlGeneCounts);
+            gtyStr[4] = String.valueOf(sudoControlGeneCounts);
+        }
+        countsStr[5] = String.valueOf(totalGeneCounts);
+        gtyStr[5] = String.valueOf(totalGeneCounts);
+        if (testScore) {
+            int indivSize = yList.size();
+            double[] xx = new double[indivSize];
+            double[] yy = new double[indivSize];
+            for (int i = 0; i < indivSize; i++) {
+                xx[i] = xList.getQuick(i);
+                yy[i] = yList.getQuick(i);
+            }
+            sl.setX(xx);
+            sl.setY(yy);
+            sl.compute();
+            prob = sl.waldTestSlopeP();
+        } else {
+            totalCount = Integer.parseInt(countsStr[5]);
+            counts1[0][0] = Integer.parseInt(countsStr[3]);
+            counts1[0][1] = Integer.parseInt(countsStr[4]);
+            counts1[1][0] = totalCount - counts1[0][0];
+            counts1[1][1] = totalCount - counts1[0][1];
+
+            hasLess5 = false;
+            for (int t = 0; t < 2; t++) {
+                for (int k = 0; k < 2; k++) {
+                    if (counts1[t][k] <= 5) {
+                        hasLess5 = true;
+                        break;
+                    }
+                }
+            }
+            if (hasLess5) {
+                prob = ContingencyTable.fisherExact22(counts1, 2, 2, 2);
+            } else {
+                prob = ContingencyTable.pearsonChiSquared22(counts1);
+                prob = Probability.chiSquareComplemented(1, prob);
+            }
+        }
+
+        countsStr[6] = String.valueOf(Util.formatPValue(prob));
+        gtyStr[6] = String.valueOf(Util.formatPValue(prob));
+
+        return hasADouble;
+    }
+
+    public boolean checkCompoundHeteroGeneCaseControl(IntArrayList effectiveIndivIDs, List<Individual> sortedSubjectList, int[] pedEncodeGytIDMap, List<int[]> triosIDList, List<Variant> geneDisVars,
+            int chromID, boolean isPhasedGty, boolean noNeedHomo, String lastGeneSymb, Set<String> caseGenes, Set<String> controlGenes,
+            List<Variant> tmpVarListGene, int[] hitIndivCount1, Set<String> effectiveVarSet, String[] countsStr, String[] gtyStr,
+            int fixedColNum) {
+
+        int effectiveIndivSize = effectiveIndivIDs.size();
+        StringBuilder varTransmitInfo = new StringBuilder();
+
+        boolean isEffective;
+
+        boolean hasADouble = false;
+        StringBuilder varLabel = new StringBuilder();
+
+        int totalCaseGeneCounts = 0;
+        int totalControlGeneCounts = 0;
+        int caseGeneCounts = 0;
+        int controlGeneCounts = 0;
+        List<Variant> tmpVarListIndiv = new ArrayList<Variant>();
+        int[] childGty = new int[2];
+        int[] fatherGty = new int[2];
+        int[] motherGty = new int[2];
+        int availableGtyVar = 0;
+
+        for (int j = 0; j < effectiveIndivSize; j++) {
+            int index = effectiveIndivIDs.getQuick(j);
+            Individual mIndivChild = sortedSubjectList.get(triosIDList.get(index)[0]);
+
+            int countN = 0;
+            boolean transmitAltFromFaCase = false;
+            boolean transmitAltFromMoCase = false;
+
+            varTransmitInfo.delete(0, varTransmitInfo.length());
+
+            tmpVarListIndiv.clear();
+
+            availableGtyVar = 0;
+            for (Variant tVar : geneDisVars) {
+                isEffective = false;
+
+                extractGenotypes(tVar, isPhasedGty, pedEncodeGytIDMap, triosIDList, index, childGty, fatherGty, motherGty);
+                if (childGty[0] < 0 || fatherGty[0] < 0 || motherGty[0] < 0) {
                     continue;
                 }
                 if (noNeedHomo && childGty[0] == childGty[1]) {
                     continue;
                 }
+                availableGtyVar++;
 
-                // assume the reference allele has not causal effect.
+                // assume the reference allele has no causal effect.
                 if (childGty[0] == 0 && childGty[1] != 0) {
                     // Warning: this will exclude the F:0/1 & M:0/1->O:0/1
                     // genotypes of parents
                     if ((childGty[1] == fatherGty[0] || childGty[1] == fatherGty[1]) && childGty[1] != motherGty[0] && childGty[1] != motherGty[1]) {
+                        //ignore variants with homozygouse genotypes at father. This may be not good for complex traits
                         if (fatherGty[0] != 0 && fatherGty[1] != 0) {
                             continue;
                         }
                         countN++;
-                        transmitAltFromFa = true;
+                        transmitAltFromFaCase = true;
                         isEffective = true;
                     } else if ((childGty[1] == motherGty[0] || childGty[1] == motherGty[1]) && childGty[1] != fatherGty[0] && childGty[1] != fatherGty[1]) {
                         if (motherGty[0] != 0 && motherGty[1] != 0) {
                             continue;
                         }
                         countN++;
-                        transmitAltFromMo = true;
+                        transmitAltFromMoCase = true;
                         isEffective = true;
                     }
                 } else if (childGty[0] != 0 && childGty[1] != 0) {
@@ -212,14 +755,14 @@ public class VariantFilter {
                     if ((childGty[0] == fatherGty[0] || childGty[0] == fatherGty[1]) && (childGty[1] == motherGty[0] || childGty[1] == motherGty[1])) {
                         countN++;
                         countN++;
-                        transmitAltFromFa = true;
-                        transmitAltFromMo = true;
+                        transmitAltFromFaCase = true;
+                        transmitAltFromMoCase = true;
                         isEffective = true;
                     } else if ((childGty[1] == fatherGty[0] || childGty[1] == fatherGty[1]) && (childGty[0] == motherGty[0] || childGty[0] == motherGty[1])) {
                         countN++;
                         countN++;
-                        transmitAltFromFa = true;
-                        transmitAltFromMo = true;
+                        transmitAltFromFaCase = true;
+                        transmitAltFromMoCase = true;
                         isEffective = true;
                     }
                 } else if (childGty[0] != 0) {
@@ -230,88 +773,16 @@ public class VariantFilter {
                             continue;
                         }
                         countN++;
-                        transmitAltFromFa = true;
+                        transmitAltFromFaCase = true;
                         isEffective = true;
                     } else if ((childGty[0] == motherGty[0] || childGty[0] == motherGty[1]) && childGty[0] != fatherGty[0] && childGty[0] != fatherGty[1]) {
                         if (motherGty[0] != 0 && motherGty[1] != 0) {
                             continue;
                         }
                         countN++;
-                        transmitAltFromMo = true;
+                        transmitAltFromMoCase = true;
                         isEffective = true;
                     }
-                }
-
-                int[] uchildGty = unTransmittedGty(fatherGty, motherGty, childGty);
-                if (uchildGty != null) {
-                    if (uchildGty[0] == 0 && uchildGty[1] != 0) {
-                        // Warning: this will exclude the F:0/1 & M:0/1->O:0/1
-                        // genotypes of parents
-                        if ((uchildGty[1] == fatherGty[0] || uchildGty[1] == fatherGty[1]) && uchildGty[1] != motherGty[0] && uchildGty[1] != motherGty[1]) {
-                            if (fatherGty[0] != 0 && fatherGty[1] != 0) {
-                                continue;
-                            }
-                            transmitAltFromFaSudo = true;
-                            isEffectiveUntransm = true;
-                        } else if ((uchildGty[1] == motherGty[0] || uchildGty[1] == motherGty[1]) && uchildGty[1] != fatherGty[0] && uchildGty[1] != fatherGty[1]) {
-                            if (motherGty[0] != 0 && motherGty[1] != 0) {
-                                continue;
-                            }
-                            transmitAltFromMoSudo = true;
-                            isEffectiveUntransm = true;
-                        }
-                    } else if (uchildGty[0] != 0 && uchildGty[1] != 0) {
-                        // ignore variants with more than 2 alleles
-                        if (fatherGty[0] != 0 && fatherGty[1] != 0) {
-                            continue;
-                        }
-                        if (motherGty[0] != 0 && motherGty[1] != 0) {
-                            continue;
-                        }
-
-                        // then offspreing is homozygous
-                        if ((uchildGty[0] == fatherGty[0] || uchildGty[0] == fatherGty[1]) && (uchildGty[1] == motherGty[0] || uchildGty[1] == motherGty[1])) {
-                            transmitAltFromFaSudo = true;
-                            transmitAltFromMoSudo = true;
-                            isEffectiveUntransm = true;
-                        } else if ((uchildGty[1] == fatherGty[0] || uchildGty[1] == fatherGty[1]) && (uchildGty[0] == motherGty[0] || uchildGty[0] == motherGty[1])) {
-                            transmitAltFromFaSudo = true;
-                            transmitAltFromMoSudo = true;
-                            isEffectiveUntransm = true;
-                        }
-                    } else if (uchildGty[0] != 0) {
-                        // Warning: this will exclude the F:0/1 & M:0/1->O:0/1
-                        // genotypes of parents
-                        if ((uchildGty[0] == fatherGty[0] || uchildGty[0] == fatherGty[1]) && uchildGty[0] != motherGty[0] && uchildGty[0] != motherGty[1]) {
-                            if (fatherGty[0] != 0 && fatherGty[1] != 0) {
-                                continue;
-                            }
-                            transmitAltFromFaSudo = true;
-                            isEffectiveUntransm = true;
-                        } else if ((uchildGty[0] == motherGty[0] || uchildGty[0] == motherGty[1]) && uchildGty[0] != fatherGty[0] && uchildGty[0] != fatherGty[1]) {
-                            if (motherGty[0] != 0 && motherGty[1] != 0) {
-                                continue;
-                            }
-                            transmitAltFromMoSudo = true;
-                            isEffectiveUntransm = true;
-                        }
-                    }
-                }
-
-                if (isEffectiveUntransm) {
-                    varUntransmitInfo.append(tVar.refStartPosition).append(":");
-                    varUntransmitInfo.append(fatherGty[0]);
-                    varUntransmitInfo.append('/');
-                    varUntransmitInfo.append(fatherGty[1]);
-                    varUntransmitInfo.append(',');
-                    varUntransmitInfo.append(motherGty[0]);
-                    varUntransmitInfo.append('/');
-                    varUntransmitInfo.append(motherGty[1]);
-                    varUntransmitInfo.append(',');
-                    varUntransmitInfo.append(uchildGty[0]);
-                    varUntransmitInfo.append('/');
-                    varUntransmitInfo.append(uchildGty[1]);
-                    varUntransmitInfo.append(";");
                 }
 
                 if (isEffective) {
@@ -338,6 +809,221 @@ public class VariantFilter {
                  */
             }
 
+            if (transmitAltFromFaCase && transmitAltFromMoCase) {
+                countsStr[j + fixedColNum] = String.valueOf(1);
+                if (gtyStr[j + fixedColNum] != null) {
+                    gtyStr[j + fixedColNum] = gtyStr[j + fixedColNum] + varTransmitInfo.substring(0, varTransmitInfo.length() - 1);
+                } else {
+                    gtyStr[j + fixedColNum] = varTransmitInfo.substring(0, varTransmitInfo.length() - 1);
+                }
+
+                if (mIndivChild.getAffectedStatus() == 2) {
+                    caseGenes.add(lastGeneSymb);
+                    caseGeneCounts++;
+                } else if (mIndivChild.getAffectedStatus() == 1) {
+                    controlGeneCounts++;
+                    controlGenes.add(lastGeneSymb);
+                }
+                hasADouble = true;
+                for (Variant tVar : tmpVarListIndiv) {
+                    varLabel.append(tVar.refStartPosition).append(":").append(tVar.getRefAllele());
+                    for (String altA : tVar.getAltAlleles()) {
+                        varLabel.append(":");
+                        varLabel.append(altA);
+                    }
+                    if (!effectiveVarSet.contains(varLabel.toString())) {
+                        tmpVarListGene.add(tVar);
+                        effectiveVarSet.add(varLabel.toString());
+                    }
+                    varLabel.delete(0, varLabel.length());
+                }
+            } else {
+                countsStr[j + fixedColNum] = "0";
+                if (gtyStr[j + fixedColNum] == null) {
+                    gtyStr[j + fixedColNum] = ".";
+                }
+            }
+
+            if (countN >= 2) {
+                hitIndivCount1[j]++;
+            }
+            if (noNeedHomo) {
+                //in this senario, we need at least two variants
+                if (availableGtyVar > 1) {
+                    if (mIndivChild.getAffectedStatus() == 2) {
+                        totalCaseGeneCounts++;
+                    } else if (mIndivChild.getAffectedStatus() == 1) {
+                        totalControlGeneCounts++;
+                    }
+                }
+            } else if (availableGtyVar > 0) {
+                if (mIndivChild.getAffectedStatus() == 2) {
+                    totalCaseGeneCounts++;
+                } else if (mIndivChild.getAffectedStatus() == 1) {
+                    totalControlGeneCounts++;
+                }
+            }
+
+        }// end of scan at all individuals
+
+        countsStr[3] = String.valueOf(caseGeneCounts);
+        gtyStr[3] = String.valueOf(caseGeneCounts);
+        countsStr[4] = String.valueOf(totalCaseGeneCounts);
+        gtyStr[4] = String.valueOf(totalCaseGeneCounts);
+        countsStr[5] = String.valueOf(controlGeneCounts);
+        gtyStr[5] = String.valueOf(controlGeneCounts);
+
+        countsStr[6] = String.valueOf(totalControlGeneCounts);
+        gtyStr[6] = String.valueOf(totalControlGeneCounts);
+
+        return hasADouble;
+    }
+
+    //here is a strong assumption about the full penetrance    
+    public boolean checkCompoundHeteroGene(IntArrayList effectiveIndivIDs, List<Individual> sortedSubjectList, int[] pedEncodeGytIDMap, List<int[]> triosIDList, List<Variant> geneDisVars,
+            int chromID, boolean isPhasedGty, boolean noNeedHomo, String lastGeneSymb, Set<String> caseGenes,
+            List<Variant> tmpVarListGene, int[] hitIndivCount1, Set<String> effectiveVarSet, String[] countsStr, String[] gtyStr, int fixedColNum) {
+
+        int effectiveIndivSize = effectiveIndivIDs.size();
+        StringBuilder varTransmitInfo = new StringBuilder();
+
+        boolean isEffective;
+
+        boolean hasADouble = false;
+        StringBuilder varLabel = new StringBuilder();
+
+        int controlGeneCounts = 0;
+        int caseGeneCounts = 0;
+
+        List<Variant> tmpVarListIndiv = new ArrayList<Variant>();
+        int[] childGty = new int[2];
+        int[] fatherGty = new int[2];
+        int[] motherGty = new int[2];
+        int availableGtyVar = 0;
+        int commonAllele = 0;
+        for (int j = 0; j < effectiveIndivSize; j++) {
+            int index = effectiveIndivIDs.getQuick(j);
+            Individual mIndivChild = sortedSubjectList.get(triosIDList.get(index)[0]);
+
+            boolean transmitAltFromFa = false;
+            boolean transmitAltFromMo = false;
+
+            varTransmitInfo.delete(0, varTransmitInfo.length());
+
+            tmpVarListIndiv.clear();
+
+            availableGtyVar = 0;
+
+            for (Variant tVar : geneDisVars) {
+                isEffective = false;
+
+                extractGenotypes(tVar, isPhasedGty, pedEncodeGytIDMap, triosIDList, index, childGty, fatherGty, motherGty);
+                if (childGty[0] < 0 || fatherGty[0] < 0 || motherGty[0] < 0) {
+                    continue;
+                }
+                if (noNeedHomo && childGty[0] == childGty[1]) {
+                    continue;
+                }
+                availableGtyVar++;
+                if (tVar.getUnaffectedAltHomGtyNum() > tVar.getUnaffectedRefHomGtyNum()) {
+                    commonAllele = 1;
+                } else {
+                    commonAllele = 0;
+                }
+                // assume the reference allele has no causal effect.
+                if (childGty[0] == commonAllele && childGty[1] != commonAllele) {
+                    // Warning: this will exclude the F:0/1 & M:0/1->O:0/1
+                    // genotypes of parents
+                    if ((childGty[1] == fatherGty[0] || childGty[1] == fatherGty[1]) && childGty[1] != motherGty[0] && childGty[1] != motherGty[1]) {
+                        if (fatherGty[0] != commonAllele && fatherGty[1] != commonAllele) {
+                            continue;
+                        }
+
+                        transmitAltFromFa = true;
+                        isEffective = true;
+                    } else if ((childGty[1] == motherGty[0] || childGty[1] == motherGty[1]) && childGty[1] != fatherGty[0] && childGty[1] != fatherGty[1]) {
+                        if (motherGty[0] != commonAllele && motherGty[1] != commonAllele) {
+                            continue;
+                        }
+
+                        transmitAltFromMo = true;
+                        isEffective = true;
+                    }
+                } else if (childGty[0] != commonAllele && childGty[1] != commonAllele) {
+                    // ignore variants with more than 2 alleles
+                    if (fatherGty[0] != commonAllele && fatherGty[1] != commonAllele) {
+                        continue;
+                    }
+                    if (motherGty[0] != commonAllele && motherGty[1] != commonAllele) {
+                        continue;
+                    }
+
+                    // then offspreing is homozygous
+                    if ((childGty[0] == fatherGty[0] || childGty[0] == fatherGty[1]) && (childGty[1] == motherGty[0] || childGty[1] == motherGty[1])) {
+
+                        transmitAltFromFa = true;
+                        transmitAltFromMo = true;
+                        isEffective = true;
+                    } else if ((childGty[1] == fatherGty[0] || childGty[1] == fatherGty[1]) && (childGty[0] == motherGty[0] || childGty[0] == motherGty[1])) {
+
+                        transmitAltFromFa = true;
+                        transmitAltFromMo = true;
+                        isEffective = true;
+                    }
+                } else if (childGty[0] != commonAllele) {
+                    // Warning: this will exclude the F:0/1 & M:0/1->O:0/1
+                    // genotypes of parents
+                    if ((childGty[0] == fatherGty[0] || childGty[0] == fatherGty[1]) && childGty[0] != motherGty[0] && childGty[0] != motherGty[1]) {
+                        if (fatherGty[0] != commonAllele && fatherGty[1] != commonAllele) {
+                            continue;
+                        }
+
+                        transmitAltFromFa = true;
+                        isEffective = true;
+                    } else if ((childGty[0] == motherGty[0] || childGty[0] == motherGty[1]) && childGty[0] != fatherGty[0] && childGty[0] != fatherGty[1]) {
+                        if (motherGty[0] != commonAllele && motherGty[1] != commonAllele) {
+                            continue;
+                        }
+
+                        transmitAltFromMo = true;
+                        isEffective = true;
+                    }
+                }
+
+                if (isEffective) {
+                    varTransmitInfo.append(tVar.refStartPosition).append(":");
+                    varTransmitInfo.append(fatherGty[0]);
+                    varTransmitInfo.append(isPhasedGty ? '|' : '/');
+                    varTransmitInfo.append(fatherGty[1]);
+                    varTransmitInfo.append(',');
+                    varTransmitInfo.append(motherGty[0]);
+                    varTransmitInfo.append(isPhasedGty ? '|' : '/');
+                    varTransmitInfo.append(motherGty[1]);
+                    varTransmitInfo.append(',');
+                    varTransmitInfo.append(childGty[0]);
+                    varTransmitInfo.append(isPhasedGty ? '|' : '/');
+                    varTransmitInfo.append(childGty[1]);
+                    varTransmitInfo.append(";");
+                    tmpVarListIndiv.add(tVar);
+                }
+                /*
+                 * if (fatherGty[0] != fatherGty[1] && motherGty[0] !=
+                 * motherGty[1] && childGty[0] != 0 && childGty[1] != 0) {
+                 * System.out.println(lastGeneSymb + "\t" +
+                 * mIndivChild.getLabelInChip() + "\t" + varInfo.toString()); }
+                 */
+<<<<<<< HEAD
+            }
+
+            if (transmitAltFromFa && transmitAltFromMo) {
+                countsStr[j + fixedColNum] = String.valueOf(1);
+                if (gtyStr[j + fixedColNum] != null) {
+                    gtyStr[j + fixedColNum] = gtyStr[j + fixedColNum] + varTransmitInfo.substring(0, varTransmitInfo.length() - 1);
+                } else {
+                    gtyStr[j + fixedColNum] = varTransmitInfo.substring(0, varTransmitInfo.length() - 1);
+=======
+            }
+
             if (transmitAltFromFaSudo && transmitAltFromMoSudo) {
                 // controlDoubleHitGenes.add(lastGeneSymb);
                 sudoControlGeneCounts++;
@@ -357,12 +1043,16 @@ public class VariantFilter {
                     couts2[j + fixedColNum] = couts2[j + fixedColNum] + varTransmitInfo.substring(0, varTransmitInfo.length() - 1);
                 } else {
                     couts2[j + fixedColNum] = varTransmitInfo.substring(0, varTransmitInfo.length() - 1);
+>>>>>>> origin/master
                 }
 
                 if (mIndivChild.getAffectedStatus() == 2) {
                     caseGenes.add(lastGeneSymb);
                     caseGeneCounts++;
+                } else {
+                    controlGeneCounts++;
                 }
+
                 hasADouble = true;
                 for (Variant tVar : tmpVarListIndiv) {
                     varLabel.append(tVar.refStartPosition).append(":").append(tVar.getRefAllele());
@@ -376,23 +1066,30 @@ public class VariantFilter {
                     }
                     varLabel.delete(0, varLabel.length());
                 }
+                hitIndivCount1[j]++;
             } else {
-                couts1[j + fixedColNum] = "0";
-                if (couts2[j + fixedColNum] == null) {
-                    couts2[j + fixedColNum] = ".";
+                countsStr[j + fixedColNum] = "0";
+                if (gtyStr[j + fixedColNum] == null) {
+                    gtyStr[j + fixedColNum] = ".";
                 }
             }
 
-            if (countN >= 2) {
-                hitIndivCount1[j]++;
-            }
         }// end of scan at all individuals
+<<<<<<< HEAD
+
+        countsStr[3] = String.valueOf(caseGeneCounts);
+        gtyStr[3] = String.valueOf(caseGeneCounts);
+        countsStr[4] = String.valueOf(controlGeneCounts);
+        gtyStr[4] = String.valueOf(controlGeneCounts);
+
+=======
         couts1[3] = String.valueOf(caseGeneCounts);
         couts2[3] = String.valueOf(caseGeneCounts);
         if (allPsudoControl) {
             couts1[4] = String.valueOf(sudoControlGeneCounts);
             couts2[4] = String.valueOf(sudoControlGeneCounts);
         }
+>>>>>>> origin/master
         return hasADouble;
     }
 
@@ -514,11 +1211,33 @@ public class VariantFilter {
                     for (Variant tVar : geneDisVars) {
                         alleleNum = tVar.getAltAlleles().length + 1;
                         base = GlobalManager.phasedAlleleBitMap.get(alleleNum);
+<<<<<<< HEAD
+                        if (tVar.compressedGtyLabel >= 0) {
+                            startIndex = pedEncodeGytIDMap[index];
+                            if (tVar.compressedGtyLabel > 0) {
+                                for (int i = 0; i < base; i++) {
+                                    if (startIndex > tVar.compressedGty[tVar.compressedGty.length - 1]) {
+                                        bits[i] = false;
+                                    } else if (startIndex < tVar.compressedGty[0]) {
+                                        bits[i] = false;
+                                    } else if (startIndex == tVar.compressedGty[tVar.compressedGty.length - 1]) {
+                                        bits[i] = true;
+                                    } else if (startIndex == tVar.compressedGty[0]) {
+                                        bits[i] = true;
+                                    } else {
+                                        bits[i] = (Arrays.binarySearch(tVar.compressedGty, startIndex) >= 0);
+                                    }
+                                    startIndex += pedEncodeGytIDMap.length;
+                                }
+                            } else if (tVar.compressedGtyLabel == 0) {
+                                Arrays.fill(bits, 0, base, false);
+=======
                         if (tVar.compressedGty) {
                             startIndex = tVar.encodedGty[0] + pedEncodeGytIDMap[index];
                             for (int i = 0; i < base; i++) {
                                 bits[i] = wahBit.containsKey(startIndex);
                                 startIndex += pedEncodeGytIDMap.length;
+>>>>>>> origin/master
                             }
                             childGty = BinaryGtyProcessor.getPhasedGtyBool(bits, alleleNum, base, pedEncodeGytIDMap[index]);
                         } else {
@@ -602,11 +1321,33 @@ public class VariantFilter {
                     for (Variant tVar : geneDisVars) {
                         alleleNum = tVar.getAltAlleles().length + 1;
                         base = GlobalManager.phasedAlleleBitMap.get(alleleNum);
+<<<<<<< HEAD
+                        if (tVar.compressedGtyLabel >= 0) {
+                            startIndex = pedEncodeGytIDMap[index];
+                            if (tVar.compressedGtyLabel > 0) {
+                                for (int i = 0; i < base; i++) {
+                                    if (startIndex > tVar.compressedGty[tVar.compressedGty.length - 1]) {
+                                        bits[i] = false;
+                                    } else if (startIndex < tVar.compressedGty[0]) {
+                                        bits[i] = false;
+                                    } else if (startIndex == tVar.compressedGty[tVar.compressedGty.length - 1]) {
+                                        bits[i] = true;
+                                    } else if (startIndex == tVar.compressedGty[0]) {
+                                        bits[i] = true;
+                                    } else {
+                                        bits[i] = (Arrays.binarySearch(tVar.compressedGty, startIndex) >= 0);
+                                    }
+                                    startIndex += pedEncodeGytIDMap.length;
+                                }
+                            } else if (tVar.compressedGtyLabel == 0) {
+                                Arrays.fill(bits, 0, base, false);
+=======
                         if (tVar.compressedGty) {
                             startIndex = tVar.encodedGty[0] + pedEncodeGytIDMap[index];
                             for (int i = 0; i < base; i++) {
                                 bits[i] = wahBit.containsKey(startIndex);
                                 startIndex += pedEncodeGytIDMap.length;
+>>>>>>> origin/master
                             }
                             childGty = BinaryGtyProcessor.getPhasedGtyBool(bits, alleleNum, base, pedEncodeGytIDMap[index]);
                         } else {
@@ -744,7 +1485,11 @@ public class VariantFilter {
 
     public void doubleHitGeneExploreVarTriosSudoControl(Chromosome chromosome, OpenLongObjectHashMap wahBit, boolean isPhasedGty, List<Individual> sortedSubjectList, int[] pedEncodeGytIDMap, List<int[]> triosIDList, IntArrayList effectiveIndivIDs, List<String> pubmedMeshList,
             Map<String, String[]> geneNamesMap, Map<String, String> genePubMedID, boolean noNeedHomo, List<String[]> hitDisCountsGenes, List<String[]> hitDisCounReads, Set<String> caseDoubleHitGenes, Set<String> controlDoubleHitGenes,
+<<<<<<< HEAD
+            boolean usePsudoControl, FiltrationSummarySet doubleHitModelFilter, boolean needSearchPubMed) throws Exception {
+=======
             boolean allPsudoControl, FiltrationSummarySet doubleHitModelFilter, boolean needSearchPubMed) throws Exception {
+>>>>>>> origin/master
         NCBIRetriever ncbiRetriever = new NCBIRetriever();
 
         if (pubmedMeshList == null || pubmedMeshList.isEmpty()) {
@@ -769,43 +1514,39 @@ public class VariantFilter {
         List<Variant> tmpVarListGene = new ArrayList<Variant>();
         List<Variant> tmpVarListChrom = new ArrayList<Variant>();
 
+<<<<<<< HEAD
+        int fixedColNum = 6;
+
+        if (usePsudoControl) {
+            fixedColNum = 7;
+=======
         int fixedColNum = 4;
 
         if (allPsudoControl) {
             fixedColNum = 5;
+>>>>>>> origin/master
         }
         if (chromosome.variantList == null || chromosome.variantList.isEmpty()) {
             return;
         }
 
         List<Variant> geneDisVars = null;
-        List<Variant> geneNeuVars = null;
+
         effectiveVarSet.clear();
 
-        int[] caseGeneDoublehitSynoCounts = new int[1];
-        int[] controlGeneDoublehitSynoCounts = new int[1];
+        int[] caseGeneDoublehitCounts = new int[1];
+        int[] controlGeneDoublehitCounts = new int[1];
 
-        Map<String, List<Variant>> neuGeneVarMap = new HashMap<String, List<Variant>>();
         Map<String, List<Variant>> disGeneVarMap = new HashMap<String, List<Variant>>();
         int chromID = chromosome.getId();
         for (Variant var : chromosome.variantList) {
             if (var.geneSymb != null) {
-                //assume the synonymouse variants are neutural
-                if (var.smallestFeatureID == 7) {
-                    geneNeuVars = neuGeneVarMap.get(var.geneSymb);
-                    if (geneNeuVars == null) {
-                        geneNeuVars = new ArrayList<Variant>();
-                        neuGeneVarMap.put(var.geneSymb, geneNeuVars);
-                    }
-                    geneNeuVars.add(var);
-                } else {
-                    geneDisVars = disGeneVarMap.get(var.geneSymb);
-                    if (geneDisVars == null) {
-                        geneDisVars = new ArrayList<Variant>();
-                        disGeneVarMap.put(var.geneSymb, geneDisVars);
-                    }
-                    geneDisVars.add(var);
+                geneDisVars = disGeneVarMap.get(var.geneSymb);
+                if (geneDisVars == null) {
+                    geneDisVars = new ArrayList<Variant>();
+                    disGeneVarMap.put(var.geneSymb, geneDisVars);
                 }
+                geneDisVars.add(var);
             }
         }
 
@@ -813,22 +1554,32 @@ public class VariantFilter {
 
         boolean hasLess5 = false;
         double prob = 0;
+        int totalCount = 0;
         for (Map.Entry<String, List<Variant>> item : disGeneVarMap.entrySet()) {
             String geneSymbDis = item.getKey();
 
             geneDisVars = item.getValue();
-            geneNeuVars = neuGeneVarMap.get(geneSymbDis);
+
             tmpVarListGene.clear();
-            String[] couts1 = new String[effectiveIndivSize + fixedColNum];
-            String[] couts2 = new String[effectiveIndivSize + fixedColNum];
+            String[] countsStr = new String[effectiveIndivSize + fixedColNum];
+            String[] gtyStr = new String[effectiveIndivSize + fixedColNum];
             hasADouble = false;
 
             if (!geneDisVars.isEmpty()) {
+<<<<<<< HEAD
+                Arrays.fill(caseGeneDoublehitCounts, 0);
+                Arrays.fill(controlGeneDoublehitCounts, 0);
+                //System.out.println(geneSymbDis+" "+geneDisVars.size());
+                hasADouble = checkCompoundHeteroGeneSudoControl(effectiveIndivIDs, sortedSubjectList, pedEncodeGytIDMap, triosIDList, geneDisVars, chromID, isPhasedGty, noNeedHomo, geneSymbDis,
+                        caseDoubleHitGenes, controlDoubleHitGenes, tmpVarListGene, hitIndivCount1, effectiveVarSet,
+                        countsStr, gtyStr, usePsudoControl, fixedColNum);
+=======
                 Arrays.fill(caseGeneDoublehitSynoCounts, 0);
                 Arrays.fill(controlGeneDoublehitSynoCounts, 0);
                 hasADouble = checkCompoundHeteroGeneSudo(effectiveIndivIDs, sortedSubjectList, pedEncodeGytIDMap, triosIDList, geneDisVars, chromID, isPhasedGty, noNeedHomo, geneSymbDis,
                         caseDoubleHitGenes, controlDoubleHitGenes, tmpVarListGene, wahBit, hitIndivCount1, effectiveVarSet,
                         couts1, couts2, allPsudoControl, fixedColNum);
+>>>>>>> origin/master
                 if (hasADouble) {
                     if (needSearchPubMed) {
                         account++;
@@ -851,14 +1602,17 @@ public class VariantFilter {
                         genePubMedID.put(geneSymbDis, lastGeneFeature);
                     }
 
-                    couts1[0] = geneSymbDis;
-                    couts1[1] = lastGeneFeature;
+                    countsStr[0] = geneSymbDis;
+                    countsStr[1] = lastGeneFeature;
 
-                    couts2[0] = geneSymbDis;
-                    couts2[1] = lastGeneFeature;
-
+                    gtyStr[0] = geneSymbDis;
+                    gtyStr[1] = lastGeneFeature;
                     tmpVarListChrom.addAll(tmpVarListGene);
 
+<<<<<<< HEAD
+                    hitDisCountsGenes.add(countsStr);
+                    hitDisCounReads.add(gtyStr);
+=======
                     //Do not do association analysis
                     /*
                      if (geneNeuVars != null && !geneNeuVars.isEmpty()) {
@@ -898,6 +1652,7 @@ public class VariantFilter {
                      */
                     hitDisCountsGenes.add(couts1);
                     hitDisCounReads.add(couts2);
+>>>>>>> origin/master
                 }
                 //do statistical test
             }
@@ -912,10 +1667,35 @@ public class VariantFilter {
 
     }
 
+<<<<<<< HEAD
+    public void doubleHitGeneExploreVarTriosCaseControl(Chromosome chromosome, boolean isPhasedGty, List<Individual> sortedSubjectList, int[] pedEncodeGytIDMap, List<int[]> triosIDList, IntArrayList effectiveIndivIDs, List<String> pubmedMeshList,
+            Map<String, String[]> geneNamesMap, Map<String, String> genePubMedID, boolean noNeedHomo, List<String[]> hitDisCountsGenes, List<String[]> hitDisCounReads, Set<String> caseDoubleHitGenes, Set<String> controlDoubleHitGenes,
+            FiltrationSummarySet doubleHitModelFilter, boolean needSearchPubMed) throws Exception {
+        NCBIRetriever ncbiRetriever = new NCBIRetriever();
+
+        if (pubmedMeshList == null || pubmedMeshList.isEmpty()) {
+            needSearchPubMed = false;
+        }
+        int indivSize = sortedSubjectList.size();
+
+        indivSize = triosIDList.size();
+        List<String> geneNames = new ArrayList<String>();
+
+=======
     public boolean checkCompoundHeteroGeneSudoSimple(IntArrayList effectiveIndivIDs, int[] pedEncodeGytIDMap, List<int[]> triosIDList, List<Variant> geneVars,
             OpenLongObjectHashMap wahBit, int chromID, boolean isPhasedGty, boolean noNeedHomo, String lastGeneSymb, int[] caseGeneCounts, int[] sudoControlGeneCounts) {
+>>>>>>> origin/master
         int effectiveIndivSize = effectiveIndivIDs.size();
+
+        int[] hitIndivCount1 = new int[indivSize];
+        int[] hitIndivCount2 = new int[indivSize];
+        Arrays.fill(hitIndivCount1, 0);
+
         boolean hasADouble = false;
+<<<<<<< HEAD
+        int account = 0;
+        String lastGeneFeature = null;
+=======
         int base = 0;
         int alleleNum = 0;
         boolean isEffective;
@@ -923,13 +1703,35 @@ public class VariantFilter {
         int startIndex;
         for (int j = 0; j < effectiveIndivSize; j++) {
             int index = effectiveIndivIDs.getQuick(j);
+>>>>>>> origin/master
 
-            int countN = 0;
-            boolean transmitAltFromFa = false;
-            boolean transmitAltFromMo = false;
-            boolean transmitAltFromFaSudo = false;
-            boolean transmitAltFromMoSudo = false;
+        Set<String> effectiveVarSet = new HashSet<String>();
+        List<Variant> tmpVarListGene = new ArrayList<Variant>();
+        List<Variant> tmpVarListChrom = new ArrayList<Variant>();
 
+<<<<<<< HEAD
+        int fixedColNum = 8;
+
+        if (chromosome.variantList == null || chromosome.variantList.isEmpty()) {
+            return;
+        }
+
+        List<Variant> geneDisVars = null;
+
+        effectiveVarSet.clear();
+
+        int[] caseGeneDoublehitCounts = new int[1];
+        int[] controlGeneDoublehitCounts = new int[1];
+
+        Map<String, List<Variant>> disGeneVarMap = new HashMap<String, List<Variant>>();
+        int chromID = chromosome.getId();
+        for (Variant var : chromosome.variantList) {
+            if (var.geneSymb != null) {
+                geneDisVars = disGeneVarMap.get(var.geneSymb);
+                if (geneDisVars == null) {
+                    geneDisVars = new ArrayList<Variant>();
+                    disGeneVarMap.put(var.geneSymb, geneDisVars);
+=======
             for (Variant tVar : geneVars) {
                 isEffective = false;
                 int[] childGty = null;
@@ -995,140 +1797,217 @@ public class VariantFilter {
                 }
                 if (noNeedHomo && childGty[0] == childGty[1]) {
                     continue;
+>>>>>>> origin/master
                 }
-                // assume the reference allele has not hitting effect.
-                if (childGty[0] == 0 && childGty[1] != 0) {
-                    // Warning: this will exclude the 0/1 0/1 genotypes of
-                    // parents
-                    if ((childGty[1] == fatherGty[0] || childGty[1] == fatherGty[1]) && childGty[1] != motherGty[0] && childGty[1] != motherGty[1]) {
-                        if (fatherGty[0] != 0 && fatherGty[1] != 0) {
-                            continue;
+                geneDisVars.add(var);
+            }
+        }
+
+        long[][] counts1 = {{7, 12}, {18, 13}};
+
+        boolean hasLess5 = false;
+        double prob = 0;
+        int totalCount = 0;
+        for (Map.Entry<String, List<Variant>> item : disGeneVarMap.entrySet()) {
+            String geneSymbDis = item.getKey();
+
+            geneDisVars = item.getValue();
+
+            tmpVarListGene.clear();
+            String[] countsStr = new String[effectiveIndivSize + fixedColNum];
+            String[] gtyStr = new String[effectiveIndivSize + fixedColNum];
+            hasADouble = false;
+
+            if (!geneDisVars.isEmpty()) {
+                Arrays.fill(caseGeneDoublehitCounts, 0);
+                Arrays.fill(controlGeneDoublehitCounts, 0);
+                hasADouble = checkCompoundHeteroGeneCaseControl(effectiveIndivIDs, sortedSubjectList, pedEncodeGytIDMap, triosIDList, geneDisVars, chromID, isPhasedGty, noNeedHomo, geneSymbDis,
+                        caseDoubleHitGenes, controlDoubleHitGenes, tmpVarListGene, hitIndivCount1, effectiveVarSet,
+                        countsStr, gtyStr, fixedColNum);
+                if (hasADouble) {
+                    if (needSearchPubMed) {
+                        account++;
+                        geneNames.clear();
+
+                        // unforturnately after I add the alais,
+                        // there are too many false postive hits
+                        // so I finally withraw this function
+                        String[] names = geneNamesMap.get(geneSymbDis);
+                        if (names != null && names.length > 0) {
+                            geneNames.addAll(Arrays.asList(names));
                         }
-                        countN++;
-                        transmitAltFromFa = true;
-                        isEffective = true;
-                    } else if ((childGty[1] == motherGty[0] || childGty[1] == motherGty[1]) && childGty[1] != fatherGty[0] && childGty[1] != fatherGty[1]) {
-                        if (motherGty[0] != 0 && motherGty[1] != 0) {
-                            continue;
+
+                        geneNames.add(geneSymbDis);
+                        LOG.info(account + ": Searching NCBI PubMed for " + pubmedMeshList.toString() + " and " + geneNames.toString());
+                        while ((lastGeneFeature = ncbiRetriever.pubMedIDESearch(pubmedMeshList, geneNames, GlobalManager.pubMedFilter)) == null) {
+                            // System.out.print("reconnecting...");
                         }
-                        countN++;
-                        transmitAltFromMo = true;
-                        isEffective = true;
-                    }
-                } else if (childGty[0] != 0 && childGty[1] != 0) {
-                    if (fatherGty[0] != 0 && fatherGty[1] != 0) {
-                        continue;
-                    }
-                    if (motherGty[0] != 0 && motherGty[1] != 0) {
-                        continue;
+                        // System.out.println();
+                        genePubMedID.put(geneSymbDis, lastGeneFeature);
                     }
 
-                    if ((childGty[0] == fatherGty[0] || childGty[0] == fatherGty[1]) && (childGty[1] == motherGty[0] || childGty[1] == motherGty[1])) {
-                        countN++;
-                        countN++;
-                        transmitAltFromFa = true;
-                        transmitAltFromMo = true;
-                        isEffective = true;
-                    } else if ((childGty[1] == fatherGty[0] || childGty[1] == fatherGty[1]) && (childGty[0] == motherGty[0] || childGty[0] == motherGty[1])) {
-                        countN++;
-                        countN++;
-                        transmitAltFromFa = true;
-                        transmitAltFromMo = true;
-                        isEffective = true;
-                    }
-                } else if (childGty[0] != 0) {
-                    // Warning: this will exclude the 0/1 0/1 genotypes of
-                    // parents
-                    if ((childGty[0] == fatherGty[0] || childGty[0] == fatherGty[1]) && childGty[0] != motherGty[0] && childGty[0] != motherGty[1]) {
-                        if (fatherGty[0] != 0 && fatherGty[1] != 0) {
-                            continue;
+                    countsStr[0] = geneSymbDis;
+                    countsStr[1] = lastGeneFeature;
+
+                    gtyStr[0] = geneSymbDis;
+                    gtyStr[1] = lastGeneFeature;
+                    tmpVarListChrom.addAll(tmpVarListGene);
+
+                    counts1[0][0] = Integer.parseInt(countsStr[3]);
+                    counts1[0][1] = Integer.parseInt(countsStr[5]);
+                    counts1[1][0] = Integer.parseInt(countsStr[4]) - counts1[0][0];
+                    counts1[1][1] = Integer.parseInt(countsStr[6]) - counts1[0][1];
+
+                    hasLess5 = false;
+                    for (int t = 0; t < 2; t++) {
+                        for (int k = 0; k < 2; k++) {
+                            if (counts1[t][k] <= 5) {
+                                hasLess5 = true;
+                                break;
+                            }
                         }
-                        countN++;
-                        transmitAltFromFa = true;
-                        isEffective = true;
-                    } else if ((childGty[0] == motherGty[0] || childGty[0] == motherGty[1]) && childGty[0] != fatherGty[0] && childGty[0] != fatherGty[1]) {
-                        if (motherGty[0] != 0 && motherGty[1] != 0) {
-                            continue;
-                        }
-                        countN++;
-                        transmitAltFromMo = true;
-                        isEffective = true;
                     }
+                    if (hasLess5) {
+                        prob = ContingencyTable.fisherExact22(counts1, 2, 2, 2);
+                    } else {
+                        prob = ContingencyTable.pearsonChiSquared22(counts1);
+                        prob = Probability.chiSquareComplemented(1, prob);
+                    }
+
+                    countsStr[7] = String.valueOf(prob);
+                    gtyStr[7] = String.valueOf(prob);
+
+                    hitDisCountsGenes.add(countsStr);
+                    hitDisCounReads.add(gtyStr);
                 }
-
-                int[] uchildGty = unTransmittedGty(fatherGty, motherGty, childGty);
-
-                if (uchildGty != null) {
-                    if (uchildGty[0] == 0 && uchildGty[1] != 0) {
-                        // Warning: this will exclude the F:0/1 & M:0/1->O:0/1
-                        // genotypes of parents
-                        if ((uchildGty[1] == fatherGty[0] || uchildGty[1] == fatherGty[1]) && uchildGty[1] != motherGty[0] && uchildGty[1] != motherGty[1]) {
-                            if (fatherGty[0] != 0 && fatherGty[1] != 0) {
-                                continue;
-                            }
-                            transmitAltFromFaSudo = true;
-                        } else if ((uchildGty[1] == motherGty[0] || uchildGty[1] == motherGty[1]) && uchildGty[1] != fatherGty[0] && uchildGty[1] != fatherGty[1]) {
-                            if (motherGty[0] != 0 && motherGty[1] != 0) {
-                                continue;
-                            }
-                            transmitAltFromMoSudo = true;
-                        }
-                    } else if (uchildGty[0] != 0 && uchildGty[1] != 0) {
-                        // ignore variants with more than 2 alleles
-                        if (fatherGty[0] != 0 && fatherGty[1] != 0) {
-                            continue;
-                        }
-                        if (motherGty[0] != 0 && motherGty[1] != 0) {
-                            continue;
-                        }
-
-                        // then offspreing is homozygous
-                        if ((uchildGty[0] == fatherGty[0] || uchildGty[0] == fatherGty[1]) && (uchildGty[1] == motherGty[0] || uchildGty[1] == motherGty[1])) {
-                            transmitAltFromFaSudo = true;
-                            transmitAltFromMoSudo = true;
-                            isEffective = true;
-                        } else if ((uchildGty[1] == fatherGty[0] || uchildGty[1] == fatherGty[1]) && (uchildGty[0] == motherGty[0] || uchildGty[0] == motherGty[1])) {
-                            transmitAltFromFaSudo = true;
-                            transmitAltFromMoSudo = true;
-                        }
-                    } else if (uchildGty[0] != 0) {
-                        // Warning: this will exclude the F:0/1 & M:0/1->O:0/1
-                        // genotypes of parents
-                        if ((uchildGty[0] == fatherGty[0] || uchildGty[0] == fatherGty[1]) && uchildGty[0] != motherGty[0] && uchildGty[0] != motherGty[1]) {
-                            if (fatherGty[0] != 0 && fatherGty[1] != 0) {
-                                continue;
-                            }
-                            transmitAltFromFaSudo = true;
-
-                        } else if ((uchildGty[0] == motherGty[0] || uchildGty[0] == motherGty[1]) && uchildGty[0] != fatherGty[0] && uchildGty[0] != fatherGty[1]) {
-                            if (motherGty[0] != 0 && motherGty[1] != 0) {
-                                continue;
-                            }
-                            transmitAltFromMoSudo = true;
-                        }
-                    }
-                }
-
-                /*
-                 * if (fatherGty[0] != fatherGty[1] && motherGty[0] !=
-                 * motherGty[1] && childGty[0] != 0 && childGty[1] != 0) {
-                 * System.out.println(lastGeneSymb + "\t" +
-                 * mIndivChild.getLabelInChip() + "\t" + varInfo.toString()); }
-                 */
+                //do statistical test
             }
 
-            if (transmitAltFromFa && transmitAltFromMo) {
-                caseGeneCounts[0]++;
-                hasADouble = true;
-            }
+        }
 
-            if (transmitAltFromFaSudo && transmitAltFromMoSudo) {
-                sudoControlGeneCounts[0]++;
-            }
-        }// end of scan at all individuals
-        return hasADouble;
+        chromosome.variantList.clear();
+        chromosome.variantList.addAll(tmpVarListChrom);
+        tmpVarListChrom.clear();
+        chromosome.buildVariantIndexMap();
+        doubleHitModelFilter.increaseCount(0, chromosome.variantList.size());
+
     }
 
+  
+    public void doubleHitGeneExploreVarTriosFilter(Chromosome chromosome, boolean isPhasedGty, List<Individual> sortedSubjectList, int[] pedEncodeGytIDMap, List<int[]> triosIDList, IntArrayList effectiveIndivIDs, List<String> pubmedMeshList,
+            Map<String, String[]> geneNamesMap, Map<String, String> genePubMedID, boolean noNeedHomo, List<String[]> hitDisCountsGenes, List<String[]> hitDisCounReads, Set<String> caseDoubleHitGenes,
+            FiltrationSummarySet doubleHitModelFilter, boolean needSearchPubMed) throws Exception {
+        NCBIRetriever ncbiRetriever = new NCBIRetriever();
+
+        if (pubmedMeshList == null || pubmedMeshList.isEmpty()) {
+            needSearchPubMed = false;
+        }
+        int indivSize = sortedSubjectList.size();
+
+        indivSize = triosIDList.size();
+        List<String> geneNames = new ArrayList<String>();
+
+        int effectiveIndivSize = effectiveIndivIDs.size();
+
+        int[] hitIndivCount1 = new int[indivSize];
+        int[] hitIndivCount2 = new int[indivSize];
+        Arrays.fill(hitIndivCount1, 0);
+
+        boolean hasADouble = false;
+        int account = 0;
+        String lastGeneFeature = null;
+
+        Set<String> effectiveVarSet = new HashSet<String>();
+        List<Variant> tmpVarListGene = new ArrayList<Variant>();
+        List<Variant> tmpVarListChrom = new ArrayList<Variant>();
+
+        int fixedColNum = 5;
+
+        if (chromosome.variantList == null || chromosome.variantList.isEmpty()) {
+            return;
+        }
+
+        List<Variant> geneDisVars = null;
+
+        effectiveVarSet.clear();
+
+        int[] caseGeneDoublehitCounts = new int[1];
+        int[] controlGeneDoublehitCounts = new int[1];
+
+        Map<String, List<Variant>> disGeneVarMap = new HashMap<String, List<Variant>>();
+        int chromID = chromosome.getId();
+        for (Variant var : chromosome.variantList) {
+            if (var.geneSymb != null) {
+                geneDisVars = disGeneVarMap.get(var.geneSymb);
+                if (geneDisVars == null) {
+                    geneDisVars = new ArrayList<Variant>();
+                    disGeneVarMap.put(var.geneSymb, geneDisVars);
+                }
+                geneDisVars.add(var);
+            }
+        }
+
+        for (Map.Entry<String, List<Variant>> item : disGeneVarMap.entrySet()) {
+            String geneSymbDis = item.getKey();
+            geneDisVars = item.getValue();
+
+            tmpVarListGene.clear();
+            String[] countsStr = new String[effectiveIndivSize + fixedColNum];
+            String[] gtyStr = new String[effectiveIndivSize + fixedColNum];
+            hasADouble = false;
+
+            if (!geneDisVars.isEmpty()) {
+                Arrays.fill(caseGeneDoublehitCounts, 0);
+                Arrays.fill(controlGeneDoublehitCounts, 0);
+                hasADouble = checkCompoundHeteroGene(effectiveIndivIDs, sortedSubjectList, pedEncodeGytIDMap, triosIDList, geneDisVars, chromID, isPhasedGty, noNeedHomo, geneSymbDis,
+                        caseDoubleHitGenes, tmpVarListGene, hitIndivCount1, effectiveVarSet,
+                        countsStr, gtyStr, fixedColNum);
+
+                if (hasADouble) {
+                    if (needSearchPubMed) {
+                        account++;
+                        geneNames.clear();
+
+                        // unforturnately after I add the alais,
+                        // there are too many false postive hits
+                        // so I finally withraw this function
+                        String[] names = geneNamesMap.get(geneSymbDis);
+                        if (names != null && names.length > 0) {
+                            geneNames.addAll(Arrays.asList(names));
+                        }
+
+                        geneNames.add(geneSymbDis);
+                        LOG.info(account + ": Searching NCBI PubMed for " + pubmedMeshList.toString() + " and " + geneNames.toString());
+                        while ((lastGeneFeature = ncbiRetriever.pubMedIDESearch(pubmedMeshList, geneNames, GlobalManager.pubMedFilter)) == null) {
+                            // System.out.print("reconnecting...");
+                        }
+                        // System.out.println();
+                        genePubMedID.put(geneSymbDis, lastGeneFeature);
+                    }
+
+                    countsStr[0] = geneSymbDis;
+                    countsStr[1] = lastGeneFeature;
+
+                    gtyStr[0] = geneSymbDis;
+                    gtyStr[1] = lastGeneFeature;
+                    tmpVarListChrom.addAll(tmpVarListGene);
+
+                    hitDisCountsGenes.add(countsStr);
+                    hitDisCounReads.add(gtyStr);
+                }
+                //do statistical test
+            }
+
+        }
+
+        chromosome.variantList.clear();
+        chromosome.variantList.addAll(tmpVarListChrom);
+        tmpVarListChrom.clear();
+        chromosome.buildVariantIndexMap();
+        doubleHitModelFilter.increaseCount(0, chromosome.variantList.size());
+
+    }
+ 
     public int[] unTransmittedGty(int[] fatherGty, int[] motherGty, int[] childGty) {
         int[] unTransGty = new int[2];
         if (childGty[0] == fatherGty[0] && childGty[1] == motherGty[0]) {
@@ -1162,6 +2041,63 @@ public class VariantFilter {
         return unTransGty;
     }
 
+    public int[][] unTransmittedHaplo(int[][] fatherGty, int[][] motherGty, int[][] childGty) {
+        int[][] unTransGty = new int[fatherGty.length][2];
+        StringBuilder faTrams = new StringBuilder();
+        StringBuilder moTrams = new StringBuilder();
+        for (int i = 0; i < fatherGty.length; i++) {
+            if (childGty[i][0] == fatherGty[i][0] && childGty[i][1] == motherGty[i][0]) {
+                unTransGty[i][0] = fatherGty[i][1];
+                unTransGty[i][1] = motherGty[i][1];
+                faTrams.append(1);
+                moTrams.append(1);
+            } else if (childGty[i][0] == fatherGty[i][0] && childGty[i][1] == motherGty[i][1]) {
+                unTransGty[i][0] = fatherGty[i][1];
+                unTransGty[i][1] = motherGty[i][0];
+                faTrams.append(1);
+                moTrams.append(0);
+            } else if (childGty[i][0] == fatherGty[i][1] && childGty[i][1] == motherGty[i][0]) {
+                unTransGty[i][0] = fatherGty[i][0];
+                unTransGty[i][1] = motherGty[i][1];
+                faTrams.append(0);
+                moTrams.append(1);
+            } else if (childGty[i][0] == fatherGty[i][1] && childGty[i][1] == motherGty[i][1]) {
+                unTransGty[i][0] = fatherGty[i][0];
+                unTransGty[i][1] = motherGty[i][0];
+                faTrams.append(0);
+                moTrams.append(0);
+            } else if (childGty[i][0] == motherGty[i][0] && childGty[i][1] == fatherGty[i][0]) {
+                unTransGty[i][0] = motherGty[i][1];
+                unTransGty[i][1] = fatherGty[i][1];
+                faTrams.append(1);
+                moTrams.append(1);
+            } else if (childGty[i][0] == motherGty[i][0] && childGty[i][1] == fatherGty[i][1]) {
+                unTransGty[i][0] = motherGty[i][1];
+                unTransGty[i][1] = fatherGty[i][0];
+                faTrams.append(0);
+                moTrams.append(1);
+            } else if (childGty[i][0] == motherGty[i][1] && childGty[i][1] == fatherGty[i][0]) {
+                unTransGty[i][0] = motherGty[i][0];
+                unTransGty[i][1] = fatherGty[i][1];
+                faTrams.append(1);
+                moTrams.append(0);
+            } else if (childGty[i][0] == motherGty[i][1] && childGty[i][1] == fatherGty[i][1]) {
+                unTransGty[i][0] = motherGty[i][0];
+                unTransGty[i][1] = fatherGty[i][0];
+                faTrams.append(0);
+                moTrams.append(0);
+            } else {
+                unTransGty[i][0] = -1;
+                unTransGty[i][1] = -1;
+                faTrams.append('.');
+                moTrams.append('.');
+            }
+        }
+        //System.out.println(faTrams);
+        //System.out.println(moTrams);
+        return unTransGty;
+    }
+
     public void geneFeatureFilter(Chromosome chromsome, int[] variantsCounters, Set<Byte> featureInSet, FiltrationSummarySet geneModelFilter) throws Exception {
         int leftVariantNum = 0;
         List<Variant> temVariants = new ArrayList<Variant>();
@@ -1183,6 +2119,7 @@ public class VariantFilter {
 
         chromsome.buildVariantIndexMap();
         geneModelFilter.increaseCount(0, leftVariantNum);
+        //System.out.println(leftVariantNum);
 
     }
 
@@ -1274,7 +2211,11 @@ public class VariantFilter {
         int[] countsT = new int[2];
         int[] countsNT = new int[2];
         int id0, id1, id2;
+<<<<<<< HEAD
+        int startIndex;
+=======
         long startIndex;
+>>>>>>> origin/master
         for (Variant var : chromosome.variantList) {
             mutatedHomoAllele.clear();
             mutatedAllele.clear();
@@ -1297,11 +2238,33 @@ public class VariantFilter {
                 if (subID < 0) {
                     continue;
                 }
+<<<<<<< HEAD
+                if (var.compressedGtyLabel >= 0) {
+                    startIndex = subID;
+                    if (var.compressedGtyLabel > 0) {
+                        for (int i = 0; i < base; i++) {
+                            if (startIndex > var.compressedGty[var.compressedGty.length - 1]) {
+                                bits[i] = false;
+                            } else if (startIndex < var.compressedGty[0]) {
+                                bits[i] = false;
+                            } else if (startIndex == var.compressedGty[var.compressedGty.length - 1]) {
+                                bits[i] = true;
+                            } else if (startIndex == var.compressedGty[0]) {
+                                bits[i] = true;
+                            } else {
+                                bits[i] = (Arrays.binarySearch(var.compressedGty, startIndex) >= 0);
+                            }
+                            startIndex += pedEncodeGytIDMap.length;
+                        }
+                    } else if (var.compressedGtyLabel == 0) {
+                        Arrays.fill(bits, 0, base, false);
+=======
                 if (var.compressedGty) {
                     startIndex = var.encodedGtyIndex[0] + subID;
                     for (int i = 0; i < base; i++) {
                         bits[i] = wahBit.containsKey(startIndex);
                         startIndex += pedEncodeGytIDMap.length;
+>>>>>>> origin/master
                     }
                     if (isPhased) {
                         gtys = BinaryGtyProcessor.getPhasedGtyBool(bits, alleleNum, base, subID);
@@ -1341,11 +2304,33 @@ public class VariantFilter {
                 if (id0 < 0) {
                     continue;
                 }
+<<<<<<< HEAD
+                if (var.compressedGtyLabel >= 0) {
+                    startIndex = id0;
+                    if (var.compressedGtyLabel > 0) {
+                        for (int i = 0; i < base; i++) {
+                            if (startIndex > var.compressedGty[var.compressedGty.length - 1]) {
+                                bits[i] = false;
+                            } else if (startIndex < var.compressedGty[0]) {
+                                bits[i] = false;
+                            } else if (startIndex == var.compressedGty[var.compressedGty.length - 1]) {
+                                bits[i] = true;
+                            } else if (startIndex == var.compressedGty[0]) {
+                                bits[i] = true;
+                            } else {
+                                bits[i] = (Arrays.binarySearch(var.compressedGty, startIndex) >= 0);
+                            }
+                            startIndex += pedEncodeGytIDMap.length;
+                        }
+                    } else if (var.compressedGtyLabel == 0) {
+                        Arrays.fill(bits, 0, base, false);
+=======
                 if (var.compressedGty) {
                     startIndex = var.encodedGtyIndex[0] + id0;
                     for (int i = 0; i < base; i++) {
                         bits[i] = wahBit.containsKey(startIndex);
                         startIndex += pedEncodeGytIDMap.length;
+>>>>>>> origin/master
                     }
                     if (isPhased) {
                         gtys0 = BinaryGtyProcessor.getPhasedGtyBool(bits, alleleNum, base, id0);
@@ -1366,11 +2351,33 @@ public class VariantFilter {
                 if (id1 < 0) {
                     continue;
                 }
+<<<<<<< HEAD
+                if (var.compressedGtyLabel >= 0) {
+                    startIndex = id1;
+                    if (var.compressedGtyLabel > 0) {
+                        for (int i = 0; i < base; i++) {
+                            if (startIndex > var.compressedGty[var.compressedGty.length - 1]) {
+                                bits[i] = false;
+                            } else if (startIndex < var.compressedGty[0]) {
+                                bits[i] = false;
+                            } else if (startIndex == var.compressedGty[var.compressedGty.length - 1]) {
+                                bits[i] = true;
+                            } else if (startIndex == var.compressedGty[0]) {
+                                bits[i] = true;
+                            } else {
+                                bits[i] = (Arrays.binarySearch(var.compressedGty, startIndex) >= 0);
+                            }
+                            startIndex += pedEncodeGytIDMap.length;
+                        }
+                    } else if (var.compressedGtyLabel == 0) {
+                        Arrays.fill(bits, 0, base, false);
+=======
                 if (var.compressedGty) {
                     startIndex = var.encodedGtyIndex[0] + id1;
                     for (int i = 0; i < base; i++) {
                         bits[i] = wahBit.containsKey(startIndex);
                         startIndex += pedEncodeGytIDMap.length;
+>>>>>>> origin/master
                     }
                     if (isPhased) {
                         gtys1 = BinaryGtyProcessor.getPhasedGtyBool(bits, alleleNum, base, id1);
@@ -1557,7 +2564,11 @@ public class VariantFilter {
         int base = 0;
         int alleleNum = 0;
         boolean[] bits = new boolean[32];
+<<<<<<< HEAD
+        int startIndex;
+=======
         long startIndex;
+>>>>>>> origin/master
         for (Variant var : chromosome.variantList) {
             mutatedHomoAllele.clear();
             mutatedAllele.clear();
@@ -1578,11 +2589,33 @@ public class VariantFilter {
                         continue;
                     }
                     subID = pedEncodeGytIDMap[subID];
+<<<<<<< HEAD
+                    if (var.compressedGtyLabel >= 0) {
+                        startIndex = subID;
+                        if (var.compressedGtyLabel > 0) {
+                            for (int i = 0; i < base; i++) {
+                                if (startIndex > var.compressedGty[var.compressedGty.length - 1]) {
+                                    bits[i] = false;
+                                } else if (startIndex < var.compressedGty[0]) {
+                                    bits[i] = false;
+                                } else if (startIndex == var.compressedGty[var.compressedGty.length - 1]) {
+                                    bits[i] = true;
+                                } else if (startIndex == var.compressedGty[0]) {
+                                    bits[i] = true;
+                                } else {
+                                    bits[i] = (Arrays.binarySearch(var.compressedGty, startIndex) >= 0);
+                                }
+                                startIndex += pedEncodeGytIDMap.length;
+                            }
+                        } else if (var.compressedGtyLabel == 0) {
+                            Arrays.fill(bits, 0, base, false);
+=======
                     if (var.compressedGty) {
                         startIndex = var.encodedGtyIndex[0] + subID;
                         for (int i = 0; i < base; i++) {
                             bits[i] = wahBit.containsKey(startIndex);
                             startIndex += pedEncodeGytIDMap.length;
+>>>>>>> origin/master
                         }
 
                         if (isPhased) {
@@ -1619,11 +2652,33 @@ public class VariantFilter {
                 if (id0 < 0) {
                     continue;
                 }
+<<<<<<< HEAD
+                if (var.compressedGtyLabel >= 0) {
+                    startIndex = id0;
+                    if (var.compressedGtyLabel > 0) {
+                        for (int i = 0; i < base; i++) {
+                            if (startIndex > var.compressedGty[var.compressedGty.length - 1]) {
+                                bits[i] = false;
+                            } else if (startIndex < var.compressedGty[0]) {
+                                bits[i] = false;
+                            } else if (startIndex == var.compressedGty[var.compressedGty.length - 1]) {
+                                bits[i] = true;
+                            } else if (startIndex == var.compressedGty[0]) {
+                                bits[i] = true;
+                            } else {
+                                bits[i] = (Arrays.binarySearch(var.compressedGty, startIndex) >= 0);
+                            }
+                            startIndex += pedEncodeGytIDMap.length;
+                        }
+                    } else if (var.compressedGtyLabel == 0) {
+                        Arrays.fill(bits, 0, base, false);
+=======
                 if (var.compressedGty) {
                     startIndex = var.encodedGtyIndex[0] + id0;
                     for (int i = 0; i < base; i++) {
                         bits[i] = wahBit.containsKey(startIndex);
                         startIndex += pedEncodeGytIDMap.length;
+>>>>>>> origin/master
                     }
 
                     if (isPhased) {
@@ -1648,11 +2703,33 @@ public class VariantFilter {
 
                     if (id1 < 0) {
                         gtys1 = null;
+<<<<<<< HEAD
+                    } else if (var.compressedGtyLabel >= 0) {
+                        startIndex = id1;
+                        if (var.compressedGtyLabel > 0) {
+                            for (int i = 0; i < base; i++) {
+                                if (startIndex > var.compressedGty[var.compressedGty.length - 1]) {
+                                    bits[i] = false;
+                                } else if (startIndex < var.compressedGty[0]) {
+                                    bits[i] = false;
+                                } else if (startIndex == var.compressedGty[var.compressedGty.length - 1]) {
+                                    bits[i] = true;
+                                } else if (startIndex == var.compressedGty[0]) {
+                                    bits[i] = true;
+                                } else {
+                                    bits[i] = (Arrays.binarySearch(var.compressedGty, startIndex) >= 0);
+                                }
+                                startIndex += pedEncodeGytIDMap.length;
+                            }
+                        } else if (var.compressedGtyLabel == 0) {
+                            Arrays.fill(bits, 0, base, false);
+=======
                     } else if (var.compressedGty) {
                         startIndex = var.encodedGtyIndex[0] + id1;
                         for (int i = 0; i < base; i++) {
                             bits[i] = wahBit.containsKey(startIndex);
                             startIndex += pedEncodeGytIDMap.length;
+>>>>>>> origin/master
                         }
                         if (isPhased) {
                             gtys1 = BinaryGtyProcessor.getPhasedGtyBool(bits, alleleNum, base, id1);
@@ -1674,11 +2751,33 @@ public class VariantFilter {
                     id2 = pedEncodeGytIDMap[id2];
                     if (id2 < 0) {
                         gtys2 = null;
+<<<<<<< HEAD
+                    } else if (var.compressedGtyLabel >= 0) {
+                        startIndex = id2;
+                        if (var.compressedGtyLabel > 0) {
+                            for (int i = 0; i < base; i++) {
+                                if (startIndex > var.compressedGty[var.compressedGty.length - 1]) {
+                                    bits[i] = false;
+                                } else if (startIndex < var.compressedGty[0]) {
+                                    bits[i] = false;
+                                } else if (startIndex == var.compressedGty[var.compressedGty.length - 1]) {
+                                    bits[i] = true;
+                                } else if (startIndex == var.compressedGty[0]) {
+                                    bits[i] = true;
+                                } else {
+                                    bits[i] = (Arrays.binarySearch(var.compressedGty, startIndex) >= 0);
+                                }
+                                startIndex += pedEncodeGytIDMap.length;
+                            }
+                        } else if (var.compressedGtyLabel == 0) {
+                            Arrays.fill(bits, 0, base, false);
+=======
                     } else if (var.compressedGty) {
                         startIndex = var.encodedGtyIndex[0] + id2;
                         for (int i = 0; i < base; i++) {
                             bits[i] = wahBit.containsKey(startIndex);
                             startIndex += pedEncodeGytIDMap.length;
+>>>>>>> origin/master
                         }
                         if (isPhased) {
                             gtys2 = BinaryGtyProcessor.getPhasedGtyBool(bits, alleleNum, base, id2);
@@ -1897,6 +2996,60 @@ public class VariantFilter {
         //  LOG.info(message.toString());
     }
 
+    public void annotateConsecutiveVar(Chromosome chromosome, ReferenceGenome[] referenceGenomes, Set<Byte> featureInSet) throws Exception {
+        if (chromosome == null) {
+            return;
+        }
+
+        List<Variant> varList = chromosome.variantList;
+        List<Variant> tmpVarList = new ArrayList<Variant>();
+        int varNum = varList.size();
+        int consecutiveVarNum = 0;
+        RNABoundaryIndex searchedmRNABoundaryIndex = new RNABoundaryIndex(0);
+        byte tmpId = 0;
+
+        for (int i = 1; i < varNum; i++) {
+            tmpId = varList.get(i).smallestFeatureID;
+            if (tmpId > 7 || tmpId == 5 || tmpId < 2) {
+                continue;
+            }
+            if (!varList.get(i).isIndel && !varList.get(i - 1).isIndel && (varList.get(i).refStartPosition - varList.get(i - 1).refStartPosition) == 1) {
+                varList.get(i - 1).consecutiveVar = true;
+                varList.get(i).consecutiveVar = true;
+                tmpVarList.add(varList.get(i - 1));
+                tmpVarList.add(varList.get(i));
+                if (varList.get(i).refStartPosition == 248722723) {
+                    int sss = 0;
+                }
+
+                i++;
+                if (i < varNum) {
+                    tmpId = varList.get(i).smallestFeatureID;
+                }
+                while ((i < varNum) && (tmpId < 7 && tmpId != 5 && tmpId > 2) && !varList.get(i).isIndel && ((varList.get(i).refStartPosition - varList.get(i - 1).refStartPosition) == 1)) {
+                    varList.get(i).consecutiveVar = true;
+                    tmpVarList.add(varList.get(i));
+                    i++;
+                }
+                consecutiveVarNum++;
+
+                boolean hitted = false;
+                for (int t = 0; t < referenceGenomes.length; t++) {
+                    hitted = referenceGenomes[t].getMultiVarFeature(chromosome.getName(), tmpVarList, true, featureInSet, searchedmRNABoundaryIndex);
+                }
+                if (hitted) {
+                    for (Variant var : tmpVarList) {
+                        System.out.println(var.refStartPosition);
+                    }
+                }
+
+                tmpVarList.clear();
+
+            }
+        }
+
+    }
+
     public void sumFilterCaseControlVar(Chromosome chromosome, int reqHetA, int reqHomA, int reqHetU, int reqHomU, int minOBSA, int minOBSU,
             FiltrationSummarySet minMissingQCFilter, FloatArrayList mafList) throws Exception {
         // AffectedRefHomGtyNum\tAffectedHetGtyNum\tAffectedAltHomGtyNum\tUnaffectedRefHomGtyNum\tUnaffectedHetGtyNum\tUnaffectedAltHomGtyNum
@@ -2019,7 +3172,11 @@ public class VariantFilter {
 
     }
 
+<<<<<<< HEAD
+    public void inheritanceModelFilterVar(Chromosome chromosome, boolean isPhased, List<Individual> subjectList, int[] pedEncodeGytIDMap, int[] caseSetID, int[] controlSetID, boolean[] genotypeFilters,
+=======
     public void inheritanceModelFilterVar(Chromosome chromosome, OpenLongObjectHashMap wahBit, boolean isPhased, List<Individual> subjectList, int[] pedEncodeGytIDMap, int[] caseSetID, int[] controlSetID, boolean[] genotypeFilters, String hardFilterModel,
+>>>>>>> origin/master
             FiltrationSummarySet inheritanceModelFilter) throws Exception {
         // AffectedRefHomGtyNum\tAffectedHetGtyNum\tAffectedAltHomGtyNum\tUnaffectedRefHomGtyNum\tUnaffectedHetGtyNum\tUnaffectedAltHomGtyNum
 
@@ -2056,14 +3213,22 @@ public class VariantFilter {
         int base = 0;
         int alleleNum = 0;
         boolean[] bits = new boolean[32];
+<<<<<<< HEAD
+        int startIndex;
+        int totalSubjectNum = pedEncodeGytIDMap.length;
+
+        int code;
+=======
         long startIndex;
         int totalSubjectNum = pedEncodeGytIDMap.length;
+>>>>>>> origin/master
         for (Variant var : chromosome.variantList) {
             caseSharedHomoAllele.clear();
             caseSharedHeteAllele.clear();
             controlSharedHomoAllele.clear();
             caseSharedAllele.clear();
             controlSharedAllele.clear();
+
             alleleNum = var.getAltAlleles().length + 1;
             if (isPhased) {
                 base = GlobalManager.phasedAlleleBitMap.get(alleleNum);
@@ -2107,11 +3272,33 @@ public class VariantFilter {
                 if (subID < 0) {
                     continue;
                 }
+<<<<<<< HEAD
+                if (var.compressedGtyLabel >= 0) {
+                    startIndex = subID;
+                    if (var.compressedGtyLabel > 0) {
+                        for (int i = 0; i < base; i++) {
+                            if (startIndex > var.compressedGty[var.compressedGty.length - 1]) {
+                                bits[i] = false;
+                            } else if (startIndex < var.compressedGty[0]) {
+                                bits[i] = false;
+                            } else if (startIndex == var.compressedGty[var.compressedGty.length - 1]) {
+                                bits[i] = true;
+                            } else if (startIndex == var.compressedGty[0]) {
+                                bits[i] = true;
+                            } else {
+                                bits[i] = (Arrays.binarySearch(var.compressedGty, startIndex) >= 0);
+                            }
+                            startIndex += pedEncodeGytIDMap.length;
+                        }
+                    } else if (var.compressedGtyLabel == 0) {
+                        Arrays.fill(bits, 0, base, false);
+=======
                 if (var.compressedGty) {
                     startIndex = var.encodedGtyIndex[0] + subID;
                     for (int i = 0; i < base; i++) {
                         bits[i] = wahBit.containsKey(startIndex);
                         startIndex += pedEncodeGytIDMap.length;
+>>>>>>> origin/master
                     }
                     if (isPhased) {
                         gtys = BinaryGtyProcessor.getPhasedGtyBool(bits, alleleNum, base, subID);
@@ -2205,11 +3392,33 @@ public class VariantFilter {
                     if (subID < 0) {
                         continue;
                     }
+<<<<<<< HEAD
+                    if (var.compressedGtyLabel >= 0) {
+                        startIndex = subID;
+                        if (var.compressedGtyLabel > 0) {
+                            for (int i = 0; i < base; i++) {
+                                if (startIndex > var.compressedGty[var.compressedGty.length - 1]) {
+                                    bits[i] = false;
+                                } else if (startIndex < var.compressedGty[0]) {
+                                    bits[i] = false;
+                                } else if (startIndex == var.compressedGty[var.compressedGty.length - 1]) {
+                                    bits[i] = true;
+                                } else if (startIndex == var.compressedGty[0]) {
+                                    bits[i] = true;
+                                } else {
+                                    bits[i] = (Arrays.binarySearch(var.compressedGty, startIndex) >= 0);
+                                }
+                                startIndex += pedEncodeGytIDMap.length;
+                            }
+                        } else if (var.compressedGtyLabel == 0) {
+                            Arrays.fill(bits, 0, base, false);
+=======
                     if (var.compressedGty) {
                         startIndex = var.encodedGtyIndex[0] + subID;
                         for (int i = 0; i < base; i++) {
                             bits[i] = wahBit.containsKey(startIndex);
                             startIndex += pedEncodeGytIDMap.length;
+>>>>>>> origin/master
                         }
                         if (isPhased) {
                             gtys = BinaryGtyProcessor.getPhasedGtyBool(bits, alleleNum, base, subID);
@@ -2292,7 +3501,6 @@ public class VariantFilter {
     public void superDupFilter(Chromosome chromosome, AnnotationSummarySet ass, ReferenceGenome refGenome) throws Exception {
 
         List<Variant> tmpList = new ArrayList<Variant>();
-
         if (chromosome == null) {
             return;
         }
@@ -2469,11 +3677,19 @@ public class VariantFilter {
         boolean isNotContain = false;
         for (Variant var : chromosome.variantList) {
             if (var.geneSymb == null) {
+<<<<<<< HEAD
                 tmpVarList.add(var);
                 continue;
             }
             if (!geneSet.contains(var.geneSymb)) {
                 tmpVarList.add(var);
+=======
+                tmpVarList.add(var);
+                continue;
+            }
+            if (!geneSet.contains(var.geneSymb)) {
+                tmpVarList.add(var);
+>>>>>>> origin/master
 
                 geneFeatureAnnot = var.getRefGeneAnnot();
                 if (geneFeatureAnnot != null) {
@@ -2766,6 +3982,10 @@ public class VariantFilter {
             needMAF = true;
         }
         for (Variant var : chromosome.variantList) {
+            //int allAllele = 2 * var.getAffectedRefHomGtyNum() + var.getAffectedHetGtyNum() + 2 * var.getAffectedAltHomGtyNum();
+            // int altAllele = var.getAffectedHetGtyNum() + 2 * var.getAffectedAltHomGtyNum();
+            //System.out.println(var.refStartPosition + "\t" + ContingencyTable.binomialPValueGreater(altAllele, allAllele, var.altAF));
+
             if (var.altAF == -1) {
                 //not exist in any database
                 //keep it anyhow
@@ -2797,6 +4017,7 @@ public class VariantFilter {
                     mafList.add(1 - var.altAF);
                 }
             }
+            // var.altAF=(float)ContingencyTable.binomialPValueGreater(altAllele, allAllele, var.altAF);
         }
 
         ass.setAnnotNum(ass.getAnnotNum() + tmpVariantList.size());

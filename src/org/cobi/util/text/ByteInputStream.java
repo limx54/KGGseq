@@ -201,9 +201,9 @@ public class ByteInputStream {
             // BufferedReader br = LocalFileFunc.getBufferedReader( "E:\\home\\mxli\\MyJava\\kggseq4\\resources\\hg19\\1kg\\p3v5\\EAS\\1kg.phase3.v5.shapeit2.eas.hg19.chr1.vcf.gz");
             // String fileName = "SCZ_raw_redo_snp_recal_indel_recal.vcf.gz";
             // String fileName = "test1.log";
-            String fileName = "E:\\home\\mxli\\MyJava\\kggseq3\\resources\\hg19\\1kg\\p3v5\\EAS\\1kg.phase3.v5.shapeit2.eas.hg19.chr11.vcf.gz";
+            //String fileName = "E:\\home\\mxli\\MyJava\\kggseq3\\resources\\hg19\\1kg\\p3v5\\EAS\\1kg.phase3.v5.shapeit2.eas.hg19.chr11.vcf.gz";
             // String fileName = "E:\\home\\mxli\\MyJava\\kggseq3\\resources\\hg19\\hg19_mdbNSFP3.0.chr1.gz";
-            //String fileName = "E:\\home\\mxli\\MyJava\\kggseq3\\EUR.ped";
+             String fileName = "1kgafreur.20150813.flt.vcf.gz";
             File file = new File(fileName);
             ByteInputStream br = new ByteInputStream(file, 1024 * 1024, '\t');
 
@@ -219,8 +219,7 @@ public class ByteInputStream {
             while ((tmpByte = br.readLine(tmpIndex)) != null) {
                 rowNum++;
                 len = tmpIndex[0] - 1;
-
-                for (int i = 1; i < len; i++) {
+ for (int i = 1; i < len; i++) {
                     sByte = Arrays.copyOfRange(tmpByte, i == 0 ? 0 : tmpIndex[i] + 1, tmpIndex[i + 1]);
                     if (tmpByte[100] == 1 && tmpByte[102] == 1) {
 
@@ -238,6 +237,7 @@ public class ByteInputStream {
                      System.out.print("\t");
                      */
                 }
+               
                 // System.out.println();
 
             }

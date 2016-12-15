@@ -9,6 +9,7 @@ import cern.colt.list.DoubleArrayList;
 import cern.colt.map.OpenLongObjectHashMap;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -242,7 +243,11 @@ public class SKAT {
         return dblResult;
     }
 
+<<<<<<< HEAD
+    public void runGeneAssoc(Map<String, List<Variant>> geneVars, List<Individual> subjectList, int[] pedEncodeGytIDMap, boolean isPhased, int intNT, DoubleArrayList[] pvList) {
+=======
     public void runGeneAssoc(Map<String, List<Variant>> geneVars, OpenLongObjectHashMap wahBit, List<Individual> subjectList, int[] pedEncodeGytIDMap, boolean isPhased, int intNT, DoubleArrayList[] pvList) {
+>>>>>>> origin/master
         //this setting is too strong, leading too many Rscript process created. 
         if (intNT < 100) {
             // intNT = intNT * 3;
@@ -267,6 +272,10 @@ public class SKAT {
             geneVarList.add(gVars.getValue());
             geneNameList.add(gVars.getKey());
         }
+<<<<<<< HEAD
+
+=======
+>>>>>>> origin/master
         String[] geneSymbs = new String[intNT];
         int[] varNum = new int[intNT];
         int s = 0;
@@ -282,7 +291,11 @@ public class SKAT {
                     int[][] encodeGyts = new int[vars.size()][];
                     int t = 0;
                     for (Variant var : vars) {
+<<<<<<< HEAD
+                        encodeGyts[t] = getGenotype(var, isPhased, subjectList, pedEncodeGytIDMap);
+=======
                         encodeGyts[t] = getGenotype(var, wahBit, isPhased, subjectList, pedEncodeGytIDMap);
+>>>>>>> origin/master
                         t++;
                     }
 
@@ -353,7 +366,11 @@ public class SKAT {
                     pvList[1].add(dblP[j + intL]);
                     pvList[2].add(dblP[j + intL * 2]);
                     genePValueList.add(temp);
+<<<<<<< HEAD
+//                  System.out.println(temp[0]+"-----"+temp[1]+"-----"+temp[2]+"-----"+temp[3]+"-----"+temp[4]);
+=======
 //                            System.out.println(temp[0]+"-----"+temp[1]+"-----"+temp[2]+"-----"+temp[3]+"-----"+temp[4]);
+>>>>>>> origin/master
                 }
 
             }
@@ -365,7 +382,11 @@ public class SKAT {
 
     }
 
+<<<<<<< HEAD
+    public void runGenesetAssoc(Map<String, List<Variant>> geneVars, List<Individual> subjectList, int[] pedEncodeGytIDMap, boolean isPhased, int intNT, DoubleArrayList[] pvList) {
+=======
     public void runGenesetAssoc(Map<String, List<Variant>> geneVars, OpenLongObjectHashMap wahBit, List<Individual> subjectList, int[] pedEncodeGytIDMap, boolean isPhased, int intNT, DoubleArrayList[] pvList) {
+>>>>>>> origin/master
 
         //this setting is too strong, leading too many Rscript process created. 
         if (intNT < 100) {
@@ -407,7 +428,11 @@ public class SKAT {
                     int[][] encodeGyts = new int[vars.size()][];
                     int t = 0;
                     for (Variant var : vars) {
+<<<<<<< HEAD
+                        encodeGyts[t] = getGenotype(var, isPhased, subjectList, pedEncodeGytIDMap);
+=======
                         encodeGyts[t] = getGenotype(var, wahBit, isPhased, subjectList, pedEncodeGytIDMap);
+>>>>>>> origin/master
                         t++;
                     }
                     lstVariant.add(encodeGyts);
@@ -494,7 +519,11 @@ public class SKAT {
         }
     }
 
+<<<<<<< HEAD
+    public int[] getGenotype(Variant var, boolean isPhased, List<Individual> subjectList, int[] pedEncodeGytIDMap) {
+=======
     public int[] getGenotype(Variant var, OpenLongObjectHashMap wahBit, boolean isPhased, List<Individual> subjectList, int[] pedEncodeGytIDMap) {
+>>>>>>> origin/master
         int[] gty = null;
         int alleleNum = var.getAltAlleles().length + 1;
         int base = 0;
@@ -508,7 +537,11 @@ public class SKAT {
         int gtyID = 0;
 
         boolean[] bits = new boolean[32];
+<<<<<<< HEAD
+        int startIndex;
+=======
         long startIndex;
+>>>>>>> origin/master
 
         for (int subID = 0; subID < subNum; subID++) {
             gtyID = pedEncodeGytIDMap[subID];
@@ -516,11 +549,33 @@ public class SKAT {
                 alleleNums[subID] = 9;
                 continue;
             }
+<<<<<<< HEAD
+            if (var.compressedGtyLabel >= 0) {
+                if (var.compressedGtyLabel == 0) {
+                    Arrays.fill(bits, 0, base, false);
+                } else {
+                    startIndex = subID;
+                    for (int i = 0; i < base; i++) {
+                        if (startIndex > var.compressedGty[var.compressedGty.length - 1]) {
+                            bits[i] = false;
+                        } else if (startIndex < var.compressedGty[0]) {
+                            bits[i] = false;
+                        } else if (startIndex == var.compressedGty[var.compressedGty.length - 1]) {
+                            bits[i] = true;
+                        } else if (startIndex == var.compressedGty[0]) {
+                            bits[i] = true;
+                        } else {
+                            bits[i] = (Arrays.binarySearch(var.compressedGty, startIndex) >= 0);
+                        }
+                        startIndex += subNum;
+                    }
+=======
             if (var.compressedGty) {
                 startIndex = var.encodedGtyIndex[0] + gtyID;
                 for (int i = 0; i < base; i++) {
                     bits[i] = wahBit.containsKey(startIndex);
                     startIndex += subNum;
+>>>>>>> origin/master
                 }
                 if (isPhased) {
                     gty = BinaryGtyProcessor.getPhasedGtyBool(bits, alleleNum, base, gtyID);

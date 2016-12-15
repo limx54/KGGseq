@@ -175,7 +175,7 @@ public class VariantAnnotator implements Constants {
         }
     }
 
-    private void tokenize(String string, char delimiter, String[] temp) {
+    private int tokenize(String string, char delimiter, String[] temp) {
         int wordCount = 0;
         int i = 0;
         int j = string.indexOf(delimiter);
@@ -189,6 +189,7 @@ public class VariantAnnotator implements Constants {
         if (i < string.length()) {
             temp[wordCount++] = string.substring(i);
         }
+        return wordCount;
     }
 
     public void readExonicScoreNSFPNucleotideMerge(Chromosome chromosome, String resourcePath, String refGenomeVer,
@@ -499,14 +500,41 @@ public class VariantAnnotator implements Constants {
 
             for (int f = 1; f < bounderies.length; f++) {
                 long[] pos = bfIndexes.findIndex(chromosome.variantList.get(bounderies[f - 1]).refStartPosition, chromosome.variantList.get(bounderies[f] - 1).refStartPosition);
+<<<<<<< HEAD
+                if (pos[0] == pos[1]) {
+                    for (int t = bounderies[f - 1]; t <= bounderies[f] - 1; t++) {
+                        for (int s = 0; s < predicIndex.length; s++) {
+                            chromosome.variantList.get(t).setFeatureValue(varFeatureNum + s, ".");
+                        }
+                        chromosome.variantList.get(t).scores1 = new float[scores.length];
+                        Arrays.fill(chromosome.variantList.get(t).scores1, Float.NaN);
+                    }
+                    continue;
+                }
+                final BGZFInputStream bf = new BGZFInputStream(rsFile.getCanonicalPath(), 1, true);
+=======
                 BGZFInputStream bf = new BGZFInputStream(rsFile.getCanonicalPath(), 1, true);
+>>>>>>> origin/master
                 bf.adjustPos(pos[0], pos[1]);
                 bf.creatSpider(pos[0] != 0);
                 if (hasHead && pos[0] == 0) {
                     //skip the head line
                     bf.spider[0].readLine();
                 }
+<<<<<<< HEAD
+                VarAnnotTask varTaks = new VarAnnotTask(bf.spider[0], chromosome.variantList.subList(bounderies[f - 1], bounderies[f]), indexCHROM, indexPOS, predicIndex, scoreIndexes, ass, 0) {
+                    @Override
+                    protected void fireTaskComplete() {
+                        try {
+                            bf.spider[0].closeInputStream();
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+                };
+=======
                 VarAnnotTask varTaks = new VarAnnotTask(bf.spider[0], chromosome.variantList.subList(bounderies[f - 1], bounderies[f]), indexCHROM, indexPOS, predicIndex, scoreIndexes, 0);
+>>>>>>> origin/master
                 serv.submit(varTaks);
                 runningThread++;
             }
@@ -1021,6 +1049,8 @@ public class VariantAnnotator implements Constants {
     public void markByANNOVARefFormatThread(String filePath, Chromosome chromosome, AnnotationSummarySet ass, int threadNum) {
         int indexCHROM = 0, indexPOS = 1;
         List<Variant> varList = chromosome.variantList;
+<<<<<<< HEAD
+=======
 
         if (varList.isEmpty()) {
             return;
@@ -1085,6 +1115,347 @@ public class VariantAnnotator implements Constants {
                 serv.submit(varTaks);
                 runningThread++;
             }
+            for (int s = 0; s < runningThread; s++) {
+                Future<String> task = serv.take();
+                String infor = task.get();
+                // System.out.println(infor);
+            }
+            exec.shutdown();
+
+            ass.setLeftNum(existVarNum + ass.getLeftNum());
+            ass.setAnnotNum(existVarNum + ass.getAnnotNum());
+            ass.setTotalNum(lineCounter + ass.getTotalNum());
+        } catch (Exception ex) {
+            if (currentLine != null) {
+                System.err.println("Errors in a row: " + currentLine);
+            }
+            ex.printStackTrace();
+        }
+    }
+
+    public void riskPredictionRareDiseaseBest(Chromosome chromosome, List<CombOrders> combOrderList, boolean filterNonDisMut, List<String> names,
+            FiltrationSummarySet dbNSFPMendelPred) throws Exception {
+
+        int triedTime = 0;
+        int maxTriedTime = 1;
+        StringBuilder tmpStrB = new StringBuilder();
+
+        // humvar predict
+        double[] priors = new double[]{0.05, 0.01, 0};
+        double[] mafBins = new double[]{0.01, 0.02, 0.03};
+        double prior;
+>>>>>>> origin/master
+
+        if (varList.isEmpty()) {
+            return;
+        }
+        int feautreNum = ass.getAvailableFeatureIndex();
+
+        String currentLine = null;
+        try {
+            int lineCounter = 0;
+            char[] backSpaces = null;
+            int delNum = 0;
+            int existVarNum = 0;
+            StringBuilder sb = new StringBuilder();
+
+            String chrName = chromosome.getName();
+            if (chromosome == null || chromosome.variantList == null || chromosome.variantList.isEmpty()) {
+                return;
+            }
+
+            File rsFile = new File(filePath);
+            if (!rsFile.exists()) {
+                LOG.warn(rsFile.getCanonicalPath() + " does not exist! Scores on this chromosome are ignored!");
+                return;
+            }
+            // System.out.println(" Chromosome " + chromosome.getName() + " " + rsFile.getName());
+            // Options.REF_CHROM_NAMES[t]);
+            int varSize = chromosome.variantList.size();
+            int[] bounderies = partitionEvenBlock(varSize, threadNum);
+            int actualThreadNum = bounderies.length - 1;
+            String chromName = chromosome.getName();
+            BGZFInputStream bfIndexes = new BGZFInputStream(rsFile.getCanonicalPath(), actualThreadNum, true);
+            if (!bfIndexes.checkIndex()) {
+                bfIndexes.adjustPos();
+                bfIndexes.buildIndex(rsFile.getCanonicalPath(), 0, 1, false);
+            }
+            bfIndexes.readIndex(false, chromName);
+
+            //No matched SNPs means null 
+            String missingVal = "N";
+            for (Variant var : chromosome.variantList) {
+                var.setFeatureValue(feautreNum, missingVal);
+                var.hasBeenAcced = false;
+            }
+
+<<<<<<< HEAD
+            ExecutorService exec = Executors.newFixedThreadPool(actualThreadNum);
+            final CompletionService<String> serv = new ExecutorCompletionService<String>(exec);
+            int runningThread = 0;
+            boolean hasHead = false;
+            for (int f = 1; f < bounderies.length; f++) {
+                long[] pos = bfIndexes.findIndex(chromosome.variantList.get(bounderies[f - 1]).refStartPosition, chromosome.variantList.get(bounderies[f] - 1).refStartPosition);
+                if (pos[0] == pos[1]) {
+                    for (int t = bounderies[f - 1]; t <= bounderies[f] - 1; t++) {
+                        chromosome.variantList.get(t).setFeatureValue(feautreNum, ".");
+=======
+        boolean isDeleteriousness = false;
+        int featureNum = dbNSFPMendelPred.getAvailableFeatureIndex();
+        for (Variant var : chromosome.variantList) {
+            if (var.scores1 != null) {
+                dataIndexes.clear();
+                for (int j = 0; j < var.scores1.length; j++) {
+                    if (!Float.isNaN(var.scores1[j])) {
+                        dataIndexes.add(j);
+>>>>>>> origin/master
+                    }
+                    continue;
+                }
+                final BGZFInputStream bf = new BGZFInputStream(rsFile.getCanonicalPath(), 1, true);
+                bf.adjustPos(pos[0], pos[1]);
+
+                bf.creatSpider(pos[0] != 0);
+                if (hasHead && pos[0] == 0) {
+                    //skip the head line
+                    bf.spider[0].readLine();
+                }
+                VarAnnotTask varTaks = new VarAnnotTask(bf.spider[0], indexCHROM, indexPOS, chromosome, ass, 1) {
+                    @Override
+                    protected void fireTaskComplete() {
+                        try {
+                            bf.spider[0].closeInputStream();
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+                };
+                serv.submit(varTaks);
+                runningThread++;
+            }
+
+            for (int s = 0; s < runningThread; s++) {
+                Future<String> task = serv.take();
+                String infor = task.get();
+                // System.out.println(infor);
+            }
+            exec.shutdown();
+
+            ass.setLeftNum(existVarNum + ass.getLeftNum());
+            ass.setAnnotNum(existVarNum + ass.getAnnotNum());
+            ass.setTotalNum(lineCounter + ass.getTotalNum());
+        } catch (Exception ex) {
+            if (currentLine != null) {
+                System.err.println("Errors in a row: " + currentLine);
+            }
+            ex.printStackTrace();
+        }
+    }
+
+<<<<<<< HEAD
+    public void markByVCFAlleleFormatThread(String filePath, int[] altFreqColIndexes, Chromosome chromosome, AnnotationSummarySet ass, int threadNum) {
+        int indexCHROM = 0, indexPOS = 1;
+        List<Variant> varList = chromosome.variantList;
+=======
+                        tmpRP = cmbOrder.rp;
+                        sum = tmpRP.coef[0];
+                        for (int j = 1; j < tmpRP.coef.length; j++) {
+                            sum += (tmpRP.coef[j] * var.scores1[paramIndexes.get(j - 1)]);
+                        }
+                        // calculate the conditional probablity with MAF
+                        // if (Float.isNaN(var.altAF) || var.altAF <= 0.01)
+                        {
+                            prior = ((1 - priors[0]) / priors[0]) * tmpRP.sampleCase2CtrRatio;
+                            tmpP = 1 + prior * Math.exp(-sum);
+                            tmpP = 1 / tmpP;
+                        }
+                        /*
+                         * else if (var.altAF <= 0.03) { prior = ((1 -
+                         * priors[1]) / priors[1]) *
+                         * tmpRP.sampleCase2CtrRatio; tmpP = 1 + prior *
+                         * Math.exp(-sum); tmpP = 1 / tmpP; } else { tmpP =
+                         * 0; }
+                         */
+>>>>>>> origin/master
+
+        if (varList.isEmpty()) {
+            return;
+        }
+        int feautreNum = ass.getAvailableFeatureIndex();
+
+        String currentLine = null;
+        try {
+            int lineCounter = 0;
+
+            int existVarNum = 0;
+
+            if (chromosome == null || chromosome.variantList == null || chromosome.variantList.isEmpty()) {
+                return;
+            }
+
+            File rsFile = new File(filePath);
+            if (!rsFile.exists()) {
+                LOG.warn(rsFile.getCanonicalPath() + " does not exist! Scores on this chromosome are ignored!");
+                return;
+            }
+            // System.out.println(" Chromosome " + chromosome.getName() + " " + rsFile.getName());
+            // Options.REF_CHROM_NAMES[t]);
+            int varSize = chromosome.variantList.size();
+            int[] bounderies = partitionEvenBlock(varSize, threadNum);
+            int actualThreadNum = bounderies.length - 1;
+            String chromName = chromosome.getName();
+            BGZFInputStream bfIndexes = new BGZFInputStream(rsFile.getCanonicalPath(), actualThreadNum, true);
+            if (!bfIndexes.checkIndex()) {
+                bfIndexes.adjustPos();
+                bfIndexes.buildIndex(rsFile.getCanonicalPath(), 0, 1, false);
+            }
+            bfIndexes.readIndex(false, chromName);
+
+            //No matched SNPs means null 
+            String missingVal = "N";
+            for (Variant var : chromosome.variantList) {
+                for (int i = 0; i < altFreqColIndexes.length; i++) {
+                    var.setFeatureValue(feautreNum + i, missingVal);
+                }
+                var.hasBeenAcced = false;
+            }
+
+            ExecutorService exec = Executors.newFixedThreadPool(actualThreadNum);
+            final CompletionService<String> serv = new ExecutorCompletionService<String>(exec);
+            int runningThread = 0;
+            boolean hasHead = false;
+            for (int f = 1; f < bounderies.length; f++) {
+                long[] pos = bfIndexes.findIndex(chromosome.variantList.get(bounderies[f - 1]).refStartPosition, chromosome.variantList.get(bounderies[f] - 1).refStartPosition);
+                if (pos[0] == pos[1]) {
+                    for (int t = bounderies[f - 1]; t <= bounderies[f] - 1; t++) {
+                        chromosome.variantList.get(t).setFeatureValue(feautreNum, ".");
+                    }
+                    continue;
+                }
+                final BGZFInputStream bf = new BGZFInputStream(rsFile.getCanonicalPath(), 1, true);
+                bf.adjustPos(pos[0], pos[1]);
+
+                bf.creatSpider(pos[0] != 0);
+                if (hasHead && pos[0] == 0) {
+                    //skip the head line
+                    bf.spider[0].readLine();
+                }
+                VarAnnotTask varTaks = new VarAnnotTask(bf.spider[0], indexCHROM, indexPOS, chromosome, ass, 3) {
+                    @Override
+                    protected void fireTaskComplete() {
+                        try {
+                            bf.spider[0].closeInputStream();
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+                };
+                varTaks.setAltFreqColIndexes(altFreqColIndexes);
+                serv.submit(varTaks);
+                runningThread++;
+            }
+
+            for (int s = 0; s < runningThread; s++) {
+                Future<String> task = serv.take();
+                String infor = task.get();
+                // System.out.println(infor);
+            }
+            exec.shutdown();
+
+            ass.setLeftNum(existVarNum + ass.getLeftNum());
+            ass.setAnnotNum(existVarNum + ass.getAnnotNum());
+            ass.setTotalNum(lineCounter + ass.getTotalNum());
+        } catch (Exception ex) {
+            if (currentLine != null) {
+                System.err.println("Errors in a row: " + currentLine);
+            }
+            ex.printStackTrace();
+        }
+    }
+
+    public void readNocodeScoreNucleotideMultiThread(String filePath, Chromosome chromosome, AnnotationSummarySet ass, int threadNum) {
+        int indexCHROM = 0, indexPOS = 2;
+        List<Variant> varList = chromosome.variantList;
+
+        if (varList.isEmpty()) {
+            return;
+        }
+        int feautreNum = ass.getAvailableFeatureIndex();
+
+        String currentLine = null;
+        try {
+            int lineCounter = 0;
+            int delNum = 0;
+            int existVarNum = 0;
+            StringBuilder sb = new StringBuilder();
+
+            String chrName = chromosome.getName();
+            if (chromosome == null || chromosome.variantList == null || chromosome.variantList.isEmpty()) {
+                return;
+            }
+
+            File rsFile = new File(filePath);
+            if (!rsFile.exists()) {
+                LOG.warn(rsFile.getCanonicalPath() + " does not exist! Scores on this chromosome are ignored!");
+                return;
+            }
+            // System.out.println(" Chromosome " + chromosome.getName() + " " + rsFile.getName());
+            // Options.REF_CHROM_NAMES[t]);
+            int varSize = chromosome.variantList.size();
+            int[] bounderies = partitionEvenBlock(varSize, threadNum);
+            int actualThreadNum = bounderies.length - 1;
+            String chromName = chromosome.getName();
+            BGZFInputStream bfIndexes = new BGZFInputStream(rsFile.getCanonicalPath(), actualThreadNum, true);
+            if (!bfIndexes.checkIndex()) {
+                bfIndexes.adjustPos();
+                bfIndexes.buildIndex(rsFile.getCanonicalPath(), 0, 1, false);
+            }
+            bfIndexes.readIndex(false, chromName);
+
+            //No matched SNPs means null 
+            String missingVal = "N";
+            for (Variant var : chromosome.variantList) {
+                var.setFeatureValue(feautreNum, missingVal);
+                var.hasBeenAcced = false;
+            }
+            int scoreNum = 10;
+
+            ExecutorService exec = Executors.newFixedThreadPool(actualThreadNum);
+            final CompletionService<String> serv = new ExecutorCompletionService<String>(exec);
+            int runningThread = 0;
+            boolean hasHead = false;
+            for (int f = 1; f < bounderies.length; f++) {
+                long[] pos = bfIndexes.findIndex(chromosome.variantList.get(bounderies[f - 1]).refStartPosition, chromosome.variantList.get(bounderies[f] - 1).refStartPosition);
+                if (pos[0] == pos[1]) {
+                    for (int t = bounderies[f - 1]; t <= bounderies[f] - 1; t++) {
+                        chromosome.variantList.get(t).scores2 = new float[scoreNum];
+                        Arrays.fill(chromosome.variantList.get(t).scores1, Float.NaN);
+                    }
+                    continue;
+                }
+                final BGZFInputStream bf = new BGZFInputStream(rsFile.getCanonicalPath(), 1, true);
+                // System.out.println(chromosome.variantList.get(bounderies[f - 1]).refStartPosition+" : "+chromosome.variantList.get(bounderies[f] - 1).refStartPosition+" : "+pos[0] + " : " + pos[1]);
+                bf.adjustPos(pos[0], pos[1]);
+
+                bf.creatSpider(pos[0] != 0);
+                if (hasHead && pos[0] == 0) {
+                    //skip the head line
+                    bf.spider[0].readLine();
+                }
+                VarAnnotTask varTaks = new VarAnnotTask(bf.spider[0], chromosome.variantList.subList(bounderies[f - 1], bounderies[f]), indexCHROM, indexPOS, ass, 2) {
+                    @Override
+                    protected void fireTaskComplete() {
+                        try {
+                            bf.spider[0].closeInputStream();
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+                };
+                serv.submit(varTaks);
+                runningThread++;
+            }
+
             for (int s = 0; s < runningThread; s++) {
                 Future<String> task = serv.take();
                 String infor = task.get();
@@ -1695,6 +2066,43 @@ public class VariantAnnotator implements Constants {
         // LOG.info(hitNum + " sequence variant(s) are highlighted by OMIM information!");
     }
 
+    public void cosmicGeneAnnotationVar(Chromosome chromosome, AnnotationSummarySet ass, Map<String, Map<String, Integer>> cosmicGeneMut) throws Exception {
+        String lastGeneSymb = null;
+        String lastGeneFeature = ".";
+
+        int hitNum = 0;
+
+        if (chromosome == null) {
+            return;
+        }
+        lastGeneSymb = null;
+
+        int avialbleIndex = ass.getAvailableFeatureIndex();
+        for (Variant var : chromosome.variantList) {
+            if (var.geneSymb != null) {
+                if (lastGeneSymb != null && var.geneSymb.equals(lastGeneSymb)) {
+                    var.setFeatureValue(avialbleIndex, lastGeneFeature);
+                } else {
+                    lastGeneSymb = var.geneSymb;
+                    Map<String, Integer> mutInfor = cosmicGeneMut.get(lastGeneSymb);
+                    if (mutInfor != null) {
+                        lastGeneFeature = mutInfor.toString();
+                    } else {
+                        lastGeneFeature = ".";
+                    }
+                    var.setFeatureValue(avialbleIndex, lastGeneFeature);
+                    hitNum++;
+                }
+            } else {
+                var.setFeatureValue(avialbleIndex, ".");
+            }
+        }
+        ass.setAnnotNum(ass.getAnnotNum() + hitNum);
+        ass.setTotalNum(ass.getTotalNum() + chromosome.variantList.size());
+        ass.setLeftNum(ass.getLeftNum() + chromosome.variantList.size() - hitNum);
+        // LOG.info(hitNum + " sequence variant(s) are highlighted by OMIM information!");
+    }
+
     public void superDupAnnotation(Chromosome chromosome, AnnotationSummarySet ass, ReferenceGenome refGenome) throws Exception {
         int leftVariantNum = 0;
         int gainNum = 0;
@@ -1712,9 +2120,7 @@ public class VariantAnnotator implements Constants {
                 var.setFeatureValue(avialbleIndex, ".");
                 continue;
             }
-            gainNum = 0;
-            lossNum = 0;
-            sampleSize = 0;
+
             for (RefDup refCNC : cnvList) {
                 sb.append(refCNC.getJcKScore());
                 sb.append(", ");
@@ -2172,18 +2578,17 @@ public class VariantAnnotator implements Constants {
         endMak = "";
         startMak = "";
         OpenIntIntHashMap posIDMap = new OpenIntIntHashMap();
-        int id = 1;
-        for (Variant var : allVariants) {
-            posIDMap.put(var.refStartPosition, id);
-            id++;
-        }
 
         int base = 0;
         int alleleNum = 0;
         int varNum = allVariants.size();
         BooleanArrayList isValid = new BooleanArrayList(varNum);
         boolean[] bits = new boolean[32];
+<<<<<<< HEAD
+        int startIndex;
+=======
         long startIndex;
+>>>>>>> origin/master
         int subNum = pedEncodeGytIDMap.length;
         for (Variant var : allVariants) {
             sharedAlleles.clear();
@@ -2195,6 +2600,7 @@ public class VariantAnnotator implements Constants {
                 base = GlobalManager.unphasedAlleleBitMap.get(alleleNum);
             }
 
+            hasShared = true;
             do {
                 subID = caeSetID[begIndex];
                 subID = pedEncodeGytIDMap[subID];
@@ -2202,12 +2608,36 @@ public class VariantAnnotator implements Constants {
                     begIndex++;
                     continue;
                 }
+<<<<<<< HEAD
+                if (var.compressedGtyLabel >= 0) {
+                    if (var.compressedGtyLabel == 0) {
+                        Arrays.fill(bits, 0, base, false);
+                    } else {
+                        startIndex = subID;
+                        for (int i = 0; i < base; i++) {
+                            if (startIndex > var.compressedGty[var.compressedGty.length - 1]) {
+                                bits[i] = false;
+                            } else if (startIndex < var.compressedGty[0]) {
+                                bits[i] = false;
+                            } else if (startIndex == var.compressedGty[var.compressedGty.length - 1]) {
+                                bits[i] = true;
+                            } else if (startIndex == var.compressedGty[0]) {
+                                bits[i] = true;
+                            } else {
+                                bits[i] = (Arrays.binarySearch(var.compressedGty, startIndex) >= 0);
+                            }
+                            startIndex += subNum;
+                        }
+                    }
+
+=======
                 if (var.compressedGty) {
                     startIndex = var.encodedGtyIndex[0] + subID;
                     for (int i = 0; i < base; i++) {
                         bits[i] = wahBit.containsKey(startIndex);
                         startIndex += subNum;
                     }
+>>>>>>> origin/master
                     if (isPhased) {
                         alleles1 = BinaryGtyProcessor.getPhasedGtyBool(bits, alleleNum, base, subID);
                     } else {
@@ -2231,19 +2661,47 @@ public class VariantAnnotator implements Constants {
             }
             sharedAlleles.put(alleles1[0], 0);
             sharedAlleles.put(alleles1[1], 0);
+<<<<<<< HEAD
+
+=======
             hasShared = true;
+>>>>>>> origin/master
             for (int j = begIndex + 1; j < caseNum; j++) {
                 subID = caeSetID[j];
                 subID = pedEncodeGytIDMap[subID];
                 if (subID < 0) {
                     continue;
                 }
+<<<<<<< HEAD
+                if (var.compressedGtyLabel >= 0) {
+                    if (var.compressedGtyLabel == 0) {
+                        Arrays.fill(bits, 0, base, false);
+                    } else {
+                        startIndex = subID;
+                        for (int i = 0; i < base; i++) {
+                            if (startIndex > var.compressedGty[var.compressedGty.length - 1]) {
+                                bits[i] = false;
+                            } else if (startIndex < var.compressedGty[0]) {
+                                bits[i] = false;
+                            } else if (startIndex == var.compressedGty[var.compressedGty.length - 1]) {
+                                bits[i] = true;
+                            } else if (startIndex == var.compressedGty[0]) {
+                                bits[i] = true;
+                            } else {
+                                bits[i] = (Arrays.binarySearch(var.compressedGty, startIndex) >= 0);
+                            }
+                            startIndex += subNum;
+                        }
+                    }
+
+=======
                 if (var.compressedGty) {
                     startIndex = var.encodedGtyIndex[0] + subID;
                     for (int i = 0; i < base; i++) {
                         bits[i] = wahBit.containsKey(startIndex);
                         startIndex += subNum;
                     }
+>>>>>>> origin/master
                     if (isPhased) {
                         alleles2 = BinaryGtyProcessor.getPhasedGtyBool(bits, alleleNum, base, subID);
                     } else {
@@ -2253,6 +2711,12 @@ public class VariantAnnotator implements Constants {
                     alleles2 = BinaryGtyProcessor.getPhasedGtyAt(var.encodedGty, alleleNum, base, subID, subNum);
                 } else {
                     alleles2 = BinaryGtyProcessor.getUnphasedGtyAt(var.encodedGty, alleleNum, base, subID, subNum);
+<<<<<<< HEAD
+                }
+
+                if (alleles2 == null) {
+                    continue;
+=======
                 }
 
                 if (alleles2 == null) {
@@ -2267,13 +2731,16 @@ public class VariantAnnotator implements Constants {
                 }
                 if (!sharedAlleles.containsKey(alleles2[1])) {
                     sharedAlleles.removeKey(alleles2[1]);
+>>>>>>> origin/master
                 }
-                if (sharedAlleles.isEmpty()) {
+                if (!sharedAlleles.containsKey(alleles2[0]) && !sharedAlleles.containsKey(alleles2[1])) {
                     hasShared = false;
                     break;
                 }
             }
             isValid.add(hasShared);
+            posIDMap.put(var.refStartPosition, isValid.size() - 1);
+            //System.out.println(var.refStartPosition + "\t" + hasShared);
         }
 
         index1 = 0;
@@ -2284,6 +2751,7 @@ public class VariantAnnotator implements Constants {
         for (Variant var : chromosome.variantList) {
             tmpIntSet.index1 = var.refStartPosition;
             index1 = posIDMap.get(tmpIntSet.index1);
+
             if (index1 <= 0) {
                 var.setFeatureValue(availbleIndex, null);
                 var.setFeatureValue(availbleIndex + 1, null);
@@ -2369,17 +2837,16 @@ public class VariantAnnotator implements Constants {
         endMak = "";
         startMak = "";
         OpenIntIntHashMap posIDMap = new OpenIntIntHashMap();
-        int id = 1;
-        for (Variant var : allVariants) {
-            posIDMap.put(var.refStartPosition, id);
-            id++;
-        }
 
         int base = 0;
         int alleleNum = 0;
         int varNum = allVariants.size();
         BooleanArrayList isValid = new BooleanArrayList(varNum);
+<<<<<<< HEAD
+        int startIndex;
+=======
         long startIndex;
+>>>>>>> origin/master
         boolean[] bits = new boolean[32];
         int subNum = pedEncodeGytIDMap.length;
         for (Variant var : allVariants) {
@@ -2393,6 +2860,7 @@ public class VariantAnnotator implements Constants {
             } else {
                 base = GlobalManager.unphasedAlleleBitMap.get(alleleNum);
             }
+            hasShared = true;
             do {
                 subID = caeSetID[begIndex];
                 subID = pedEncodeGytIDMap[subID];
@@ -2400,11 +2868,33 @@ public class VariantAnnotator implements Constants {
                     begIndex++;
                     continue;
                 }
+<<<<<<< HEAD
+                if (var.compressedGtyLabel >= 0) {
+                    if (var.compressedGtyLabel == 0) {
+                        Arrays.fill(bits, 0, base, false);
+                    } else {
+                        startIndex = subID;
+                        for (int i = 0; i < base; i++) {
+                            if (startIndex > var.compressedGty[var.compressedGty.length - 1]) {
+                                bits[i] = false;
+                            } else if (startIndex < var.compressedGty[0]) {
+                                bits[i] = false;
+                            } else if (startIndex == var.compressedGty[var.compressedGty.length - 1]) {
+                                bits[i] = true;
+                            } else if (startIndex == var.compressedGty[0]) {
+                                bits[i] = true;
+                            } else {
+                                bits[i] = (Arrays.binarySearch(var.compressedGty, startIndex) >= 0);
+                            }
+                            startIndex += subNum;
+                        }
+=======
                 if (var.compressedGty) {
                     startIndex = var.encodedGtyIndex[0] + subID;
                     for (int i = 0; i < base; i++) {
                         bits[i] = wahBit.containsKey(startIndex);
                         startIndex += subNum;
+>>>>>>> origin/master
                     }
                     if (isPhased) {
                         alleles1 = BinaryGtyProcessor.getUnphasedGtyBool(bits, alleleNum, base, subID);
@@ -2426,25 +2916,48 @@ public class VariantAnnotator implements Constants {
 
             if (alleles1 == null) {
                 isValid.add(true);
+                posIDMap.put(var.refStartPosition, isValid.size() - 1);
                 continue;
             }
             if (alleles1[0] != alleles1[1]) {
                 isValid.add(false);
+                posIDMap.put(var.refStartPosition, isValid.size() - 1);
                 continue;
             }
 
-            hasShared = true;
             for (int j = begIndex + 1; j < caseNum; j++) {
                 subID = caeSetID[j];
                 subID = pedEncodeGytIDMap[subID];
                 if (subID < 0) {
                     continue;
                 }
+<<<<<<< HEAD
+                if (var.compressedGtyLabel >= 0) {
+                    if (var.compressedGtyLabel == 0) {
+                        Arrays.fill(bits, 0, base, false);
+                    } else {
+                        startIndex = subID;
+                        for (int i = 0; i < base; i++) {
+                            if (startIndex > var.compressedGty[var.compressedGty.length - 1]) {
+                                bits[i] = false;
+                            } else if (startIndex < var.compressedGty[0]) {
+                                bits[i] = false;
+                            } else if (startIndex == var.compressedGty[var.compressedGty.length - 1]) {
+                                bits[i] = true;
+                            } else if (startIndex == var.compressedGty[0]) {
+                                bits[i] = true;
+                            } else {
+                                bits[i] = (Arrays.binarySearch(var.compressedGty, startIndex) >= 0);
+                            }
+                            startIndex += subNum;
+                        }
+=======
                 if (var.compressedGty) {
                     startIndex = var.encodedGtyIndex[0] + subID;
                     for (int i = 0; i < base; i++) {
                         bits[i] = wahBit.containsKey(startIndex);
                         startIndex += subNum;
+>>>>>>> origin/master
                     }
                     if (isPhased) {
                         alleles2 = BinaryGtyProcessor.getPhasedGtyBool(bits, alleleNum, base, subID);
@@ -2471,11 +2984,33 @@ public class VariantAnnotator implements Constants {
                 if (subID < 0) {
                     continue;
                 }
+<<<<<<< HEAD
+                if (var.compressedGtyLabel >= 0) {
+                    if (var.compressedGtyLabel == 0) {
+                        Arrays.fill(bits, 0, base, false);
+                    } else {
+                        startIndex = subID;
+                        for (int i = 0; i < base; i++) {
+                            if (startIndex > var.compressedGty[var.compressedGty.length - 1]) {
+                                bits[i] = false;
+                            } else if (startIndex < var.compressedGty[0]) {
+                                bits[i] = false;
+                            } else if (startIndex == var.compressedGty[var.compressedGty.length - 1]) {
+                                bits[i] = true;
+                            } else if (startIndex == var.compressedGty[0]) {
+                                bits[i] = true;
+                            } else {
+                                bits[i] = (Arrays.binarySearch(var.compressedGty, startIndex) >= 0);
+                            }
+                            startIndex += subNum;
+                        }
+=======
                 if (var.compressedGty) {
                     startIndex = var.encodedGtyIndex[0] + subID;
                     for (int i = 0; i < base; i++) {
                         bits[i] = wahBit.containsKey(startIndex);
                         startIndex += subNum;
+>>>>>>> origin/master
                     }
                     if (isPhased) {
                         alleles2 = BinaryGtyProcessor.getPhasedGtyBool(bits, alleleNum, base, subID);
@@ -2499,6 +3034,7 @@ public class VariantAnnotator implements Constants {
                 }
             }
             isValid.add(hasShared);
+            posIDMap.put(var.refStartPosition, isValid.size() - 1);
         }
         index1 = 0;
         index2 = 0;
@@ -3009,6 +3545,203 @@ public class VariantAnnotator implements Constants {
             if (geneFeatureAnnot != null) {
                 sb.append(geneFeatureAnnot).append(';');
             }
+<<<<<<< HEAD
+
+            if (sb.length() > 0) {
+                String[] items = Util.tokenize(sb.substring(0, sb.length() - 1), ';');
+                for (String item : items) {
+                    index = item.indexOf(':');
+                    if (index > 0) {
+                        geneSet.add(item.substring(0, index));
+                    }
+                }
+                sb.delete(0, sb.length());
+            }
+            if (var.label == null || var.label.equals(".")) {
+                id.append(chrName).append(':').append(var.refStartPosition).append(":").append(var.getRefAllele());
+                for (String altA : var.getAltAlleles()) {
+                    id.append(":");
+                    id.append(altA);
+                }
+                var.label = id.toString();
+                id.delete(0, id.length());
+            }
+
+            for (String strGene1 : geneSet) {
+                List<Variant> vars = geneVars.get(strGene1);
+                Set<String> idSet = unifyingSet.get(strGene1);
+
+                if (vars == null) {
+                    vars = new ArrayList<Variant>();
+                    geneVars.put(strGene1, vars);
+
+                    idSet = new HashSet<String>();
+                    unifyingSet.put(strGene1, idSet);
+                }
+                if (!idSet.contains(var.label)) {
+                    vars.add(var);
+                    idSet.add(var.label);
+                }
+            }
+
+            geneSet.clear();
+        }
+        unifyingSet.clear();
+
+    }
+
+    public void summarizeVarCountsBySubject(Map<String, List<Variant>> geneVars, OpenLongObjectHashMap wahBit, List<Individual> subjectList, int[] pedEncodeGytIDMap, boolean isPhasedGty, Map<String, Integer> geneAlleCount) throws Exception {
+        if (geneVars == null) {
+            return;
+        }
+        int[] gtys = null;
+        int alleleNum, base = 2;
+        int subID = -1;
+        int gtyID = 0;
+        int count;
+
+        boolean[] bits = new boolean[32];
+        int startIndex;
+        int subNum = subjectList.size();
+        for (Individual indiv : subjectList) {
+            if (indiv == null) {
+                continue;
+            }
+
+            subID++;
+            gtyID = pedEncodeGytIDMap[subID];
+            if (gtyID < 0) {
+                continue;
+            }
+
+            for (Map.Entry<String, List<Variant>> items : geneVars.entrySet()) {
+                List<Variant> vars = items.getValue();
+                count = 0;
+                for (Variant var : vars) {
+                    alleleNum = var.getAltAlleles().length + 1;
+                    if (isPhasedGty) {
+                        base = GlobalManager.phasedAlleleBitMap.get(alleleNum);
+                        if (var.compressedGtyLabel >= 0) {
+                            if (var.compressedGtyLabel == 0) {
+                                Arrays.fill(bits, 0, base, false);
+                            } else {
+                                startIndex = gtyID;
+                                for (int i = 0; i < base; i++) {
+                                    if (startIndex > var.compressedGty[var.compressedGty.length - 1]) {
+                                        bits[i] = false;
+                                    } else if (startIndex < var.compressedGty[0]) {
+                                        bits[i] = false;
+                                    } else if (startIndex == var.compressedGty[var.compressedGty.length - 1]) {
+                                        bits[i] = true;
+                                    } else if (startIndex == var.compressedGty[0]) {
+                                        bits[i] = true;
+                                    } else {
+                                        bits[i] = (Arrays.binarySearch(var.compressedGty, startIndex) >= 0);
+                                    }
+                                    startIndex += subNum;
+                                }
+                            }
+                            gtys = BinaryGtyProcessor.getPhasedGtyBool(bits, alleleNum, base, gtyID);
+                        } else {
+                            gtys = BinaryGtyProcessor.getPhasedGtyAt(var.encodedGty, alleleNum, base, gtyID, subNum);
+                        }
+
+                    } else {
+                        base = GlobalManager.unphasedAlleleBitMap.get(alleleNum);
+                        if (var.compressedGtyLabel >= 0) {
+                            if (var.compressedGtyLabel == 0) {
+                                Arrays.fill(bits, 0, base, false);
+                            } else {
+                                startIndex = gtyID;
+                                for (int i = 0; i < base; i++) {
+                                    if (startIndex > var.compressedGty[var.compressedGty.length - 1]) {
+                                        bits[i] = false;
+                                    } else if (startIndex < var.compressedGty[0]) {
+                                        bits[i] = false;
+                                    } else if (startIndex == var.compressedGty[var.compressedGty.length - 1]) {
+                                        bits[i] = true;
+                                    } else if (startIndex == var.compressedGty[0]) {
+                                        bits[i] = true;
+                                    } else {
+                                        bits[i] = (Arrays.binarySearch(var.compressedGty, startIndex) >= 0);
+                                    }
+                                    startIndex += subNum;
+                                }
+                            }
+                            gtys = BinaryGtyProcessor.getUnphasedGtyBool(bits, alleleNum, base, gtyID);
+                        } else {
+                            gtys = BinaryGtyProcessor.getUnphasedGtyAt(var.encodedGty, alleleNum, base, gtyID, subNum);
+                        }
+
+                    }
+
+                    if (gtys != null) {
+                        if (gtys[0] != 0) {
+                            count++;
+                        }
+                        if (gtys[1] != 0) {
+                            count++;
+                        }
+                    }
+                }
+                geneAlleCount.put(items.getKey(), count);
+            }
+        }
+
+    }
+
+    public void assignSelectedVar2Genesets(Map<String, GeneSet> dbPathwaySet, Map<String, List<Variant>> geneVars,
+            Map<String, List<Variant>> genesetVars, byte chrID, List<Variant> invlovledVariantListst) {
+        Map<String, Set<String>> unifyingSet = new HashMap<String, Set<String>>();
+        Set<String> idSetAll = new HashSet<String>();
+        for (Map.Entry<String, GeneSet> item : dbPathwaySet.entrySet()) {
+            GeneSet refGeneSet = item.getValue();
+            Set<String> geneSet = refGeneSet.getGeneSymbols();
+
+            List<Variant> vars1 = genesetVars.get(item.getKey());
+            Set<String> idSet = unifyingSet.get(item.getKey());
+            if (vars1 == null) {
+                vars1 = new ArrayList<Variant>();
+                genesetVars.put(item.getKey(), vars1);
+            }
+            if (idSet == null) {
+                idSet = new HashSet<String>();
+                unifyingSet.put(item.getKey(), idSet);
+            }
+            for (String gen : geneSet) {
+                List<Variant> vars = geneVars.get(gen);
+                if (vars == null) {
+                    continue;
+                }
+
+                for (Variant var : vars) {
+                    if (!idSet.contains(var.label)) {
+                        var.chrID = chrID;
+                        vars1.add(var);
+                        idSet.add(var.label);
+                    }
+                    if (!idSetAll.contains(var.label)) {
+                        idSetAll.add(var.label);
+                        invlovledVariantListst.add(var);
+                    }
+                }
+            }
+        }
+        idSetAll.clear();
+        unifyingSet.clear();
+
+    }
+
+    public void casecontrolUniqueModelFilterVar(Chromosome chromosome, AnnotationSummarySet ass, boolean[] uniqueFilters) {
+        // AffectedRefHomGtyNum\tAffectedHetGtyNum\tAffectedAltHomGtyNum\tUnaffectedRefHomGtyNum\tUnaffectedHetGtyNum\tUnaffectedAltHomGtyNum
+        int hardFilteringNum = 0;
+//        Set<Byte> caseSharedHomoAllele = new HashSet<Byte>();
+//        Set<Byte> caseSharedHeteAllele = new HashSet<Byte>();
+//        Set<Byte> controlSharedHomoAllele = new HashSet<Byte>();
+//        Set<Byte> caseSharedAllele = new HashSet<Byte>();
+//        Set<Byte> controlSharedAllele = new HashSet<Byte>();
+=======
+>>>>>>> origin/master
 
             if (sb.length() > 0) {
                 String[] items = Util.tokenize(sb.substring(0, sb.length() - 1), ';');
@@ -3278,7 +4011,11 @@ public class VariantAnnotator implements Constants {
         boolean[] bits = new boolean[32];
         Map<String, List<Variant>> disGeneVarMap = new HashMap<String, List<Variant>>();
         List<Variant> geneDisVars = new ArrayList<Variant>();
+<<<<<<< HEAD
+        int startIndex;
+=======
         long startIndex;
+>>>>>>> origin/master
         int subNum = subjectList.size();
         for (Variant var : chromosome.variantList) {
             if (var.geneSymb != null) {
@@ -3333,11 +4070,33 @@ public class VariantAnnotator implements Constants {
                     if (subID < 0) {
                         continue;
                     }
+<<<<<<< HEAD
+                    if (tVar.compressedGtyLabel >= 0) {
+                        if (tVar.compressedGtyLabel == 0) {
+                            Arrays.fill(bits, 0, base, false);
+                        } else {
+                            startIndex = subID;
+                            for (int i = 0; i < base; i++) {
+                                if (startIndex > tVar.compressedGty[tVar.compressedGty.length - 1]) {
+                                    bits[i] = false;
+                                } else if (startIndex < tVar.compressedGty[0]) {
+                                    bits[i] = false;
+                                } else if (startIndex == tVar.compressedGty[tVar.compressedGty.length - 1]) {
+                                    bits[i] = true;
+                                } else if (startIndex == tVar.compressedGty[0]) {
+                                    bits[i] = true;
+                                } else {
+                                    bits[i] = (Arrays.binarySearch(tVar.compressedGty, startIndex) >= 0);
+                                }
+                                startIndex += subNum;
+                            }
+=======
                     if (tVar.compressedGty) {
                         startIndex = tVar.encodedGtyIndex[0] + subID;
                         for (int i = 0; i < base; i++) {
                             bits[i] = wahBit.containsKey(startIndex);
                             startIndex += subNum;
+>>>>>>> origin/master
                         }
                         if (isPhased) {
 //                                gty = mIndiv.markerGtySetArray.getPhasedGtyBool(tVar.genotypeIndex, tVar.getAltAlleles().length + 1);
@@ -3376,11 +4135,33 @@ public class VariantAnnotator implements Constants {
                     if (subID < 0) {
                         continue;
                     }
+<<<<<<< HEAD
+                    if (tVar.compressedGtyLabel >= 0) {
+                        if (tVar.compressedGtyLabel == 0) {
+                            Arrays.fill(bits, 0, base, false);
+                        } else {
+                            startIndex = subID;
+                            for (int i = 0; i < base; i++) {
+                                if (startIndex > tVar.compressedGty[tVar.compressedGty.length - 1]) {
+                                    bits[i] = false;
+                                } else if (startIndex < tVar.compressedGty[0]) {
+                                    bits[i] = false;
+                                } else if (startIndex == tVar.compressedGty[tVar.compressedGty.length - 1]) {
+                                    bits[i] = true;
+                                } else if (startIndex == tVar.compressedGty[0]) {
+                                    bits[i] = true;
+                                } else {
+                                    bits[i] = (Arrays.binarySearch(tVar.compressedGty, startIndex) >= 0);
+                                }
+                                startIndex += subNum;
+                            }
+=======
                     if (tVar.compressedGty) {
                         startIndex = tVar.encodedGty[0] + subID;
                         for (int i = 0; i < base; i++) {
                             bits[i] = wahBit.containsKey(startIndex);
                             startIndex += subNum;
+>>>>>>> origin/master
                         }
 //                            Individual mIndiv = subjectList.get(controlSubIDs.getQuick(j));
                         if (isPhased) {
@@ -3422,11 +4203,33 @@ public class VariantAnnotator implements Constants {
                     if (subID < 0) {
                         continue;
                     }
+<<<<<<< HEAD
+                    if (tVar.compressedGtyLabel >= 0) {
+                        if (tVar.compressedGtyLabel == 0) {
+                            Arrays.fill(bits, 0, base, false);
+                        } else {
+                            startIndex = subID;
+                            for (int i = 0; i < base; i++) {
+                                if (startIndex > tVar.compressedGty[tVar.compressedGty.length - 1]) {
+                                    bits[i] = false;
+                                } else if (startIndex < tVar.compressedGty[0]) {
+                                    bits[i] = false;
+                                } else if (startIndex == tVar.compressedGty[tVar.compressedGty.length - 1]) {
+                                    bits[i] = true;
+                                } else if (startIndex == tVar.compressedGty[0]) {
+                                    bits[i] = true;
+                                } else {
+                                    bits[i] = (Arrays.binarySearch(tVar.compressedGty, startIndex) >= 0);
+                                }
+                                startIndex += subNum;
+                            }
+=======
                     if (tVar.compressedGty) {
                         startIndex = tVar.encodedGty[0] + subID;
                         for (int i = 0; i < base; i++) {
                             bits[i] = wahBit.containsKey(startIndex);
                             startIndex += subNum;
+>>>>>>> origin/master
                         }
                         if (isPhased) {
 //                                gty = mIndiv.markerGtySetArray.getPhasedGtyBool(tVar.genotypeIndex, tVar.getAltAlleles().length + 1);
@@ -3481,6 +4284,14 @@ public class VariantAnnotator implements Constants {
     }
 
     public int[] partitionEvenBlock(int totalSnpSize, int blockNum) throws Exception {
+<<<<<<< HEAD
+        int[] bigBlockIndexes;
+        int intervalLen = totalSnpSize / blockNum;
+        if (intervalLen == 0) {
+            bigBlockIndexes = new int[totalSnpSize + 1];
+            for (int i = 0; i < bigBlockIndexes.length; i++) {
+                bigBlockIndexes[i] = i;
+=======
         int virtualSize = totalSnpSize;
         if (totalSnpSize % blockNum != 0) {
             virtualSize = totalSnpSize + blockNum - totalSnpSize % blockNum;
@@ -4250,6 +5061,957 @@ public class VariantAnnotator implements Constants {
             cells = hmpPatho.get(strGene);
             if (cells == null) {
                 continue;
+>>>>>>> origin/master
+            }
+        } else {
+            bigBlockIndexes = new int[blockNum + 1];
+            Arrays.fill(bigBlockIndexes, 0);
+            for (int s = 1; s < blockNum; s++) {
+                bigBlockIndexes[s] = s * intervalLen;
+            }
+            bigBlockIndexes[blockNum] = totalSnpSize;
+        }
+
+        return bigBlockIndexes;
+    }
+
+    private void formatBialleleicUnphasedBits(List<Variant> variantList, int totalPedSubjectNum, int[][] bits1,
+            int[][] bits2, int[][] bits3, int[][] bits4, double[] mean1, int[] sum12, boolean[] hasMissingGty) {
+        int varSize = variantList.size();
+        int firstBitByteEnd;
+
+        final int gtyLen = 32;
+        int unitNum;
+        int firstTailLen = totalPedSubjectNum % 8;
+        int offsetTmp = 0;
+        if (totalPedSubjectNum % gtyLen != 0) {
+            unitNum = totalPedSubjectNum / gtyLen + 1;
+        } else {
+            unitNum = totalPedSubjectNum / gtyLen;
+        }
+
+        if (totalPedSubjectNum % 8 != 0) {
+            firstBitByteEnd = totalPedSubjectNum / 8 + 1;
+        } else {
+            firstBitByteEnd = totalPedSubjectNum / 8;
+        }
+
+        int base = 2;
+        int secondBitByteStart = (totalPedSubjectNum) / 8;
+        int secondBitBytEnd = totalPedSubjectNum * 2 / 8;
+        if ((totalPedSubjectNum * 2) % 8 != 0) {
+            secondBitBytEnd += 1;
+        }
+
+        int thirdBitByteStart = (totalPedSubjectNum * 2) / 8;
+        int thirdBitBytEnd = (totalPedSubjectNum * 3) / 8;
+        if ((totalPedSubjectNum * 3) % 8 != 0) {
+            thirdBitBytEnd += 1;
+        }
+
+        int wordNum = firstBitByteEnd / 4;
+        int maskInt = totalPedSubjectNum % gtyLen;
+        int c = 0;
+        if (maskInt != 0) {
+            c = (0x80000000 >> (maskInt - 1));
+            c = ~c;
+            //System.out.println(Integer.toBinaryString(c));
+        }
+        int nonNumIndiv = 0;
+        int startIndex;
+        boolean isOne;
+        int subID;
+        int index1, index2;
+        for (int i = 0; i < varSize; i++) {
+            Variant var = variantList.get(i);
+            if (var.getAltAlleles().length > 1) {
+                continue;
+            }
+
+            bits1[i] = new int[unitNum];
+            bits2[i] = new int[unitNum];
+            bits3[i] = new int[unitNum];
+            bits4[i] = new int[unitNum];
+
+            Arrays.fill(bits1[i], 0);
+            Arrays.fill(bits2[i], 0);
+            Arrays.fill(bits3[i], 0);
+            Arrays.fill(bits4[i], 0);
+            if (var.compressedGtyLabel >= 0) {
+                for (subID = 0; subID < totalPedSubjectNum; subID++) {
+                    startIndex = subID;
+                    if (var.compressedGtyLabel == 0) {
+                        isOne = false;
+                    } else if (startIndex > var.compressedGty[var.compressedGty.length - 1]) {
+                        isOne = false;
+                    } else if (startIndex < var.compressedGty[0]) {
+                        isOne = false;
+                    } else if (startIndex == var.compressedGty[var.compressedGty.length - 1]) {
+                        isOne = true;
+                    } else if (startIndex == var.compressedGty[0]) {
+                        isOne = true;
+                    } else {
+                        isOne = (Arrays.binarySearch(var.compressedGty, startIndex) >= 0);
+                    }
+                    if (isOne) {
+                        index1 = subID / gtyLen;
+                        index2 = subID % gtyLen;
+                        bits1[i][index1] |= GlobalManager.intOpers[index2];
+                    }
+                }
+
+                for (subID = 0; subID < totalPedSubjectNum; subID++) {
+                    startIndex = subID + totalPedSubjectNum;
+                    if (var.compressedGtyLabel == 0) {
+                        isOne = false;
+                    } else if (startIndex > var.compressedGty[var.compressedGty.length - 1]) {
+                        isOne = false;
+                    } else if (startIndex < var.compressedGty[0]) {
+                        isOne = false;
+                    } else if (startIndex == var.compressedGty[var.compressedGty.length - 1]) {
+                        isOne = true;
+                    } else if (startIndex == var.compressedGty[0]) {
+                        isOne = true;
+                    } else {
+                        isOne = (Arrays.binarySearch(var.compressedGty, startIndex) >= 0);
+                    }
+                    if (isOne) {
+                        index1 = subID / gtyLen;
+                        index2 = subID % gtyLen;
+                        bits3[i][index1] |= GlobalManager.intOpers[index2];
+                    }
+                }
+
+                if (maskInt != 0) {
+                    //System.out.println(Integer.toBinaryString(bits1[t][wordNum]));
+                    bits1[i][wordNum] |= c;
+                    //System.out.println(Integer.toBinaryString(bits1[t][wordNum]));
+                }
+                if (maskInt != 0) {
+                    // System.out.println(Integer.toBinaryString(bits3[t][wordNum]));
+                    bits3[i][wordNum] |= c;
+                    // System.out.println(Integer.toBinaryString(bits3[t][wordNum]));
+                }
+            } else {
+                byte[] bytes = var.encodedGty;
+                for (int j = 0; j < firstBitByteEnd; j++) {
+                    wordNum = j >>> 2;
+                    offsetTmp = j - (wordNum << 2);
+                    bits1[i][wordNum] |= ((bytes[j] & 0xFF) << (24 - (offsetTmp << 3)));
+                    //  System.out.println(String.format("%8s", Integer.toBinaryString(bytes[j] & 0xFF)).replace(' ', '0'));
+                }
+                if (maskInt != 0) {
+                    //System.out.println(Integer.toBinaryString(bits1[t][wordNum]));
+                    bits1[i][wordNum] |= c;
+                    //System.out.println(Integer.toBinaryString(bits1[t][wordNum]));
+                }
+
+                /*
+            for (int j = 0; j < unitNum; j++) {
+                System.out.println(String.format("%32s", Integer.toBinaryString(bits1[t][j])).replace(' ', '0'));
+            }
+                 */
+                for (int j = secondBitByteStart; j < secondBitBytEnd; j++) {
+                    wordNum = (j - secondBitByteStart) >>> 2;
+                    if (wordNum == unitNum) {
+                        wordNum--;
+                        // System.out.println(String.format("%8s", Integer.toBinaryString(bytes[j] & 0xFF)).replace(' ', '0'));
+                        break;
+                    }
+                    offsetTmp = (j - secondBitByteStart) - (wordNum << 2);
+                    bits3[i][wordNum] |= (((bytes[j] & 0xFF) << (24 - (offsetTmp << 3) + firstTailLen)));
+                    // System.out.println(String.format("%32s", Integer.toBinaryString(bits3[t][wordNum])).replace(' ', '0'));
+                    if (offsetTmp == 3 && firstTailLen != 0) {
+                        // c = (0x80000000 >> (32 - 8 + firstTailLen - 1));
+                        //System.out.println(String.format("%8s", Integer.toBinaryString(c)).replace(' ', '0'));
+                        bits3[i][wordNum] |= (((bytes[j + 1] & 0xFF)) >>> (8 - firstTailLen));
+                        //byte kk = (byte) ((bytes[j + 1] & 0xFF) & c);
+                        //System.out.println(String.format("%8s", Integer.toBinaryString(kk).replace(' ', '0')));
+                    }
+                    // System.out.println(String.format("%8s", Integer.toBinaryString(bytes[j] & 0xFF)).replace(' ', '0'));
+                }
+
+                //it is necessary when they are more than two bits
+                if (maskInt != 0) {
+                    // System.out.println(Integer.toBinaryString(bits3[t][wordNum]));
+                    bits3[i][wordNum] |= c;
+                    // System.out.println(Integer.toBinaryString(bits3[t][wordNum]));
+                }
+                /*
+            for (int j = 0; j < unitNum; j++) {
+                System.out.println(String.format("%32s", Integer.toBinaryString(bits3[t][j])).replace(' ', '0'));
+            }
+            System.out.println();
+                 */
+            }
+            nonNumIndiv = 0;
+            for (int j = 0; j < unitNum; j++) {
+                bits4[i][j] = ~(bits1[i][j] & bits3[i][j]);
+                bits1[i][j] = bits1[i][j] & bits4[i][j];
+                bits3[i][j] = bits3[i][j] & bits4[i][j];
+                bits2[i][j] = (bits1[i][j] | bits3[i][j]);
+                mean1[i] += ((Integer.bitCount(bits1[i][j]) << 1) + Integer.bitCount(bits3[i][j]));
+                sum12[i] += ((Integer.bitCount(bits1[i][j]) << 2) + Integer.bitCount(bits3[i][j]));
+                nonNumIndiv += Integer.bitCount(bits4[i][j]);
+                //System.out.println(String.format("%32s", Integer.toBinaryString(bits4[i][j])).replace(' ', '0'));
+            }
+            hasMissingGty[i] = nonNumIndiv != totalPedSubjectNum;
+        }
+
+    }
+
+    private void formatBialleleicPhasedBits(List<Variant> variantList, int totalPedSubjectNum, int[][] bits1,
+            int[][] bits2, int[][] bits3, double[] mean1, boolean[] hasMissingGty) {
+        int varSize = variantList.size();
+        int firstBitByteEnd;
+
+        final int gtyLen = 32;
+        int unitNum;
+        int firstTailLen = totalPedSubjectNum % 8;
+        int offsetTmp = 0;
+        if (totalPedSubjectNum % gtyLen != 0) {
+            unitNum = totalPedSubjectNum / gtyLen + 1;
+        } else {
+            unitNum = totalPedSubjectNum / gtyLen;
+        }
+
+        if (totalPedSubjectNum % 8 != 0) {
+            firstBitByteEnd = totalPedSubjectNum / 8 + 1;
+        } else {
+            firstBitByteEnd = totalPedSubjectNum / 8;
+        }
+
+        int secondTailLen = totalPedSubjectNum * 2 % 8;
+        int base = 2;
+        int secondBitByteStart = (totalPedSubjectNum) / 8;
+        int secondBitBytEnd = totalPedSubjectNum * 2 / 8;
+        if ((totalPedSubjectNum * 2) % 8 != 0) {
+            secondBitBytEnd += 1;
+        }
+
+        int thirdBitByteStart = (totalPedSubjectNum * 2) / 8;
+        int thirdBitBytEnd = totalPedSubjectNum * 3 / 8;
+        if ((totalPedSubjectNum * 3) % 8 != 0) {
+            thirdBitBytEnd += 1;
+        }
+
+        int wordNum = firstBitByteEnd / 4;
+        int maskInt = totalPedSubjectNum % gtyLen;
+        int c = 0;
+        if (maskInt != 0) {
+            c = (0x80000000 >> (maskInt - 1));
+            c = ~c;
+            //System.out.println(Integer.toBinaryString(c));
+        }
+        int nonNumIndiv = 0;
+        int startIndex;
+        boolean isOne;
+        int subID;
+        int index1, index2;
+        for (int i = 0; i < varSize; i++) {
+            Variant var = variantList.get(i);
+            if (var.getAltAlleles().length > 1) {
+                continue;
+            }
+
+            bits1[i] = new int[unitNum];
+            bits2[i] = new int[unitNum];
+            bits3[i] = new int[unitNum];
+            Arrays.fill(bits1[i], 0);
+            Arrays.fill(bits2[i], 0);
+            Arrays.fill(bits3[i], 0);
+
+            if (var.compressedGtyLabel >= 0) {
+                for (subID = 0; subID < totalPedSubjectNum; subID++) {
+                    startIndex = subID;
+                    if (var.compressedGtyLabel == 0) {
+                        isOne = false;
+                    } else if (startIndex > var.compressedGty[var.compressedGty.length - 1]) {
+                        isOne = false;
+                    } else if (startIndex < var.compressedGty[0]) {
+                        isOne = false;
+                    } else if (startIndex == var.compressedGty[var.compressedGty.length - 1]) {
+                        isOne = true;
+                    } else if (startIndex == var.compressedGty[0]) {
+                        isOne = true;
+                    } else {
+                        isOne = (Arrays.binarySearch(var.compressedGty, startIndex) >= 0);
+                    }
+                    if (isOne) {
+                        index1 = subID / gtyLen;
+                        index2 = subID % gtyLen;
+                        bits3[i][index1] |= GlobalManager.intOpers[index2];
+                    }
+                }
+                for (subID = 0; subID < totalPedSubjectNum; subID++) {
+                    startIndex = subID + totalPedSubjectNum;
+                    if (var.compressedGtyLabel == 0) {
+                        isOne = false;
+                    } else if (startIndex > var.compressedGty[var.compressedGty.length - 1]) {
+                        isOne = false;
+                    } else if (startIndex < var.compressedGty[0]) {
+                        isOne = false;
+                    } else if (startIndex == var.compressedGty[var.compressedGty.length - 1]) {
+                        isOne = true;
+                    } else if (startIndex == var.compressedGty[0]) {
+                        isOne = true;
+                    } else {
+                        isOne = (Arrays.binarySearch(var.compressedGty, startIndex) >= 0);
+                    }
+                    if (isOne) {
+                        index1 = subID / gtyLen;
+                        index2 = subID % gtyLen;
+                        bits1[i][index1] |= GlobalManager.intOpers[index2];
+                    }
+                }
+
+                for (subID = 0; subID < totalPedSubjectNum; subID++) {
+                    startIndex = subID + totalPedSubjectNum + totalPedSubjectNum;
+                    if (var.compressedGtyLabel == 0) {
+                        isOne = false;
+                    } else if (startIndex > var.compressedGty[var.compressedGty.length - 1]) {
+                        isOne = false;
+                    } else if (startIndex < var.compressedGty[0]) {
+                        isOne = false;
+                    } else if (startIndex == var.compressedGty[var.compressedGty.length - 1]) {
+                        isOne = true;
+                    } else if (startIndex == var.compressedGty[0]) {
+                        isOne = true;
+                    } else {
+                        isOne = (Arrays.binarySearch(var.compressedGty, startIndex) >= 0);
+                    }
+                    if (isOne) {
+                        index1 = subID / gtyLen;
+                        index2 = subID % gtyLen;
+                        bits2[i][index1] |= GlobalManager.intOpers[index2];
+                    }
+                }
+                if (maskInt != 0) {
+                    //System.out.println(Integer.toBinaryString(c));
+                    bits1[i][wordNum] |= c;
+                    //System.out.println(Integer.toBinaryString(bits1[t][wordNum]));
+                }
+                if (maskInt != 0) {
+                    //System.out.println(Integer.toBinaryString(bits1[t][wordNum]));
+                    bits2[i][wordNum] |= c;
+                    //System.out.println(Integer.toBinaryString(bits1[t][wordNum]));
+                }
+                if (maskInt != 0) {
+                    // System.out.println(Integer.toBinaryString(bits3[t][wordNum]));
+                    bits3[i][wordNum] |= c;
+                    // System.out.println(Integer.toBinaryString(bits3[t][wordNum]));
+                }
+            } else {
+                byte[] bytes = var.encodedGty;
+                for (int j = 0; j < firstBitByteEnd; j++) {
+                    wordNum = j >>> 2;
+                    offsetTmp = j - (wordNum << 2);
+                    bits3[i][wordNum] |= ((bytes[j] & 0xFF) << (24 - (offsetTmp << 3)));
+                    //  System.out.println(String.format("%8s", Integer.toBinaryString(bytes[j] & 0xFF)).replace(' ', '0'));
+                }
+                if (maskInt != 0) {
+                    //System.out.println(Integer.toBinaryString(bits1[t][wordNum]));
+                    bits3[i][wordNum] |= c;
+                    //System.out.println(Integer.toBinaryString(bits1[t][wordNum]));
+                }
+
+                /*
+            for (int j = 0; j < unitNum; j++) {
+                System.out.println(String.format("%32s", Integer.toBinaryString(bits1[t][j])).replace(' ', '0'));
+            }
+                 */
+                for (int j = secondBitByteStart; j < secondBitBytEnd; j++) {
+                    wordNum = (j - secondBitByteStart) >>> 2;
+                    if (wordNum == unitNum) {
+                        wordNum--;
+                        // System.out.println(String.format("%8s", Integer.toBinaryString(bytes[j] & 0xFF)).replace(' ', '0'));
+                        break;
+                    }
+                    offsetTmp = (j - secondBitByteStart) - (wordNum << 2);
+                    bits1[i][wordNum] |= (((bytes[j] & 0xFF) << (24 - (offsetTmp << 3) + firstTailLen)));
+                    // System.out.println(String.format("%32s", Integer.toBinaryString(bits3[t][wordNum])).replace(' ', '0'));
+                    if (offsetTmp == 3 && firstTailLen != 0) {
+                        // c = (0x80000000 >> (32 - 8 + firstTailLen - 1));
+                        //System.out.println(String.format("%8s", Integer.toBinaryString(c)).replace(' ', '0'));
+                        bits1[i][wordNum] |= (((bytes[j + 1] & 0xFF)) >>> (8 - firstTailLen));
+                        //byte kk = (byte) ((bytes[j + 1] & 0xFF) & c);
+                        //System.out.println(String.format("%8s", Integer.toBinaryString(kk).replace(' ', '0')));
+                    }
+                    // System.out.println(String.format("%8s", Integer.toBinaryString(bytes[j] & 0xFF)).replace(' ', '0'));
+                }
+
+                //it is necessary when they are more than two bits
+                if (maskInt != 0) {
+                    // System.out.println(Integer.toBinaryString(bits3[t][wordNum]));
+                    bits1[i][wordNum] |= c;
+                    // System.out.println(Integer.toBinaryString(bits3[t][wordNum]));
+                }
+
+                for (int j = thirdBitByteStart; j < thirdBitBytEnd; j++) {
+                    wordNum = (j - thirdBitByteStart) >>> 2;
+                    if (wordNum == unitNum) {
+                        wordNum--;
+                        // System.out.println(String.format("%8s", Integer.toBinaryString(bytes[j] & 0xFF)).replace(' ', '0'));
+                        break;
+                    }
+                    offsetTmp = (j - thirdBitByteStart) - (wordNum << 2);
+                    bits2[i][wordNum] |= (((bytes[j] & 0xFF) << (24 - (offsetTmp << 3) + secondTailLen)));
+                    // System.out.println(String.format("%32s", Integer.toBinaryString(bits3[t][wordNum])).replace(' ', '0'));
+                    if (offsetTmp == 3 && firstTailLen != 0) {
+                        // c = (0x80000000 >> (32 - 8 + firstTailLen - 1));
+                        //System.out.println(String.format("%8s", Integer.toBinaryString(c)).replace(' ', '0'));
+                        bits2[i][wordNum] |= (((bytes[j + 1] & 0xFF)) >>> (8 - secondTailLen));
+                        //byte kk = (byte) ((bytes[j + 1] & 0xFF) & c);
+                        //System.out.println(String.format("%8s", Integer.toBinaryString(kk).replace(' ', '0')));
+                    }
+                    // System.out.println(String.format("%8s", Integer.toBinaryString(bytes[j] & 0xFF)).replace(' ', '0'));
+                }
+
+                //it is necessary when they are more than two bits
+                if (maskInt != 0) {
+                    // System.out.println(Integer.toBinaryString(bits3[t][wordNum]));
+                    bits2[i][wordNum] |= c;
+                    // System.out.println(Integer.toBinaryString(bits3[t][wordNum]));
+                }
+
+                /*
+            for (int j = 0; j < unitNum; j++) {
+                System.out.println(String.format("%32s", Integer.toBinaryString(bits3[t][j])).replace(' ', '0'));
+            }
+            System.out.println();
+                 */
+            }
+            nonNumIndiv = 0;
+            for (int j = 0; j < unitNum; j++) {
+                bits3[i][j] = ~bits3[i][j];
+                bits1[i][j] = (bits1[i][j] & bits3[i][j]);
+                bits2[i][j] = (bits2[i][j] & bits3[i][j]);
+                mean1[i] += (Integer.bitCount(bits1[i][j]) + Integer.bitCount(bits2[i][j]));
+                nonNumIndiv += Integer.bitCount(bits3[i][j]);
+                //System.out.println(String.format("%32s", Integer.toBinaryString(bits1[i][j])).replace(' ', '0'));
+                //System.out.println(String.format("%32s", Integer.toBinaryString(bits2[i][j])).replace(' ', '0'));
+                //System.out.println(String.format("%32s", Integer.toBinaryString(bits3[i][j])).replace(' ', '0'));
+            }
+            hasMissingGty[i] = nonNumIndiv != totalPedSubjectNum;
+            mean1[i] /= (nonNumIndiv << 1);
+        }
+
+    }
+
+    private double getCorrelation(DoubleArrayList xVect, DoubleArrayList yVect) {
+        double meanX = 0.0, meanY = 0.0;
+        for (int i = 0; i < xVect.size(); i++) {
+            meanX += xVect.getQuick(i);
+            meanY += yVect.getQuick(i);
+        }
+
+        meanX /= xVect.size();
+        meanY /= yVect.size();
+
+        double sumXY = 0.0, sumX2 = 0.0, sumY2 = 0.0;
+        for (int i = 0; i < xVect.size(); i++) {
+            sumXY += ((xVect.getQuick(i) - meanX) * (yVect.getQuick(i) - meanY));
+            sumX2 += Math.pow(xVect.getQuick(i) - meanX, 2.0);
+            sumY2 += Math.pow(yVect.getQuick(i) - meanY, 2.0);
+        }
+
+        return (sumXY / (Math.sqrt(sumX2) * Math.sqrt(sumY2)));
+    }
+
+    private void formatUnphasedGenotypesCalCorr(List<Variant> variantList, int[] pedEncodeGytIDMap) {
+        int varSize = variantList.size();
+        int base = 2;
+        int alleleNum = 2;
+        int gtyID;
+        int[] gtys;
+        int[][] genotypes = new int[varSize][];
+        boolean[][] genotypeMissing = new boolean[varSize][];
+        int totalPedSubjectNum = pedEncodeGytIDMap.length;
+        int nonMssingNum = 0;
+        for (int t = 0; t < varSize; t++) {
+            Variant var = variantList.get(t);
+            if (var.getAltAlleles().length > 1) {
+                continue;
+            }
+            genotypeMissing[t] = new boolean[totalPedSubjectNum];
+            genotypes[t] = new int[totalPedSubjectNum];
+            Arrays.fill(genotypes[t], 0);
+            Arrays.fill(genotypeMissing[t], false);
+            nonMssingNum = 0;
+            for (int i = 0; i < totalPedSubjectNum; i++) {
+                gtyID = pedEncodeGytIDMap[i];
+                gtys = BinaryGtyProcessor.getUnphasedGtyAt(var.encodedGty, alleleNum, base, gtyID, totalPedSubjectNum);
+                if (gtys == null) {
+                    genotypeMissing[t][i] = true;
+                    continue;
+                } else if (gtys[0] == 1 && gtys[1] == 1) {
+                    genotypes[t][i] = 2;
+                    // mean1[t] += 2;
+                    //  sum12[t] += 4;
+                } else if (gtys[0] == 1 || gtys[1] == 1) {
+                    genotypes[t][i] = 1;
+                    //  mean1[t]++;
+                    //  sum12[t]++;
+                }
+                nonMssingNum++;
+            }
+            // mean1[t] /= Math.sqrt(nonNumIndiv);
+            //sum12[t] = Math.sqrt(sum12[t] - mean1[t] * mean1[t]);
+        }
+        DoubleArrayList groupA = new DoubleArrayList();
+        DoubleArrayList groupB = new DoubleArrayList();
+        double meanA, meanB, r;
+        Long startTime = System.nanoTime();
+        for (int t = 0; t < varSize; t++) {
+            for (int i = t + 1; i < varSize; i++) {
+                groupB.clear();
+                groupA.clear();
+                for (int k = 0; k < totalPedSubjectNum; k++) {
+                    if (!genotypeMissing[t][k] && !genotypeMissing[i][k]) {
+                        groupA.add(genotypes[t][k]);
+                        groupB.add(genotypes[i][k]);
+                    }
+                }
+                if (groupB.isEmpty()) {
+                    continue;
+                }
+                //meanA = Descriptive.mean(groupA);
+                // meanB = Descriptive.mean(groupB);
+
+                r = getCorrelation(groupA, groupB);
+                if (r > 0.05) {
+                    System.out.print(variantList.get(t).refStartPosition + "\t" + variantList.get(i).refStartPosition + "\t" + r + "\n");
+                }
+            }
+            //System.out.println();
+        }
+        // System.out.println("formatUnphasedGenotypesCalCorr:" + (System.nanoTime() - startTime) / 1000000000.0);
+    }
+
+    private void formatPhasedGenotypesCalLD(List<Variant> variantList, int[] pedEncodeGytIDMap) {
+        int varSize = variantList.size();
+        int base = 3;
+        int alleleNum = 2;
+        int gtyID;
+        int[] gtys;
+        int totalPedSubjectNum = pedEncodeGytIDMap.length;
+        int[][] genotypes = new int[totalPedSubjectNum * 2][];
+        boolean[][] genotypeMissing = new boolean[totalPedSubjectNum][];
+
+        for (int i = 0; i < totalPedSubjectNum; i++) {
+            genotypes[i * 2] = new int[varSize];
+            genotypes[i * 2 + 1] = new int[varSize];
+            genotypeMissing[i] = new boolean[varSize];
+            Arrays.fill(genotypeMissing[i], false);
+            Arrays.fill(genotypes[i * 2], 0);
+            Arrays.fill(genotypes[i * 2 + 1], 0);
+            gtyID = pedEncodeGytIDMap[i];
+
+            for (int t = 0; t < varSize; t++) {
+                Variant var = variantList.get(t);
+                if (var.getAltAlleles().length > 1) {
+                    continue;
+                }
+                gtys = BinaryGtyProcessor.getPhasedGtyAt(var.encodedGty, alleleNum, base, gtyID, totalPedSubjectNum);
+                if (gtys == null) {
+                    genotypeMissing[i][t] = true;
+                } else {
+                    genotypes[i * 2][t] = gtys[0];
+                    genotypes[i * 2 + 1][t] = gtys[1];
+                }
+            }
+        }
+
+        double meanA, meanB, r;
+        Long startTime = System.nanoTime();
+        double freqAB = 0;
+        double freqA = 0;
+        double freqB = 0;
+        int nonMissing = 0;
+        for (int t = 0; t < varSize; t++) {
+            for (int i = t + 1; i < varSize; i++) {
+                freqAB = 0;
+                freqA = 0;
+                freqB = 0;
+                nonMissing = 0;
+                for (int k = 0; k < totalPedSubjectNum; k++) {
+                    if (!genotypeMissing[k][t] && !genotypeMissing[k][i]) {
+                        if (genotypes[k * 2][t] == 1) {
+                            freqA += 1;
+                        }
+                        if (genotypes[k * 2][i] == 1) {
+                            freqB += 1;
+                        }
+                        if (genotypes[k * 2][t] == 1 && genotypes[k * 2][i] == 1) {
+                            freqAB += 1;
+                        }
+                        if (genotypes[k * 2 + 1][t] == 1) {
+                            freqA += 1;
+                        }
+                        if (genotypes[k * 2 + 1][i] == 1) {
+                            freqB += 1;
+                        }
+                        if (genotypes[k * 2 + 1][t] == 1 && genotypes[k * 2 + 1][i] == 1) {
+                            freqAB += 1;
+                        }
+                        nonMissing += 2;
+                    }
+                }
+                freqA = freqA / nonMissing;
+                freqB = freqB / nonMissing;
+                freqAB = freqAB / nonMissing;
+                r = freqAB - freqA * freqB;
+                r = r / Math.sqrt(freqA * (1 - freqA) * freqB * (1 - freqB));
+                if (r > 0.05) {
+                    System.out.print(variantList.get(t).refStartPosition + "\t" + variantList.get(i).refStartPosition + "\t" + r + "\n");
+                }
+            }
+            //System.out.println();
+        }
+        // System.out.println("formatUnphasedGenotypesCalCorr:" + (System.nanoTime() - startTime) / 1000000000.0);
+    }
+
+    public void calculateLDVar(Chromosome chromosome, List<Individual> subjectList,
+            int[] pedEncodeGytIDMap, boolean isPhased, int threadNum, int windowWidth, double minR2, BufferedWriter bwLD) throws Exception {
+        if (chromosome == null) {
+            return;
+        }
+        if (chromosome.variantList == null || chromosome.variantList.isEmpty()) {
+            return;
+        }
+        List<Variant> selectedVariantList = new ArrayList<Variant>();
+        for (Variant var : chromosome.variantList) {
+            //onle consider biallelic variants
+            if (var.getAltAlleles().length > 1) {
+                continue;
+            }
+            selectedVariantList.add(var);
+        }
+        int[] positions = new int[selectedVariantList.size()];
+        for (int i = 0; i < positions.length; i++) {
+            positions[i] = selectedVariantList.get(i).refStartPosition;
+        }
+        String chromName = chromosome.getName();
+        int varSize = selectedVariantList.size();
+        int[][] bits1 = new int[varSize][];
+        int[][] bits2 = new int[varSize][];
+        int[][] bits3 = new int[varSize][];
+        int[][] bits4 = null;
+        double[] mean1 = new double[varSize];
+        int[] sum12 = null;
+        boolean[] hasMissingGty = new boolean[varSize];
+        int totalPedSubjectNum = pedEncodeGytIDMap.length;
+        if (isPhased) {
+            formatBialleleicPhasedBits(selectedVariantList, totalPedSubjectNum, bits1, bits2, bits3, mean1, hasMissingGty);
+            //formatPhasedGenotypesCalLD(selectedVariantList, pedEncodeGytIDMap);
+        } else {
+            bits4 = new int[varSize][];
+            sum12 = new int[varSize];
+            formatBialleleicUnphasedBits(selectedVariantList, totalPedSubjectNum, bits1, bits2, bits3, bits4, mean1, sum12, hasMissingGty);
+            //formatUnphasedGenotypesCalCorr(selectedVariantList, pedEncodeGytIDMap);
+        }
+
+        //cannot be too large
+        //double[] corrs = new double[varSize * (varSize - 1) / 2];
+        int runningThread = 0;
+        // int[] smallBlockIndexes = cc.partitionEvenBlock(size, threadNum > 50 ? threadNum : 50);
+        int[] smallBlockIndexes = partitionEvenBlock(varSize, threadNum * 5);
+        int smallBlockNum = smallBlockIndexes.length - 1;
+        int lastButOneIndex = smallBlockIndexes[smallBlockNum - 1];
+        int lastBlockLen = smallBlockIndexes[smallBlockNum] - smallBlockIndexes[smallBlockNum - 1];
+
+        int blockLen = smallBlockIndexes[1] - smallBlockIndexes[0];
+        int ti = 0;
+        ExecutorService exec = Executors.newFixedThreadPool(threadNum);
+        CompletionService serv = new ExecutorCompletionService(exec);
+        Long startTime = System.nanoTime();
+        for (int i = 0; i < smallBlockNum; i++) {
+            final double[][] rArray = new double[smallBlockNum - i][];
+            runningThread = 0;
+            for (int j = i; j < smallBlockNum; j++) {
+                //always prepare a rectangle
+                rArray[j - i] = new double[(smallBlockIndexes[i + 1] - smallBlockIndexes[i]) * (smallBlockIndexes[j + 1] - smallBlockIndexes[j])];
+                LDCalcTask task = new LDCalcTask(bits1, bits2, bits3, bits4, mean1, sum12, hasMissingGty, totalPedSubjectNum, smallBlockIndexes[i], smallBlockIndexes[i + 1],
+                        smallBlockIndexes[j], smallBlockIndexes[j + 1], rArray[j - i], isPhased);
+                task.setPositionCutoff(positions, windowWidth);
+                serv.submit(task);
+                runningThread++;
+            }
+
+            for (int index = 0; index < runningThread; index++) {
+                Future task1 = serv.take();
+                String infor1 = (String) task1.get();
+                // System.out.println(infor);
+            }
+
+            //unfortunately the last block often have uneven size 
+            //correct for dependency
+            double r;
+            for (int t = smallBlockIndexes[i]; t < smallBlockIndexes[i + 1]; t++) {
+                for (int k = t + 1; k < varSize; k++) {
+                    if (k < lastButOneIndex) {
+                        r = rArray[(k - smallBlockIndexes[i]) / blockLen][(t - smallBlockIndexes[i]) * blockLen + (k - smallBlockIndexes[i]) % blockLen];
+                    } else {
+                        r = rArray[smallBlockNum - i - 1][(t - smallBlockIndexes[i]) * lastBlockLen + k - lastButOneIndex];
+                    }
+                    // corrs[ti] = r;
+                    r = r * r;
+                    if (r > minR2) {
+                        bwLD.write(chromName + "\t" + selectedVariantList.get(t).refStartPosition + "\t" + selectedVariantList.get(k).refStartPosition + "\t" + r + "\n");
+                    }
+                    // tmpFileWriter.write(allData.get(t).id + "\t" + allData.get(k).id + "\t" + r + "\n");
+                    //System.out.print("(" + t + "," + k + ":" + r + ")");
+                    //  System.out.println(ti + ":" + r);
+                    ti++;
+                }
+                //System.out.println();
+            }
+        }//end of  for (int t = 0; t < smallBlockNum; t++)
+        // System.out.println("LDCalcTask:" + (System.nanoTime() - startTime) / 1000000000.0);
+        exec.shutdown();
+
+    }
+
+    public void LDPruneWithinDistance(Chromosome chromosome, List<Individual> subjectList,
+            int[] pedEncodeGytIDMap, boolean isPhased, int threadNum, int windowWidth, double r2, AnnotationSummarySet ass) throws Exception {
+
+        if (chromosome == null) {
+            return;
+        }
+        if (chromosome.variantList == null || chromosome.variantList.isEmpty()) {
+            return;
+        }
+        List<Variant> selectedVariantList = new ArrayList<Variant>();
+
+        for (Variant var : chromosome.variantList) {
+            //onle consider biallelic variants
+            if (var.getAltAlleles().length > 1) {
+                continue;
+            }
+            selectedVariantList.add(var);
+        }
+        int[] positions = new int[selectedVariantList.size()];
+        for (int i = 0; i < positions.length; i++) {
+            positions[i] = selectedVariantList.get(i).refStartPosition;
+        }
+        String chromName = chromosome.getName();
+        int varSize = selectedVariantList.size();
+        int[][] bits1 = new int[varSize][];
+        int[][] bits2 = new int[varSize][];
+        int[][] bits3 = new int[varSize][];
+        int[][] bits4 = null;
+        double[] mean1 = new double[varSize];
+        int[] sum12 = null;
+        boolean[] hasMissingGty = new boolean[varSize];
+        int totalPedSubjectNum = pedEncodeGytIDMap.length;
+        if (isPhased) {
+            formatBialleleicPhasedBits(selectedVariantList, totalPedSubjectNum, bits1, bits2, bits3, mean1, hasMissingGty);
+            //formatPhasedGenotypesCalLD(selectedVariantList, pedEncodeGytIDMap);
+        } else {
+            bits4 = new int[varSize][];
+            sum12 = new int[varSize];
+            formatBialleleicUnphasedBits(selectedVariantList, totalPedSubjectNum, bits1, bits2, bits3, bits4, mean1, sum12, hasMissingGty);
+            //formatUnphasedGenotypesCalCorr(selectedVariantList, pedEncodeGytIDMap);
+        }
+
+        //cannot be too large
+        //double[] corrs = new double[varSize * (varSize - 1) / 2];
+        int runningThread = 0;
+        // int[] smallBlockIndexes = cc.partitionEvenBlock(size, threadNum > 50 ? threadNum : 50);
+        int[] smallBlockIndexes = partitionEvenBlock(varSize, threadNum * 5);
+        int smallBlockNum = smallBlockIndexes.length - 1;
+        int lastButOneIndex = smallBlockIndexes[smallBlockNum - 1];
+        int lastBlockLen = smallBlockIndexes[smallBlockNum] - smallBlockIndexes[smallBlockNum - 1];
+
+        int blockLen = smallBlockIndexes[1] - smallBlockIndexes[0];
+
+        ExecutorService exec = Executors.newFixedThreadPool(threadNum);
+        CompletionService serv = new ExecutorCompletionService(exec);
+        OpenIntIntHashMap redundantVars = new OpenIntIntHashMap();
+        for (int i = 0; i < smallBlockNum; i++) {
+            final double[][] rArray = new double[smallBlockNum - i][];
+            runningThread = 0;
+            for (int j = i; j < smallBlockNum; j++) {
+                //always prepare a rectangle
+                rArray[j - i] = new double[(smallBlockIndexes[i + 1] - smallBlockIndexes[i]) * (smallBlockIndexes[j + 1] - smallBlockIndexes[j])];
+                Arrays.fill(rArray[j - i], 0);
+                LDCalcTask task = new LDCalcTask(bits1, bits2, bits3, bits4, mean1, sum12, hasMissingGty, totalPedSubjectNum, smallBlockIndexes[i], smallBlockIndexes[i + 1],
+                        smallBlockIndexes[j], smallBlockIndexes[j + 1], rArray[j - i], isPhased);
+                task.setPositionCutoff(positions, windowWidth);
+                serv.submit(task);
+                runningThread++;
+            }
+
+            for (int index = 0; index < runningThread; index++) {
+                Future task1 = serv.take();
+                String infor1 = (String) task1.get();
+                // System.out.println(infor);
+            }
+
+            //unfortunately the last block often have uneven size 
+            //correct for dependency
+            double r;
+            for (int t = smallBlockIndexes[i]; t < smallBlockIndexes[i + 1]; t++) {
+                for (int k = t + 1; k < varSize; k++) {
+                    if (k < lastButOneIndex) {
+                        r = rArray[(k - smallBlockIndexes[i]) / blockLen][(t - smallBlockIndexes[i]) * blockLen + (k - smallBlockIndexes[i]) % blockLen];
+                    } else {
+                        r = rArray[smallBlockNum - i - 1][(t - smallBlockIndexes[i]) * lastBlockLen + k - lastButOneIndex];
+                    }
+                    // corrs[ti] = r;
+                    r = r * r;
+                    if (r >= r2) {
+                        if (!redundantVars.containsKey(selectedVariantList.get(t).refStartPosition) && !redundantVars.containsKey(selectedVariantList.get(k).refStartPosition)) {
+                            redundantVars.put(selectedVariantList.get(k).refStartPosition, 0);
+                        }
+                    }
+                    // tmpFileWriter.write(allData.get(t).id + "\t" + allData.get(k).id + "\t" + r + "\n");
+                    //System.out.print("(" + t + "," + k + ":" + r + ")");
+                    //  System.out.println(ti + ":" + r);
+
+                }
+                //System.out.println();
+            }
+        }//end of  for (int t = 0; t < smallBlockNum; t++)
+        // System.out.println("LDCalcTask:" + (System.nanoTime() - startTime) / 1000000000.0);
+        exec.shutdown();
+
+        if (!redundantVars.isEmpty()) {
+            selectedVariantList.clear();
+            selectedVariantList.addAll(chromosome.variantList);
+            chromosome.variantList.clear();
+            for (Variant var : selectedVariantList) {
+                //onle consider biallelic variants
+                if (!redundantVars.containsKey(var.refStartPosition)) {
+                    chromosome.variantList.add(var);
+                }
+            }
+            //System.out.println("On chromosome " + chromName + ", " + redundantVars.size() + " variants in high LD r2>" + r2 + " are removed!");
+            redundantVars.clear();
+            chromosome.buildVariantIndexMap();
+        }
+        //  System.out.println(chromosome.variantList.size());
+        ass.setLeftNum(ass.getLeftNum() + chromosome.variantList.size());
+    }
+
+    public void calculateLDVarComp(Chromosome chromosome, OpenLongObjectHashMap wahBit, List<Individual> subjectList,
+            int[] pedEncodeGytIDMap, boolean isPhased, int threadNum) throws Exception {
+        if (chromosome == null) {
+            return;
+        }
+        if (chromosome.variantList == null || chromosome.variantList.isEmpty()) {
+            return;
+        }
+        List<Variant> selectedVariantList = new ArrayList<Variant>();
+        for (Variant var : chromosome.variantList) {
+            //onle consider biallelic variants
+            if (var.getAltAlleles().length > 1) {
+                continue;
+            }
+            selectedVariantList.add(var);
+        }
+        List<Variant> runningList = new ArrayList<Variant>();
+        int testingSize = 1000;
+        ExecutorService exec = Executors.newFixedThreadPool(threadNum);
+        CompletionService serv = new ExecutorCompletionService(exec);
+        do {
+            for (int s = 0; s < testingSize; s++) {
+                runningList.add(selectedVariantList.get(s));
+            }
+            System.out.println("Testing size: " + testingSize);
+            int varSize = runningList.size();
+            int[][] bits1 = new int[varSize][];
+            int[][] bits2 = new int[varSize][];
+            int[][] bits3 = new int[varSize][];
+            int[][] bits4 = new int[varSize][];
+            double[] sum1 = new double[varSize];
+            int[] sum12 = new int[varSize];
+            boolean[] hasMissingGty = new boolean[varSize];
+            int totalPedSubjectNum = pedEncodeGytIDMap.length;
+            formatBialleleicUnphasedBits(runningList, totalPedSubjectNum, bits1, bits2, bits3, bits4, sum1, sum12, hasMissingGty);
+            //  formatUnphasedGenotypesCalCorr(runningList, pedEncodeGytIDMap);
+            double[] corrs = new double[varSize * (varSize - 1) / 2];
+            int runningThread = 0;
+            // int[] smallBlockIndexes = cc.partitionEvenBlock(size, threadNum > 50 ? threadNum : 50);
+            int[] smallBlockIndexes = partitionEvenBlock(varSize, threadNum * 5);
+            int smallBlockNum = smallBlockIndexes.length - 1;
+            int lastButOneIndex = smallBlockIndexes[smallBlockNum - 1];
+            int lastBlockLen = smallBlockIndexes[smallBlockNum] - smallBlockIndexes[smallBlockNum - 1];
+
+            int blockLen = smallBlockIndexes[1] - smallBlockIndexes[0];
+            int ti = 0;
+
+            Long startTime = System.nanoTime();
+            for (int i = 0; i < smallBlockNum; i++) {
+                final double[][] rArray = new double[smallBlockNum - i][];
+                runningThread = 0;
+                for (int j = i; j < smallBlockNum; j++) {
+                    //always prepare a rectangle
+                    rArray[j - i] = new double[(smallBlockIndexes[i + 1] - smallBlockIndexes[i]) * (smallBlockIndexes[j + 1] - smallBlockIndexes[j])];
+                    LDCalcTask task = new LDCalcTask(bits1, bits2, bits3, bits4, sum1, sum12, hasMissingGty, totalPedSubjectNum, smallBlockIndexes[i], smallBlockIndexes[i + 1],
+                            smallBlockIndexes[j], smallBlockIndexes[j + 1], rArray[j - i], isPhased);
+                    serv.submit(task);
+                    runningThread++;
+                }
+
+                for (int index = 0; index < runningThread; index++) {
+                    Future task1 = serv.take();
+                    String infor1 = (String) task1.get();
+                    // System.out.println(infor);
+                }
+
+                //unfortunately the last block often have uneven size 
+                //correct for dependency
+                double r;
+                for (int t = smallBlockIndexes[i]; t < smallBlockIndexes[i + 1]; t++) {
+                    for (int k = t + 1; k < varSize; k++) {
+                        if (k < lastButOneIndex) {
+                            r = rArray[(k - smallBlockIndexes[i]) / blockLen][(t - smallBlockIndexes[i]) * blockLen + (k - smallBlockIndexes[i]) % blockLen];
+                        } else {
+                            r = rArray[smallBlockNum - i - 1][(t - smallBlockIndexes[i]) * lastBlockLen + k - lastButOneIndex];
+                        }
+                        corrs[ti] = r;
+
+                        // tmpFileWriter.write(allData.get(t).id + "\t" + allData.get(k).id + "\t" + r + "\n");
+                        //System.out.print("(" + t + "," + k + ":" + r + ")");
+                        //  System.out.println(ti + ":" + r);
+                        ti++;
+                    }
+                    //  System.out.println();
+                }
+            }//end of  for (int t = 0; t < smallBlockNum; t++)
+            System.out.println("LDCalcTask：" + (System.nanoTime() - startTime) / 1000000000.0);
+            testingSize += 3000;
+            runningList.clear();
+        } while (testingSize < selectedVariantList.size());
+
+        exec.shutdown();
+
+    }
+
+<<<<<<< HEAD
+    public void addPatho(Chromosome chromosome, AnnotationSummarySet ass, HashMap<String, String[]> hmpPatho, int intPatho) {
+        int intNum = 0;
+        if (chromosome == null) {
+            return;
+        }
+        //exclude the first column
+        intPatho = intPatho - 1;
+        int varFeatureNum = ass.getAvailableFeatureIndex();
+        for (Variant var : chromosome.variantList) {
+            for (int i = 0; i < intPatho; i++) {
+                var.setFeatureValue(varFeatureNum + i, null);
+            }
+        }
+        String[] cells = null;
+        for (Variant var : chromosome.variantList) {
+            if (var.geneSymb == null) {
+                continue;
+            }
+            String strGene = var.geneSymb.toUpperCase();
+            cells = hmpPatho.get(strGene);
+            if (cells == null) {
+                continue;
             }
             for (int i = 0; i < intPatho; i++) {
                 var.setFeatureValue(varFeatureNum + i, hmpPatho.get(strGene)[i]);
@@ -4260,6 +6022,8 @@ public class VariantAnnotator implements Constants {
         ass.setAnnotNum(ass.getAnnotNum() + intNum);
     }
 
+=======
+>>>>>>> origin/master
     public void annotateGenes(Chromosome chromosome, AnnotationSummarySet ass, HashMap<String, String> g2Phe) {
         int intNum = 0;
         if (chromosome == null) {
@@ -4404,7 +6168,6 @@ public class VariantAnnotator implements Constants {
                     }
                     var.setRefGeneAnnot(gf.getName());
                 }
-
             } else if (refGenome.getName().equals("gencode")) {
                 if (varList == null) {
                     return null;
@@ -4451,6 +6214,22 @@ public class VariantAnnotator implements Constants {
                         var.setFeatureValue(featureNum, gf.getInfor());
                     }
                     var.setEnsemblGeneAnnot(gf.getName());
+                }
+            } else {
+                //customized gene feature 
+                if (varList == null) {
+                    return null;
+                }
+                for (Variant var : varList) {
+                    GeneFeature gf = refGenome.getVarFeature(STAND_CHROM_NAMES[chrID], var, true, featureInSet, new RNABoundaryIndex(0));
+
+                    // Feature for UniProtFeature
+                    if (gf.getInfor() == null) {
+                        var.setFeatureValue(featureNum, ".");
+                    } else {
+                        var.setFeatureValue(featureNum, gf.getInfor());
+                    }
+                    var.setCustomizedGeneAnnot(gf.getName());
                 }
             }
             return "";
@@ -4505,13 +6284,30 @@ public class VariantAnnotator implements Constants {
 
         @Override
         public String call() throws Exception {
+<<<<<<< HEAD
+            int funseq2Index = -1;
+=======
+>>>>>>> origin/master
             for (int i = start; i < end; i++) {
                 Variant var = variantArray[i];
                 String mostImportantGeneFeature = org.cobi.kggseq.Constants.VAR_FEATURE_NAMES[var.smallestFeatureID];
                 int index = (Integer) genicMap.get(mostImportantGeneFeature);
                 double[] score = new double[var.scores2.length];
+<<<<<<< HEAD
+                if (funseq2Index < 0) {
+                    funseq2Index = score.length - 3;
+                }
+                for (int j = 0; j < score.length; j++) {
+                    if (j == funseq2Index) {
+//return back the non-log socre of FunSeq2                        
+                        score[j] = Math.log10(var.scores2[j]);
+                    } else {
+                        score[j] = var.scores2[j] + 0.0;
+                    }
+=======
                 for (int j = 0; j < score.length; j++) {
                     score[j] = var.scores2[j] + 0.0;
+>>>>>>> origin/master
                 }
 
                 if (!needVerboseNoncode) {
@@ -4527,11 +6323,18 @@ public class VariantAnnotator implements Constants {
                     tmpP = myRandomForestList[index].getClassifyDistribution(score);
                     if (tmpP[0] == 1) {
                         var.setFeatureValue(featureNum, "Y");
+<<<<<<< HEAD
+                        var.setFeatureValue(featureNum + 1, String.valueOf(tmpP[1]));
+                    } else {
+                        var.setFeatureValue(featureNum, "N");
+                        var.setFeatureValue(featureNum + 1, String.valueOf(tmpP[1]));
+=======
                         var.setFeatureValue(featureNum + 1, tmpP[1] + "");
 
                     } else {
                         var.setFeatureValue(featureNum, "N");
                         var.setFeatureValue(featureNum + 1, tmpP[1] + "");
+>>>>>>> origin/master
                     }
                 } catch (Exception e) {
                     // TODO Auto-generated catch block
@@ -4843,6 +6646,360 @@ public class VariantAnnotator implements Constants {
 //			}
     }
 
+    public String[] noncodingRandomForestGFRegions(Chromosome chroms, boolean needProgressionIndicator,
+            boolean filterNonDisMut, int needThreadNumber, Boolean[] isReigonList,
+            double[] iniScore, String[] currentLineList, int[] fixedPosition,
+            BufferedReader[] lineReaderList, int scoreIndexNum, MyRandomForest[][] myRandomForestList,
+            Map genicMap, boolean needVerboseNoncode,
+            int featureNum, int chromIndex, FiltrationSummarySet dbNoncodePred91) throws Exception {
+        String zeroLabel = ".";
+        String oneLabel = "Y";
+        String missingLabel = "?";
+        ExecutorService executor = Executors.newFixedThreadPool(needThreadNumber);
+        final CompletionService<String> serv = new ExecutorCompletionService<String>(executor);
+        int varLineBufferCounter;
+        int bufferSize = 10000 * needThreadNumber;
+        long lineCounter = 0;
+        // int bufferSize = 5;
+        Variant[] parseVariantArray = new Variant[bufferSize];
+        String cells[];
+        int localIndex = 0;
+        boolean loopAgain = true;
+        int fileLineOutNum = 0;
+        double[] score = null;
+        varLineBufferCounter = 0;
+        List<Variant> tempVarList = new ArrayList<Variant>();
+
+        int totalVarNum = 0;
+        int counterDis = 0;
+        int counterCon = 0;
+
+        boolean continueNextLoci;
+        int localPosition;
+        boolean hasReadNewRow[] = new boolean[isReigonList.length];
+        Arrays.fill(hasReadNewRow, true);
+
+        String[] currentChrom = new String[isReigonList.length];
+        int[] currentStartPos = new int[isReigonList.length];
+        int[] currentEndPos = new int[isReigonList.length];
+
+        int localListSize = chroms.variantList.size();
+        int startPosition, endPosition;
+
+        String[][] cellsTmpStorageList = new String[isReigonList.length][];
+        boolean initializeList[] = new boolean[isReigonList.length];
+        Arrays.fill(initializeList, false);
+        boolean allNA = true;
+        while (loopAgain) {
+            lineCounter++;
+            if (fileLineOutNum == isReigonList.length) {
+                break;
+            }
+            continueNextLoci = true;
+            if (localListSize <= localIndex) {
+                break;
+            }
+
+            Variant var = chroms.variantList.get(localIndex);
+            localPosition = var.refStartPosition;
+
+            for (int j = 0; j < isReigonList.length; j++) {
+                if (hasReadNewRow[j]) {
+                    if (isReigonList[j]) {
+                        if (currentLineList[j] == null) {
+                            continue;
+                        }
+                        cells = Util.tokenize(currentLineList[j], '\t', 2);
+                        currentChrom[j] = cells[0];
+                        currentStartPos[j] = Util.parseInt(cells[1]);
+                        currentEndPos[j] = Util.parseInt(cells[2]);
+                    } else {
+                        if (currentLineList[j] == null) {
+                            continue;
+                        }
+                        cells = Util.tokenize(currentLineList[j], '\t', 2);
+                        currentChrom[j] = cells[0];
+                        currentStartPos[j] = Util.parseInt(cells[2]);
+                    }
+                    if (!initializeList[j]) {
+                        cells = Util.tokenize(currentLineList[j], '\t');
+                        cellsTmpStorageList[j] = new String[cells.length];
+                        initializeList[j] = true;
+                    }
+                }
+
+                if (!STAND_CHROM_NAMES[chromIndex].equals(currentChrom[j])) {
+                    int anchorIndex = 0;
+                    for (int j2 = 0; j2 < STAND_CHROM_NAMES.length; j2++) {
+                        if (STAND_CHROM_NAMES[j2].equals(currentChrom[j])) {
+                            anchorIndex = j2;
+                            break;
+                        }
+                    }
+
+                    if (anchorIndex > chromIndex) {
+                        continue;
+                    } else if (anchorIndex < chromIndex) {
+                        continueNextLoci = false;
+                        if ((currentLineList[j] = lineReaderList[j].readLine()) == null) {
+                            fileLineOutNum += 1;
+                        }
+                        hasReadNewRow[j] = true;
+                        continue;
+                    }
+                }
+                //only consider regions
+                if (isReigonList[j]) {
+                    startPosition = currentStartPos[j];
+                    endPosition = currentEndPos[j];
+                    if (localPosition >= endPosition) {
+                        if ((currentLineList[j] = lineReaderList[j].readLine()) == null) {
+                            fileLineOutNum += 1;
+                        }
+                        continueNextLoci = false;
+                        hasReadNewRow[j] = true;
+                    } else if (localPosition >= startPosition) {
+                        hasReadNewRow[j] = false;
+                        if (score == null) {
+                            score = new double[scoreIndexNum];
+                            System.arraycopy(iniScore, 0, score, 0, iniScore.length);
+                        }
+//                        cells = Util.tokenize(currentLineList[j], '\t');
+                        tokenize(currentLineList[j], '\t', cellsTmpStorageList[j]);
+                        cells = cellsTmpStorageList[j];
+                        for (int k = 3; k < cells.length; k++) {
+                            if (cells[k].equals(oneLabel)) {
+                                score[k - 3 + fixedPosition[j]] = 1.0;
+                            } else if (cells[k].equals(zeroLabel)) {
+                                score[k - 3 + fixedPosition[j]] = 0.0;
+                            } else {
+                                score[k - 3 + fixedPosition[j]] = Util.parseFloat(cells[k]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            String mostImportantGeneFeature = org.cobi.kggseq.Constants.VAR_FEATURE_NAMES[var.smallestFeatureID];
+            if (continueNextLoci || fileLineOutNum == isReigonList.length) {
+                localIndex++;
+<<<<<<< HEAD
+                if (genicMap.containsKey(mostImportantGeneFeature)) {
+                    if (score != null) {
+                        float[] tmpScores = Arrays.copyOf(var.scores2, var.scores2.length);
+                        var.scores2 = new float[score.length + tmpScores.length];
+                        for (int k = 0; k < score.length; k++) {
+                            var.scores2[k] = (float) score[k];
+                        }
+                        System.arraycopy(tmpScores, 0, var.scores2, score.length, tmpScores.length);
+                    } else {
+                        allNA = true;
+                        for (int i = 0; i < var.scores2.length; i++) {
+                            if (!Float.isNaN(var.scores2[i])) {
+                                allNA = false;
+                                break;
+=======
+                if (score != null) {
+                    String mostImportantGeneFeature = org.cobi.kggseq.Constants.VAR_FEATURE_NAMES[var.smallestFeatureID];
+                    if (genicMap.containsKey(mostImportantGeneFeature)) {
+                        var.scores2 = new float[score.length];
+                        for (int k = 0; k < score.length; k++) {
+                            var.scores2[k] = (float) score[k];
+                        }
+                        parseVariantArray[varLineBufferCounter++] = var;
+                        if (varLineBufferCounter >= bufferSize) {
+                            int[] blocks = partitionEvenBlock(needThreadNumber, 0, varLineBufferCounter);
+                            int blockNum = blocks.length - 1;
+                            int runningThread = 0;
+                            for (int s = 0; s < blockNum; s++) {
+                                NoncodingRandomForestGFCTask task = new NoncodingRandomForestGFCTask(myRandomForestList[s], genicMap, featureNum, blocks[s], blocks[s + 1], parseVariantArray, needVerboseNoncode);
+                                serv.submit(task);
+                                runningThread++;
+>>>>>>> origin/master
+                            }
+                        }
+                        float[] tmpScores = Arrays.copyOf(var.scores2, var.scores2.length);
+                        var.scores2 = new float[scoreIndexNum + tmpScores.length];
+                        //Arrays.fill(var.scores2, Float.NaN);
+                        Arrays.fill(var.scores2, 0);
+                        System.arraycopy(tmpScores, 0, var.scores2, scoreIndexNum, tmpScores.length);
+
+                        if (allNA) {
+                            tempVarList.add(var);
+                            var.setFeatureValue(featureNum, null);
+                            var.setFeatureValue(featureNum + 1, null);
+
+                            /*
+                            if (needVerboseNoncode) {
+                                for (int i = 0; i < scoreIndexNum; i++) {
+                                    var.scores2[i] = 0;
+                                }
+                                for (int i = scoreIndexNum; i < scoreIndexNum + 10; i++) {
+                                    var.scores2[i] = Float.NaN;
+                                }
+                            } 
+                             */
+                            continue;
+                        }
+                    }
+                    parseVariantArray[varLineBufferCounter++] = var;
+                    if (varLineBufferCounter >= bufferSize) {
+                        int[] blocks = partitionEvenBlock(needThreadNumber, 0, varLineBufferCounter);
+                        int blockNum = blocks.length - 1;
+                        int runningThread = 0;
+                        for (int s = 0; s < blockNum; s++) {
+                            NoncodingRandomForestGFCTask task = new NoncodingRandomForestGFCTask(myRandomForestList[s], genicMap, featureNum, blocks[s], blocks[s + 1], parseVariantArray, needVerboseNoncode);
+                            serv.submit(task);
+                            runningThread++;
+                        }
+                        for (int s = 0; s < runningThread; s++) {
+                            Future<String> task = serv.take();
+                            String infor = task.get();
+                            // System.out.println(infor);
+                        }
+
+                        for (int s = 0; s < varLineBufferCounter; s++) {
+                            var = parseVariantArray[s];
+                            if (var.featureValues[featureNum] == null) {
+                                if (filterNonDisMut) {
+                                    tempVarList.add(var);
+                                }
+                            } else if (var.featureValues[featureNum].equals("Y")) {
+                                if (filterNonDisMut) {
+                                    tempVarList.add(var);
+                                }
+                                counterDis += 1;
+                            } else {
+                                counterCon += 1;
+                            }
+
+                            //remove the epigenomic scores from scores2
+                            if (!needVerboseNoncode && var.scores2.length > 10) {
+                                float[] tmpScores = Arrays.copyOf(var.scores2, 10);
+                                var.scores2 = new float[scoreIndexNum + tmpScores.length];
+                                //Arrays.fill(var.scores2, Float.NaN);
+                                Arrays.fill(var.scores2, 0);
+                                System.arraycopy(tmpScores, 0, var.scores2, scoreIndexNum, tmpScores.length);
+                            }
+<<<<<<< HEAD
+=======
+
+                            for (int s = 0; s < varLineBufferCounter; s++) {
+                                var = parseVariantArray[s];
+                                if (var.featureValues[featureNum] == null) {
+                                    if (filterNonDisMut) {
+                                        tempVarList.add(var);
+                                    }
+                                } else if (var.featureValues[featureNum].equals("Y")) {
+                                    if (filterNonDisMut) {
+                                        tempVarList.add(var);
+                                    }
+                                    counterDis += 1;
+                                } else {
+                                    counterCon += 1;
+                                }
+                            }
+                            varLineBufferCounter = 0;
+>>>>>>> origin/master
+                        }
+                        varLineBufferCounter = 0;
+                    }
+                } else {
+                    tempVarList.add(var);
+                    var.setFeatureValue(featureNum, null);
+                    var.setFeatureValue(featureNum + 1, null);
+
+                    var.scores2 = new float[scoreIndexNum + var.scores2.length];
+                    Arrays.fill(var.scores2, Float.NaN);
+
+                }
+                score = null;
+            }
+        }
+
+        if (varLineBufferCounter > 0) {
+            int[] blocks = partitionEvenBlock(needThreadNumber, 0, varLineBufferCounter);
+            int blockNum = blocks.length - 1;
+            int runningThread = 0;
+            for (int s = 0; s < blockNum; s++) {
+                serv.submit(new NoncodingRandomForestGFCTask(myRandomForestList[s], genicMap, featureNum, blocks[s], blocks[s + 1], parseVariantArray, needVerboseNoncode));
+                runningThread++;
+            }
+
+            for (int s = 0; s < runningThread; s++) {
+                Future task = serv.take();
+                String infor = (String) task.get();
+                // System.out.println(infor);
+            }
+            for (int s = 0; s < varLineBufferCounter; s++) {
+                Variant var = parseVariantArray[s];
+                if (var.featureValues[featureNum] == null) {
+                    if (filterNonDisMut) {
+                        tempVarList.add(var);
+                    }
+                } else if (var.featureValues[featureNum].equals("Y")) {
+                    if (filterNonDisMut) {
+                        tempVarList.add(var);
+                    }
+                    counterDis += 1;
+                } else {
+                    counterCon += 1;
+                }
+<<<<<<< HEAD
+
+                //remove the epigenomic scores from scores2
+                if (!needVerboseNoncode && var.scores2.length > 10) {
+                    float[] tmpScores = Arrays.copyOf(var.scores2, 10);
+                    var.scores2 = new float[scoreIndexNum + tmpScores.length];
+                    //Arrays.fill(var.scores2, Float.NaN);
+                    Arrays.fill(var.scores2, 0);
+                    System.arraycopy(tmpScores, 0, var.scores2, scoreIndexNum, tmpScores.length);
+                }
+
+            }
+
+=======
+            }
+>>>>>>> origin/master
+            varLineBufferCounter = 0;
+        }
+
+        if (filterNonDisMut) {
+            chroms.variantList.clear();
+            chroms.setHasNotOrderVariantList(true);
+            chroms.variantList.addAll(tempVarList);
+            totalVarNum += tempVarList.size();
+            tempVarList.clear();
+            chroms.buildVariantIndexMap();
+        }
+
+        dbNoncodePred91.increaseCount(0, counterDis);
+        dbNoncodePred91.increaseCount(1, counterCon);
+        dbNoncodePred91.increaseCount(2, totalVarNum);
+
+        executor.shutdown();
+
+        return currentLineList;
+<<<<<<< HEAD
+    }
+
+    private class NonCodingPredicLJTask extends Task implements Callable<String> {
+=======
+//			genome.buildVariantIndexMapOnChromosomes();
+//			StringBuilder info = new StringBuilder("The number of predicted disease-causal and non-disease-causal variants are " + counterDis + "(#gene " + geneSymbSet.size()
+//				+ ") and " + counterCon + " among " + genome.getVarNum() + " variants on the genome according to the Random Forests prediction model");
+        // info.append(" trained by ExoVar dataset (http://grass.cgs.hku.hk/limx/kggseq/download/ExoVar.xls).");
+        // info.append(" trained by COSMIC dataset (http://cancer.sanger.ac.uk/cancergenome/projects/cosmic/).");
+//			LOG.info(info);
+
+//			if (filterNonDisMut) {
+//				genome.setVarNum(totalVarNum);
+//				info.delete(0, info.length());
+//				info.append(totalVarNum).append(" variant(s) are left after filtered by the disease mutation prediction.");
+//				LOG.info(info);
+//			}
+    }
+
     public void noncodingCellTypeSpecificPrediction(Chromosome chrom, boolean needProgressionIndicator, BufferedReader[] lineReaderList,
             Bayes bayesPredictor, int chromID, int startFeatureNum, int allFeatureNum) throws NumberFormatException, IOException {
         String cells[] = null;
@@ -4877,11 +7034,67 @@ public class VariantAnnotator implements Constants {
         }
         boolean continueNextLoci;
         localListSize = chrom.variantList.size();
+>>>>>>> origin/master
 
-        if (needProgressionIndicator) {
-            //  System.out.print("Parsing Chrom" + STAND_CHROM_NAMES[chromID] + ", ");
+        List<Variant> varList;
+        Bayes bayesPredictor;
+        int startFeatureNum;
+        int[] effeIndexes;
+        double[] baye1NonCodingPredic;
+        double[] baye2NonCodingPredic;
+        String chromName;
+        boolean doCellType;
+
+        public NonCodingPredicLJTask(List<Variant> varList, Bayes bayesPredictor, int startFeatureNum, int[] effeIndexes,
+                double[] baye1NonCodingPredic, double[] baye2NonCodingPredic, String chromName, boolean docellType) {
+            this.varList = varList;
+            this.bayesPredictor = bayesPredictor;
+            this.startFeatureNum = startFeatureNum;
+            this.effeIndexes = effeIndexes;
+            this.baye1NonCodingPredic = baye1NonCodingPredic;
+            this.baye2NonCodingPredic = baye2NonCodingPredic;
+            this.chromName = chromName;
+            this.doCellType = docellType;
         }
 
+<<<<<<< HEAD
+        @Override
+        public String call() throws Exception {
+            int localListSize = varList.size();
+            float cell_p;
+            for (int i = 0; i < localListSize; i++) {
+                Variant var = varList.get(i);
+
+                double[] scores = bayesPredictor.getBayesScoreCompsit(var.scores2, effeIndexes, baye1NonCodingPredic, baye2NonCodingPredic);
+                if (Double.isNaN(scores[0])) {
+                    var.setFeatureValue(startFeatureNum, ".");
+                } else {
+                    var.setFeatureValue(startFeatureNum, String.valueOf(scores[0]));
+                }
+                //cell-type specific
+                if (doCellType) {
+                    cell_p = bayesPredictor.getCellSpecificScore(chromName, var.refStartPosition);
+                    //sb.append(cell_p + "\t" + composite_p * cell_p / 0.5); 
+                    if (Double.isNaN(scores[1])) {
+                        var.setFeatureValue(startFeatureNum + 1, ".");
+                        var.setFeatureValue(startFeatureNum + 2, ".");
+                        var.setFeatureValue(startFeatureNum + 3, ".");
+                    } else {
+                        var.setFeatureValue(startFeatureNum + 1, String.valueOf(scores[1]));
+                        if (Float.isNaN(cell_p)) {
+                            var.setFeatureValue(startFeatureNum + 2, ".");
+                            var.setFeatureValue(startFeatureNum + 3, ".");
+                        } else {
+                            var.setFeatureValue(startFeatureNum + 2, String.valueOf(cell_p));
+                            var.setFeatureValue(startFeatureNum + 3, String.valueOf(cell_p * scores[1] / 0.5));
+                        }
+                    }
+
+                } else if (Double.isNaN(scores[1])) {
+                    var.setFeatureValue(startFeatureNum + 1, ".");
+                } else {
+                    var.setFeatureValue(startFeatureNum + 1, String.valueOf(scores[1]));
+=======
         while (loopAgain) {
             lineCounter++;
             if (needProgressionIndicator && lineCounter % 100000 == 0) {
@@ -4938,26 +7151,66 @@ public class VariantAnnotator implements Constants {
                         Arrays.fill(score, Double.NaN);
                     }
                     score[j] = currentScore[j];
+>>>>>>> origin/master
                 }
             }
-            if (continueNextLoci || fileLineOutNum == lineReaderList.length) {
-                if (score != null) {
-                    String annotationBayes = bayesPredictor.getBayesScore(score, bayesPredictor.getCellSpecificScore(STAND_CHROM_NAMES[chromID], var.refStartPosition));
-                    String outputList[] = annotationBayes.split("\t");
-                    for (int index = startFeatureNum; index < allFeatureNum; index++) {
-                        var.setFeatureValue(index, outputList[index - startFeatureNum]);
+            return "";
+        }
+    }
+
+    public void noncodingCompositPredictionMultiThread(Chromosome chrom, int[] effeIndexes,
+            Bayes bayesPredictor, int startFeatureNum, int threadNum, double[] baye1NonCodingPredic,
+            double[] baye2NonCodingPredic, boolean calCellType) {
+        List<Variant> varList = chrom.variantList;
+
+        if (varList.isEmpty()) {
+            return;
+        }
+
+        String currentLine = null;
+        try {
+            // System.out.println(" Chromosome " + chromosome.getName() + " " + rsFile.getName());
+            // Options.REF_CHROM_NAMES[t]);
+            int varSize = varList.size();
+            int[] bounderies = partitionEvenBlock(varSize, threadNum);
+            int actualThreadNum = bounderies.length - 1;
+
+            ExecutorService exec = Executors.newFixedThreadPool(actualThreadNum);
+            final CompletionService<String> serv = new ExecutorCompletionService<String>(exec);
+            int runningThread = 0;
+
+            for (int f = 1; f < bounderies.length; f++) {
+                NonCodingPredicLJTask varTaks = new NonCodingPredicLJTask(varList.subList(bounderies[f - 1], bounderies[f]), bayesPredictor, startFeatureNum, effeIndexes,
+                        baye1NonCodingPredic, baye2NonCodingPredic, chrom.getName(), calCellType) {
+                    @Override
+                    protected void fireTaskComplete() {
+
                     }
-                } else {
-                    for (int index = startFeatureNum; index < allFeatureNum; index++) {
-                        var.setFeatureValue(index, ".");
-                    }
+<<<<<<< HEAD
+                };
+                serv.submit(varTaks);
+                runningThread++;
+            }
+
+            for (int s = 0; s < runningThread; s++) {
+                Future<String> task = serv.take();
+                String infor = task.get();
+                // System.out.println(infor);
+            }
+            exec.shutdown();
+
+        } catch (Exception ex) {
+            if (currentLine != null) {
+                System.err.println("Errors in a row: " + currentLine);
+=======
                 }
                 localIndex++;
                 score = null;
 
+>>>>>>> origin/master
             }
+            ex.printStackTrace();
         }
-        // System.out.println("finished");
     }
 
     class RiskPredictionRandomForestTask extends Task implements Callable<String> {
@@ -5330,6 +7583,7 @@ public class VariantAnnotator implements Constants {
                         continue;
                     }
                     geneSet.add(geneSymb);
+<<<<<<< HEAD
 
                     index = item.lastIndexOf(':');
                     if (index > 0) {
@@ -5353,6 +7607,31 @@ public class VariantAnnotator implements Constants {
                         mutNums[1] += (het + 2 * hom);
                     }
 
+=======
+
+                    index = item.lastIndexOf(':');
+                    if (index > 0) {
+                        feature = item.substring(index + 1);
+                    }
+                    featureID = geneFeatureMap.get(feature);
+                    double[] mutNums = geneMutNum.get(geneSymb);
+                    if (mutNums == null) {
+                        mutNums = new double[2];
+                        Arrays.fill(mutNums, 0);
+                        geneMutNum.put(geneSymb, mutNums);
+                    }
+                    // non-synonemous preidcted as Y, non-synonemous preidcted
+                    // as N, synonemous
+                    if (dependentGeneFeature.contains(featureID)) {
+                        // only do it for missense variants; many stop loss
+                        // variants have no proection at loss of function
+                        // variants
+                        mutNums[0] += (het + 2 * hom);
+                    } else if (independentGeneFeature.contains(featureID)) {
+                        mutNums[1] += (het + 2 * hom);
+                    }
+
+>>>>>>> origin/master
                     if (!allAvailableGeneSet.contains(geneSymb)) {
                         geneList.add(new Gene(geneSymb));
                         allAvailableGeneSet.add(geneSymb);
@@ -5384,12 +7663,14 @@ public class VariantAnnotator implements Constants {
         List<CombOrders> combOrderList;
         List<String> names;
         int geneFeatureNum;
+        int bestModelNum;
 
-        public RiskPredictionLogisticTask(List<CombOrders> combOrderList, List<String> names, List<Variant> variantList, int geneFeatureNum) {
+        public RiskPredictionLogisticTask(List<CombOrders> combOrderList, int bestModelNum, List<String> names, List<Variant> variantList, int geneFeatureNum) {
             this.variantList = variantList;
             this.combOrderList = combOrderList;
             this.names = names;
             this.geneFeatureNum = geneFeatureNum;
+            this.bestModelNum = bestModelNum;
         }
 
         @Override
@@ -5432,8 +7713,7 @@ public class VariantAnnotator implements Constants {
                     bestP = 0;
                     isDeleteriousness = false;
                     tmpStrB.delete(0, tmpStrB.length());
-
-                    for (int t = combListSize - 1; t >= 0; t--) {
+                    for (int t = combListSize - 1; t >= combListSize - bestModelNum; t--) {
                         CombOrders cmbOrder = combOrderList.get(t);
                         /*
                          * if
@@ -5441,6 +7721,8 @@ public class VariantAnnotator implements Constants {
                          * combOrderList.get(t).indexes.size()!=2) { continue; }
                          */
 
+<<<<<<< HEAD
+=======
  /*
                          * //directly use the probability to decide //require
                          * Pholyph and MuationTast at least logicCount = 0;
@@ -5453,6 +7735,7 @@ public class VariantAnnotator implements Constants {
                          * (cmbOrder.indexes.contains(6)) { logicCount++; } if
                          * (logicCount == 0) { continue; }
                          */
+>>>>>>> origin/master
                         paramIndexes.clear();
                         if (dataIndexes.containsAll(cmbOrder.indexes)) {
                             paramIndexes.addAll(cmbOrder.indexes);
@@ -5509,7 +7792,6 @@ public class VariantAnnotator implements Constants {
                         if (tmpRP == null) {
                             // keep varaint have no risk scores which may be
                             // safer
-
                             var.setFeatureValue(geneFeatureNum, null);
                             var.setFeatureValue(geneFeatureNum + 1, null);
                             var.setFeatureValue(geneFeatureNum + 2, null);
@@ -5544,17 +7826,19 @@ public class VariantAnnotator implements Constants {
         }
     }
 
-    public void riskPredictionRareDiseaseAll(Chromosome chromosome, List<CombOrders> combOrderList, boolean filterNonDisMut, List<String> names, int maxThreadNum, FiltrationSummarySet dbNSFPMendelPred) throws Exception {
+    public void riskPredictionRareDiseaseAll(Chromosome chromosome, List<CombOrders> combOrderList, int bestModelNum, boolean filterNonDisMut, List<String> names, int maxThreadNum, FiltrationSummarySet dbNSFPMendelPred) throws Exception {
         // humvar predict
         double[] priors = new double[]{0.05, 0.01, 0.0001};
         double[] mafBins = new double[]{0.01, 0.02, 0.03};
-        double prior;
 
+<<<<<<< HEAD
+=======
         List<Integer> paramIndexes = new ArrayList<Integer>();
         OpenIntIntHashMap dataIndexes = new OpenIntIntHashMap();
         int combListSize = combOrderList.size();
         List<Variant> keptVarList = new ArrayList<Variant>();
         int totalVarNum = 0;
+>>>>>>> origin/master
         Set<String> geneSymbSet = new HashSet<String>();
 
         int counterDis = 0;
@@ -5581,7 +7865,7 @@ public class VariantAnnotator implements Constants {
         int blockNum = blocks.length - 1;
         int runningThread = 0;
         for (int s = 0; s < blockNum; s++) {
-            RiskPredictionLogisticTask task = new RiskPredictionLogisticTask(combOrderList, names, chromosome.variantList.subList(blocks[s], blocks[s + 1]), geneFeatureNum);
+            RiskPredictionLogisticTask task = new RiskPredictionLogisticTask(combOrderList, bestModelNum, names, chromosome.variantList.subList(blocks[s], blocks[s + 1]), geneFeatureNum);
             serv.submit(task);
             runningThread++;
         }
@@ -5593,14 +7877,15 @@ public class VariantAnnotator implements Constants {
         }
 
         exec.shutdown();
-
+        List<Variant> keptVarList = new ArrayList<Variant>();
+        int totalVarNum = 0;
         for (Variant var : chromosome.variantList) {
             if (var.featureValues[geneFeatureNum + 1] == null) {
                 if (filterNonDisMut) {
                     keptVarList.add(var);
                 }
             } else if (var.featureValues[geneFeatureNum + 1].equals("Y")) {
-                counterDis += 1;
+                counterDis++;
                 if (filterNonDisMut) {
                     keptVarList.add(var);
                 }
@@ -5613,14 +7898,14 @@ public class VariantAnnotator implements Constants {
                 if (var.smallestFeatureID != 6) {
                     keptVarList.add(var);
                 }
-                counterCon += 1;
+                counterCon++;
             }
         }
 
         if (filterNonDisMut) {
             chromosome.variantList.clear();
             chromosome.variantList.addAll(keptVarList);
-            totalVarNum += keptVarList.size();
+            totalVarNum = keptVarList.size();
             keptVarList.clear();
             chromosome.buildVariantIndexMap();
         }

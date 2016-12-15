@@ -28,7 +28,11 @@ import org.cobi.kggseq.GlobalManager;
 import org.cobi.kggseq.entity.Genome;
 import org.cobi.kggseq.entity.Individual;
 import org.cobi.kggseq.entity.Variant;
+<<<<<<< HEAD
+import org.cobi.util.text.BZPartReader;
+=======
 import org.cobi.util.text.BGZFInputStream.BZPartReader;
+>>>>>>> origin/master
 
 import org.cobi.util.text.Util;
 import org.cobi.util.thread.Task;
@@ -89,6 +93,10 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
     private boolean needGty;
     private boolean needReadsInfor;
     private boolean needGtyQual;
+<<<<<<< HEAD
+    private boolean forced2Unphased;
+=======
+>>>>>>> origin/master
 
     //result variables
     private int ignoredLowQualGtyNum = 0;
@@ -157,6 +165,7 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
     private int g11 = 0, g12 = 0, g22 = 0;
     private int indexA, indexB;
     private boolean isLowQualBreak = false;
+<<<<<<< HEAD
 
     private boolean isIndel = false;
     private boolean isInvalid = false;
@@ -201,6 +210,52 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
         return ignoredVarByRegionsInNum;
     }
 
+=======
+
+    private boolean isIndel = false;
+    private boolean isInvalid = false;
+    private int alleleNum = 0;
+
+    private int maxIndex2 = -1;
+    private int ii = 0;
+    private String tmpStr = null;
+
+    private boolean isRegionInModel = false;
+    private boolean isRegionOutModel = false;
+
+    private StringBuilder tmpSB = new StringBuilder();
+    private BufferedWriter[] vcfWriters;
+    private int[][] regionsIn;
+    private int[][] regionsOut;
+    private boolean hasChrLabel = false;
+
+    public boolean isHasChrLabel() {
+        return hasChrLabel;
+    }
+
+    public void setRegionsIn(int[][] regions) {
+        if (regions != null) {
+            isRegionInModel = true;
+            regionsIn = regions;
+        }
+    }
+
+    public int getMaxEffectiveColVCF() {
+        return maxEffectiveColVCF;
+    }
+
+    public void setRegionsOut(int[][] regions) {
+        if (regions != null) {
+            isRegionOutModel = true;
+            regionsOut = regions;
+        }
+    }
+
+    public int getIgnoredVarByRegionsInNum() {
+        return ignoredVarByRegionsInNum;
+    }
+
+>>>>>>> origin/master
     public int getIgnoredVarByRegionsOutNum() {
         return ignoredVarByRegionsOutNum;
     }
@@ -657,6 +712,9 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
         }
 
         while (j >= 0 && j <= endI) {
+            if (wordCount >= indexes.length) {
+                break;
+            }
             indexes[wordCount] = j;
             wordCount++;
             i = j + 1;
@@ -670,7 +728,9 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
         }
 
         if (i <= endI) {
-            // tempInt[wordCount++] = i;
+            if (wordCount >= indexes.length) {
+                wordCount = indexes.length - 1;
+            }
             indexes[wordCount] = endI;
         }
         return wordCount + 1;
@@ -759,6 +819,7 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
         //'e':101
         //'E':69
         //' ': 32
+        
         while (s[i] == 32) {
             i++;
         }
@@ -852,7 +913,11 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
             //String[] cellDelimts = new String[maxEffectiveColVCF + 1];
             String inforS = null;
 
+<<<<<<< HEAD
+            int[] cellsBT = new int[maxGtyAlleleNum + 1 > 10 ? maxGtyAlleleNum + 1 : 10];
+=======
             int[] cellsBT = new int[maxGtyAlleleNum + 1 > 20 ? maxGtyAlleleNum + 1 : 20];
+>>>>>>> origin/master
 
             int[] cellsPL = new int[maxGtyAlleleNum * maxGtyAlleleNum + 1];
             int len;
@@ -870,6 +935,13 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
             int sc = 0;
             int subjectNum;
             boolean hasNotCheckedPhase = true;
+<<<<<<< HEAD
+            if (forced2Unphased) {
+                hasNotCheckedPhase = false;
+                isPhased = false;
+            }
+=======
+>>>>>>> origin/master
             Integer chromID;
             boolean isWithinRegion;
             int vcfID;
@@ -952,10 +1024,13 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                     }
                 }
 
+<<<<<<< HEAD
+=======
                 /*
                  if (makerPostion == 56102470) {
                  int sss = 0;
                  }*/
+>>>>>>> origin/master
                 //indexID=2
                 sByte = Arrays.copyOfRange(currentLine, cellDelimts[indexID] + 1, cellDelimts[indexID + 1]);
                 varLabel = new String(sByte);
@@ -1236,7 +1311,11 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                         if (gtyQualityThrehsold > 0) {
                             gtyQualIndexInInfor = ii;
                             hasIndexGQ = true;
+<<<<<<< HEAD
+                            maxIndex2 = ii;
+=======
                             maxIndex2 = ii;                            
+>>>>>>> origin/master
                             Arrays.fill(gtyQuality, Integer.MAX_VALUE);
                         }
                     } else if (equal(currentLine, ii == 0 ? formatCellIndexes[ii] : formatCellIndexes[ii] + 1, formatCellIndexes[ii + 1], dpBytes)) {
@@ -1300,7 +1379,11 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
 
                     Arrays.fill(formatCellIndexes, -1);
                     tokenizeDelimiter(currentLine, cellDelimts[s] + 1, cellDelimts[s + 1], (byte) 58, formatCellIndexes);
+<<<<<<< HEAD
+
+=======
                     
+>>>>>>> origin/master
                     //Sometimes, the forma is 
                     if (gtyIndexInInfor >= 0 && formatCellIndexes[gtyIndexInInfor] > 0 && formatCellIndexes[gtyIndexInInfor + 1] > 0) {
                         if (hasNotCheckedPhase) {
@@ -1314,7 +1397,10 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                                 isPhased = false;
                                 hasNotCheckedPhase = false;
                             }
+<<<<<<< HEAD
+=======
 
+>>>>>>> origin/master
                         }
 //Note this function is slower
 //sByte = Arrays.copyOfRange(currentLine, cellDelimts[s] + 1, cellDelimts[s + 1]);
@@ -1356,13 +1442,23 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                                 readCounts[(iGty << 1) + 1] = gtyDepth[iGty] - readCounts[(iGty << 1)];
                             }
                         }
-
+                    }else{
+                        /*
+                        //Sometimes the format is like this: GT:AD:DP:GQ:PL	0/0:27,0:27:81:0,81,898	0/1:17,16:.:99:397,0,416                        
+                        if (gtyDepth[iGty] <= 0) {
+                            gtyDepth[iGty] = (readCounts[(iGty << 1)] + readCounts[(iGty << 1) + 1]);
+                        }
+                        */
                     }
 
                     // the format is a little bit compex. e.g., GT:AD:DP:GQ:PL	3/3:0,0,0,40:60:56:1200,1307,1629,1257,1440,1527,56,93,139,0
                     if (gtyAlleleDepthIndexInInfor >= 0 && formatCellIndexes[gtyAlleleDepthIndexInInfor] > 0 && formatCellIndexes[gtyAlleleDepthIndexInInfor + 1] > 0) {
                         if (currentLine[gtyAlleleDepthIndexInInfor == 0 ? formatCellIndexes[gtyAlleleDepthIndexInInfor] : formatCellIndexes[gtyAlleleDepthIndexInInfor] + 1] != 46) {
                             Arrays.fill(cellsBT, -1);
+<<<<<<< HEAD
+
+=======
+>>>>>>> origin/master
                             len = tokenizeDelimiter(currentLine, gtyAlleleDepthIndexInInfor == 0 ? formatCellIndexes[gtyAlleleDepthIndexInInfor] : formatCellIndexes[gtyAlleleDepthIndexInInfor] + 1, formatCellIndexes[gtyAlleleDepthIndexInInfor + 1], (byte) 44, cellsBT);
                             if (len < 3) {
                                 indexA = -1;
@@ -1387,8 +1483,12 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                                     readCounts[(iGty << 1) + 1] += sc;
                                 }
                             }
+<<<<<<< HEAD
+                        }                        
+=======
                         }
 
+>>>>>>> origin/master
                     }
                     if (gtyAltAlleleFracIndexInInfor >= 0 && formatCellIndexes[gtyAltAlleleFracIndexInInfor] > 0 && formatCellIndexes[gtyAltAlleleFracIndexInInfor + 1] > 0) {
                         if (currentLine[gtyAltAlleleFracIndexInInfor == 0 ? formatCellIndexes[gtyAltAlleleFracIndexInInfor] : formatCellIndexes[gtyAltAlleleFracIndexInInfor] + 1] == 46) {
@@ -1465,7 +1565,11 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                  }
                  * 
                  */
+<<<<<<< HEAD
+                //QC             
+=======
                 //QC
+>>>>>>> origin/master
                 obsS = genotypeQC();
                 /*
                  if (obsS == 0) {
@@ -1538,14 +1642,23 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                 }
 
                 if (needReadsInfor) {
+<<<<<<< HEAD
+                    var.readInfor = new char[totalPedSubjectNum * 2];
+=======
                     var.readInfor = new char[effectiveIndivNum * 2];
+>>>>>>> origin/master
                     //two chars for a gty 
+
                     for (index = 0; index < totalPedSubjectNum; index++) {
                         vcfID = pedVCFIDMap[index];
                         if (vcfID < 0) {
                             continue;
                         }
 
+<<<<<<< HEAD
+                        vcfID = vcfID << 1;
+=======
+>>>>>>> origin/master
                         var.readInfor[(pedEncodeGytID[index] << 1)] = (char) readCounts[(vcfID)];
                         var.readInfor[(pedEncodeGytID[index] << 1) + 1] = (char) readCounts[(vcfID) + 1];
                     }
@@ -1672,7 +1785,10 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                     writeChromosomeToDiskClean();
                     acceptVarNum = 0;
                 }
+<<<<<<< HEAD
+=======
 
+>>>>>>> origin/master
             }
 
             if (acceptVarNum > 0) {
@@ -1736,11 +1852,22 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
 
             if (hasIndexAD || hasIndexFA) {
                 if (gtys[(index << 1)] == 0 && gtys[(index << 1) + 1] == 0) {
+<<<<<<< HEAD
+                    if (altAlleleFracRefHomThrehsold < 1 && readCounts[(index << 1)] != -1) {
+                        /*                        
+                         //the AD infor may be missing
+                        // unforturnately a lot of AD are missing in some vcf formats
+                        if (readCounts[(index << 1)] == -1 && Float.isNaN(readFractions[index])) {
+                            continue;
+                        }
+                         */
+=======
                     if (altAlleleFracRefHomThrehsold < 1) {
                         //the AD infor may be missing
                         if (readCounts[(index << 1)] == -1 && Float.isNaN(readFractions[index])) {
                             continue;
                         }
+>>>>>>> origin/master
                         if (Float.isNaN(readFractions[index])) {
                             readFractions[index] = (float) (((double) readCounts[(index << 1) + 1]) / (readCounts[(index << 1)] + readCounts[(index << 1) + 1]));
                         }
@@ -1759,11 +1886,22 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
 
                     }
                 } else if (gtys[(index << 1)] != gtys[(index << 1) + 1]) {
+<<<<<<< HEAD
+                    if (altAlleleFractHetThrehsold > 0 && readCounts[(index << 1)] != -1) {
+                        /*
+                        //the AD infor may be missing
+                        //unforturnately a lot of AD are missing in some vcf formats
+                        if (readCounts[(index << 1)] == -1 && Float.isNaN(readFractions[index])) {
+                            continue;
+                        }
+                         */
+=======
                     if (altAlleleFractHetThrehsold > 0) {
                         //the AD infor may be missing
                         if (readCounts[(index << 1)] == -1 && Float.isNaN(readFractions[index])) {
                             continue;
                         }
+>>>>>>> origin/master
                         if (Float.isNaN(readFractions[index])) {
                             readFractions[index] = (float) (((double) readCounts[(index << 1) + 1]) / (readCounts[(index << 1)] + readCounts[(index << 1) + 1]));
                         }
@@ -1780,11 +1918,20 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
                         }
                     }
 
+<<<<<<< HEAD
+                } else if (altAlleleFractAltHomThrehsold > 0 && readCounts[(index << 1) + 1] != -1) {
+                    /*
+=======
                 } else if (altAlleleFractAltHomThrehsold > 0) {
+>>>>>>> origin/master
                     //the AD infor may be missing
                     if (readCounts[(index << 1) + 1] == -1 && Float.isNaN(readFractions[index])) {
                         continue;
                     }
+<<<<<<< HEAD
+                     */
+=======
+>>>>>>> origin/master
                     if (Float.isNaN(readFractions[index])) {
                         readFractions[index] = (float) (((double) readCounts[(index << 1) + 1]) / (readCounts[(index << 1)] + readCounts[(index << 1) + 1]));
                     }
@@ -1812,6 +1959,10 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
         final int gtyLen = 8;
         int missingNum = 0;
         int v;
+<<<<<<< HEAD
+      
+=======
+>>>>>>> origin/master
         if (isPhased) {
             base = GlobalManager.phasedAlleleBitMap.get(alleleNum);
             bitNum = base * totalPedSubjectNum;
@@ -2138,13 +2289,14 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
         }
     }
 
-    public void setBooleanFilter(boolean considerSNP, boolean considerIndel, boolean needGty, boolean needReadsInfor, boolean needGtyQual, boolean noGtyVCF) {
+    public void setBooleanFilter(boolean considerSNP, boolean considerIndel, boolean needGty, boolean needReadsInfor, boolean needGtyQual, boolean noGtyVCF, boolean forced2Unphased) {
         this.considerSNP = considerSNP;
         this.considerIndel = considerIndel;
         this.needGty = needGty;
         this.needReadsInfor = needReadsInfor;
         this.needGtyQual = needGtyQual;
         this.noGtyVCF = noGtyVCF;
+        this.forced2Unphased = forced2Unphased;
     }
 
     private IntArrayList effectIndivIDInVCF;
@@ -2243,7 +2395,6 @@ public class VCFParseTaskFast extends Task implements Callable<String>, Constant
     @Override
     public String call() throws Exception {
         long startTime = System.currentTimeMillis();
-
         try {
             if (needGtyQual) {
                 vcfWriters = new BufferedWriter[STAND_CHROM_NAMES.length];

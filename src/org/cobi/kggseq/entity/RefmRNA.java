@@ -8,7 +8,9 @@ import cern.colt.list.IntArrayList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.log4j.Logger;
 import org.cobi.kggseq.GlobalManager;
 import org.cobi.util.text.Util;
@@ -168,6 +170,7 @@ public class RefmRNA extends SeqSegment {
         String[] altAllele = new String[var.getAltAlleles().length];
         //only use the values of alt alleles because it may be changed by other functions
         System.arraycopy(var.getAltAlleles(), 0, altAllele, 0, altAllele.length);
+       
 
         GeneFeature ft = findFeature(chr, pos, ref, altAllele, isForwardStrandInput, upstreamDis, donwstreamDis, splicingDis, geneSymb);
 
@@ -259,29 +262,38 @@ public class RefmRNA extends SeqSegment {
                         effectiveSites.add(delSites[i]);
                         effectiveBase.append(delSeq.charAt(i));
                     }
+<<<<<<< HEAD
+                } else if (delSites[i] > codingStartRelativeSiteInSequence) {
+                    effectiveSites.add(delSites[i]);
+                    effectiveBase.append(delSeq.charAt(i));
+=======
                 } else {
 
                     if (delSites[i] > codingStartRelativeSiteInSequence) {
                         effectiveSites.add(delSites[i]);
                         effectiveBase.append(delSeq.charAt(i));
                     }
+>>>>>>> origin/master
                 }
             }
             if (effectiveSites.isEmpty()) {
                 delSites = null;
                 delSeq = null;
-            } else {
-                if (delSites.length != effectiveSites.size()) {
-                    delSites = new int[effectiveSites.size()];
-                    for (int i = 0; i < delSites.length; i++) {
-                        delSites[i] = effectiveSites.getQuick(i);
-                    }
-                    delSeq = effectiveBase.toString();
+            } else if (delSites.length != effectiveSites.size()) {
+                delSites = new int[effectiveSites.size()];
+                for (int i = 0; i < delSites.length; i++) {
+                    delSites[i] = effectiveSites.getQuick(i);
                 }
+                delSeq = effectiveBase.toString();
             }
         }
+<<<<<<< HEAD
+
+        //  insSites=null;//**************************************************
+=======
         
      //  insSites=null;//**************************************************
+>>>>>>> origin/master
         if (insSites != null) {
             IntArrayList effectiveSites = new IntArrayList();
             StringBuilder effectiveBase = new StringBuilder();
@@ -292,26 +304,30 @@ public class RefmRNA extends SeqSegment {
                         effectiveSites.add(insSites[i]);
                         effectiveBase.append(insSeq.charAt(i));
                     }
+<<<<<<< HEAD
+                } else if (insSites[i] > codingStartRelativeSiteInSequence) {
+                    effectiveSites.add(insSites[i]);
+                    effectiveBase.append(insSeq.charAt(i));
+=======
                 } else {
 
                     if (insSites[i] > codingStartRelativeSiteInSequence) {
                         effectiveSites.add(insSites[i]);
                         effectiveBase.append(insSeq.charAt(i));
                     }
+>>>>>>> origin/master
                 }
             }
             if (effectiveSites.isEmpty()) {
                 insSites = null;
                 insSeq = null;
-            } else {
-                if (insSites.length != effectiveSites.size()) {
-                    insSites = new int[effectiveSites.size()];
-                    for (int i = 0; i < insSites.length; i++) {
-                        insSites[i] = effectiveSites.getQuick(i);
-                    }
-
-                    insSeq = effectiveBase.toString();
+            } else if (insSites.length != effectiveSites.size()) {
+                insSites = new int[effectiveSites.size()];
+                for (int i = 0; i < insSites.length; i++) {
+                    insSites[i] = effectiveSites.getQuick(i);
                 }
+
+                insSeq = effectiveBase.toString();
             }
         }
 
@@ -334,11 +350,14 @@ public class RefmRNA extends SeqSegment {
         }
         int exonicFeatureID = GlobalManager.VarFeatureIDMap.get("exonic");
 
+<<<<<<< HEAD
+=======
         /*
          if (oldStartPos == 97726747) {
          int ssss = 0;
          }
          */
+>>>>>>> origin/master
         if (isForwardStrandInput) {
             if (strand == '-') {
                 //assum the input allele are all in forward strand
@@ -354,41 +373,12 @@ public class RefmRNA extends SeqSegment {
         byte[] errorCode = new byte[1];
         errorCode[0] = 0;
         int startAllele = 0;
-
+ 
         List<GeneFeature> gfList = new ArrayList<GeneFeature>();
         for (String allele : altAlleles) {
             if (allele.startsWith("+") || allele.endsWith("+")) {
                 startPos = oldStartPos;
-                /*
-                 count = 0;
-                 if (allele.startsWith("+")) {
-                 for (int i = 0; i < allele.length(); i++) {
-                 if (allele.charAt(i) == '+') {
-                 count++;
-                 } else {
-                 break;
-                 }
-                 }
-                 if (strand == '-') {
-                 startPos = oldStartPos - count;
-                 } else {
-                 startPos = oldStartPos + count;
-                 }
-                 } else {
-                 for (int i = allele.length() - 1; i >= 0; i--) {
-                 if (allele.charAt(i) == '+') {
-                 count++;
-                 } else {
-                 break;
-                 }
-                 }
-                 if (strand == '-') {
-                 startPos = oldStartPos - count;
-                 } else {
-                 startPos = oldStartPos + count;
-                 }
-                 }
-                 */
+
                 //it is an insertion
                 GeneFeature gf = findCrudeFeature(startPos, upstreamDis, downstreamDis, splicingDis, ref, allele);
                 if (gf == null) {
@@ -451,56 +441,50 @@ public class RefmRNA extends SeqSegment {
                         } else {
                             gfList.add(gfStart);
                         }
-                    } else {
-                        if (gfStart.id == exonicFeatureID) {
-                            int exonIDStartPos = Util.parseInt(gfStart.name.substring(0, gfStart.name.indexOf(':')));
-                            int relativeCodingStartPos = Util.parseInt(gfStart.name.substring(gfStart.name.indexOf(':') + 1));
-                            GeneFeature gf1 = calculateAminoAcidDeletion(relativeCodingStartPos, ref, allele, delLen, geneSym);
-                            int index = gf1.getName().lastIndexOf(':');
-                            if (gfStart.id != gfEnd.id) {
-                                if (index < 0) {
-                                    gf1.setName(refID + ":" + gf1.getName() + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":exon" + +exonIDStartPos + "-" + GlobalManager.VAR_FEATURE_NAMES[gfStart.id]);
-                                } else {
-                                    gf1.setName(refID + ":" + gf1.getName().substring(0, index) + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":exon" + exonIDStartPos + "-" + GlobalManager.VAR_FEATURE_NAMES[gfStart.id] + ":" + gf1.getName().substring(index + 1));
-                                }
-
+                    } else if (gfStart.id == exonicFeatureID) {
+                        int exonIDStartPos = Util.parseInt(gfStart.name.substring(0, gfStart.name.indexOf(':')));
+                        int relativeCodingStartPos = Util.parseInt(gfStart.name.substring(gfStart.name.indexOf(':') + 1));
+                        GeneFeature gf1 = calculateAminoAcidDeletion(relativeCodingStartPos, ref, allele, delLen, geneSym);
+                        int index = gf1.getName().lastIndexOf(':');
+                        if (gfStart.id != gfEnd.id) {
+                            if (index < 0) {
+                                gf1.setName(refID + ":" + gf1.getName() + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":exon" + +exonIDStartPos + "-" + GlobalManager.VAR_FEATURE_NAMES[gfStart.id]);
                             } else {
-                                if (index < 0) {
-                                    gf1.setName(refID + ":" + gf1.getName() + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":exon" + exonIDStartPos);
-                                } else {
-                                    gf1.setName(refID + ":" + gf1.getName().substring(0, index) + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":exon" + exonIDStartPos + ":" + gf1.getName().substring(index + 1));
-                                }
+                                gf1.setName(refID + ":" + gf1.getName().substring(0, index) + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":exon" + exonIDStartPos + "-" + GlobalManager.VAR_FEATURE_NAMES[gfStart.id] + ":" + gf1.getName().substring(index + 1));
                             }
-                            gfList.add(gf1);
-                        } else if (gfEnd.id == exonicFeatureID) {
-                            int exonIDStartPos = Util.parseInt(gfEnd.name.substring(0, gfEnd.name.indexOf(':')));
-                            int relativeCodingStartPos = Util.parseInt(gfEnd.name.substring(gfEnd.name.indexOf(':') + 1));
 
-                            //note calculateAminoAcidDeletionAtRightTail has not finished yet and simple put is as unknonw
-                            gfList.add(gfEnd);
-                            // System.out.println(oldStartPos);
-
-                            GeneFeature gf1 = calculateAminoAcidDeletionAtRightTail(relativeCodingStartPos, ref, allele, delLen, geneSym);
-                            int index = gf1.getName().lastIndexOf(':');
-                            if (gfStart.id != gfEnd.id) {
-                                if (index < 0) {
-                                    gf1.setName(refID + ":" + gf1.getName() + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":" + GlobalManager.VAR_FEATURE_NAMES[gfStart.id] + "-exon" + exonIDStartPos);
-                                } else {
-                                    gf1.setName(refID + ":" + gf1.getName().substring(0, index) + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":" + GlobalManager.VAR_FEATURE_NAMES[gfStart.id] + "-exon" + exonIDStartPos + ":" + gf1.getName().substring(index + 1));
-                                }
-                            } else {
-                                if (index < 0) {
-                                    gf1.setName(refID + ":" + gf1.getName() + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":exon" + exonIDStartPos);
-                                } else {
-                                    gf1.setName(refID + ":" + gf1.getName().substring(0, index) + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":exon" + exonIDStartPos + ":" + gf1.getName().substring(index + 1));
-                                }
-                            }
-                            gfList.add(gf1);
-
+                        } else if (index < 0) {
+                            gf1.setName(refID + ":" + gf1.getName() + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":exon" + exonIDStartPos);
                         } else {
-                            //not sure this is correct or not
-                            gfList.add(gfStart);
+                            gf1.setName(refID + ":" + gf1.getName().substring(0, index) + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":exon" + exonIDStartPos + ":" + gf1.getName().substring(index + 1));
                         }
+                        gfList.add(gf1);
+                    } else if (gfEnd.id == exonicFeatureID) {
+                        int exonIDStartPos = Util.parseInt(gfEnd.name.substring(0, gfEnd.name.indexOf(':')));
+                        int relativeCodingStartPos = Util.parseInt(gfEnd.name.substring(gfEnd.name.indexOf(':') + 1));
+
+                        //note calculateAminoAcidDeletionAtRightTail has not finished yet and simple put is as unknonw
+                        gfList.add(gfEnd);
+                        // System.out.println(oldStartPos);
+
+                        GeneFeature gf1 = calculateAminoAcidDeletionAtRightTail(relativeCodingStartPos, ref, allele, delLen, geneSym);
+                        int index = gf1.getName().lastIndexOf(':');
+                        if (gfStart.id != gfEnd.id) {
+                            if (index < 0) {
+                                gf1.setName(refID + ":" + gf1.getName() + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":" + GlobalManager.VAR_FEATURE_NAMES[gfStart.id] + "-exon" + exonIDStartPos);
+                            } else {
+                                gf1.setName(refID + ":" + gf1.getName().substring(0, index) + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":" + GlobalManager.VAR_FEATURE_NAMES[gfStart.id] + "-exon" + exonIDStartPos + ":" + gf1.getName().substring(index + 1));
+                            }
+                        } else if (index < 0) {
+                            gf1.setName(refID + ":" + gf1.getName() + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":exon" + exonIDStartPos);
+                        } else {
+                            gf1.setName(refID + ":" + gf1.getName().substring(0, index) + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":exon" + exonIDStartPos + ":" + gf1.getName().substring(index + 1));
+                        }
+                        gfList.add(gf1);
+
+                    } else {
+                        //not sure this is correct or not
+                        gfList.add(gfStart);
                     }
                 } else if (gfStart != null) {
                     if (gfStart.id == exonicFeatureID) {
@@ -526,7 +510,11 @@ public class RefmRNA extends SeqSegment {
             } else {
                 startPos = oldStartPos;
                 startAllele = 0;
+                if (null == ref) {
+                    return null; //I'm not sure what value should be returned, but the ref==null will give error. It may be the error of the resource file. 
+                }
                 if (ref.length() > 1 && ref.length() == allele.length()) {
+//                    System.out.println(chr+":"+oldStartPos+":"+ref);
                     if (strand == '+') {
                         while (startAllele < ref.length() && ref.charAt(startAllele) == allele.charAt(startAllele)) {
                             startAllele++;
@@ -550,6 +538,10 @@ public class RefmRNA extends SeqSegment {
                     int exonID = Util.parseInt(gf.name.substring(0, gf.name.indexOf(':')));
                     int relativeCodingStartPos = Util.parseInt(gf.name.substring(gf.name.indexOf(':') + 1));
                     errorCode[0] = 0;
+<<<<<<< HEAD
+                    //System.out.println(relativeCodingStartPos);
+=======
+>>>>>>> origin/master
                     GeneFeature gf1 = calculateAminoAcidChange(relativeCodingStartPos, ref.charAt(startAllele), allele.charAt(startAllele), startPos, gf.pos2CondingEnd, geneSym, errorCode);
                     switch (errorCode[0]) {
                         case 1:
@@ -561,7 +553,11 @@ public class RefmRNA extends SeqSegment {
                         case 3:
                             LOG.warn("The reference allele " + ref + " of chr" + chr + ":" + oldStartPos + " in the sample data and database are not identical on " + refID + " of " + geneSym);
                             break;
+<<<<<<< HEAD
+                        // LOG.warn("The variant chr" + chr + ":" + oldStartPos + " is mapped against problematic codon on " + refID + " of " + geneSym);
+=======
                     // LOG.warn("The variant chr" + chr + ":" + oldStartPos + " is mapped against problematic codon on " + refID + " of " + geneSym);
+>>>>>>> origin/master
                         case 4:
                             break;
                         default:
@@ -600,6 +596,241 @@ public class RefmRNA extends SeqSegment {
             return gf;
         }
 
+    }
+
+    public Map<Integer, GeneFeature> findFeatureMultiVar(String chr, List<Variant> vars, boolean isForwardStrandInput, int upstreamDis, int downstreamDis, int splicingDis) throws Exception {
+        if (strand == '0') {
+            throw new Exception("Unknown strand at " + refID + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")"));
+        }
+        int exonicFeatureID = GlobalManager.VarFeatureIDMap.get("exonic");
+
+        int totalNum = vars.size();
+        String[] refs = new String[totalNum];
+        String[][] alts = new String[totalNum][];
+        String[] altAlleles, altAlleles1, altAlleles2;
+        int oldStartPos;
+        int count = 0;
+        List<Variant> varsTmp = new ArrayList<Variant>();
+        varsTmp.addAll(vars);
+        if (isForwardStrandInput) {
+            if (strand == '-') {
+                Collections.reverse(varsTmp);
+                //assum the input allele are all in forward strand 
+                for (Variant var : varsTmp) {
+                    refs[count] = Util.getReverseComplementalSquences(var.getRefAllele());
+                    altAlleles = var.getAltAlleles();
+                    alts[count] = new String[altAlleles.length];
+                    for (int i = 0; i < alts[count].length; i++) {
+                        alts[count][i] = Util.getReverseComplementalSquences(altAlleles[i]);
+                    }
+                    count++;
+                }
+
+            } else {
+                for (Variant var : varsTmp) {
+                    refs[count] = var.getRefAllele();
+                    alts[count] = var.getAltAlleles();
+                    count++;
+                }
+            }
+        }
+
+        int startPos = 0;
+        byte[] errorCode = new byte[1];
+        errorCode[0] = 0;
+
+        int leftNum = varsTmp.size();
+        int varIndex = 0;
+        StringBuilder refSb = new StringBuilder();
+        StringBuilder altSb = new StringBuilder();
+        int codenIndex = 0;
+        boolean move3 = false, move2 = false;
+        Map<Integer, GeneFeature> posGF = new HashMap<Integer, GeneFeature>();
+        List<GeneFeature> gfList = new ArrayList<GeneFeature>();
+        String ref;
+        while (leftNum > 1) {
+            ref = refs[varIndex];
+            altAlleles = alts[varIndex];
+
+            oldStartPos = varsTmp.get(varIndex).refStartPosition;
+
+            startPos = oldStartPos;
+
+            //it is an sustitution, using a psudo N
+            GeneFeature gf = findCrudeFeature(startPos, upstreamDis, downstreamDis, splicingDis, ref, "N");
+            move3 = false;
+            move2 = false;
+            gfList.clear();
+            posGF.clear();
+            if (gf.id != exonicFeatureID) {
+                break;
+            }
+            refSb.delete(0, refSb.length());
+            int exonID = Util.parseInt(gf.name.substring(0, gf.name.indexOf(':')));
+            int relativeCodingStartPos = Util.parseInt(gf.name.substring(gf.name.indexOf(':') + 1));
+            errorCode[0] = 0;
+            refSb.append(ref);
+            codenIndex = calculateAminoAcidIndex(relativeCodingStartPos);
+            switch (codenIndex) {
+                case 0:
+                    altAlleles1 = null;
+                    altAlleles2 = null;
+                    if (varIndex + 1 < totalNum) {
+                        altAlleles1 = alts[varIndex + 1];
+                        move2 = true;
+                        refSb.append(refs[varIndex + 1]);
+                    }
+                    if (varIndex + 2 < totalNum) {
+                        altAlleles2 = alts[varIndex + 2];
+                        move3 = true;
+                        refSb.append(refs[varIndex + 2]);
+                    }
+                    if (altAlleles1 != null && altAlleles2 != null) {
+                        for (String allele0 : altAlleles) {
+                            for (String allele1 : altAlleles1) {
+                                for (String allele2 : altAlleles2) {
+                                    altSb.delete(0, altSb.length());
+                                    altSb.append(allele0);
+                                    altSb.append(allele1);
+                                    altSb.append(allele2);
+                                    errorCode[0] = 0;
+                                    gf = calculateAminoAcidChangeMulit(relativeCodingStartPos, refSb.toString(), altSb.toString(), startPos, gf.pos2CondingEnd, errorCode);
+                                    switch (errorCode[0]) {
+                                        case 1:
+                                            LOG.warn("The RefmRNA " + refID + " has no sequence data for the variant at chr" + chr + ":" + oldStartPos);
+                                            break;
+                                        case 2:
+                                            LOG.warn("The RefmRNA " + refID + " has no sequence data for the variant at chr" + chr + ":" + oldStartPos);
+                                            break;
+                                        case 3:
+                                            LOG.warn("The reference allele " + refSb.toString() + " of chr" + chr + ":" + oldStartPos + " in the sample data and database are not identical on " + refID + " of " + geneSymb);
+                                            break;
+                                        // LOG.warn("The variant chr" + chr + ":" + oldStartPos + " is mapped against problematic codon on " + refID + " of " + geneSym);
+                                        case 4:
+                                            break;
+                                        default:
+                                            break;
+                                    }
+                                    int index = gf.getName().lastIndexOf(':');
+                                    if (index < 0) {
+                                        gf.setName(geneSymb + ":" + refID + ":" + gf.getName() + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":exon" + exonID);
+                                    } else {
+                                        gf.setName(geneSymb + ":" + refID + ":" + gf.getName().substring(0, index) + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":exon" + exonID + ":" + gf.getName().substring(index + 1));
+                                    }
+                                    gfList.add(gf);
+                                }
+                            }
+                        }
+                    } else if (altAlleles1 != null) {
+                        for (String allele0 : altAlleles) {
+                            for (String allele1 : altAlleles1) {
+                                altSb.delete(0, altSb.length());
+                                altSb.append(allele0);
+                                altSb.append(allele1);
+                                errorCode[0] = 0;
+                                gf = calculateAminoAcidChangeMulit(relativeCodingStartPos, refSb.toString(), altSb.toString(), startPos, gf.pos2CondingEnd, errorCode);
+                                switch (errorCode[0]) {
+                                    case 1:
+                                        LOG.warn("The RefmRNA " + refID + " has no sequence data for the variant at chr" + chr + ":" + oldStartPos);
+                                        break;
+                                    case 2:
+                                        LOG.warn("The RefmRNA " + refID + " has no sequence data for the variant at chr" + chr + ":" + oldStartPos);
+                                        break;
+                                    case 3:
+                                        LOG.warn("The reference allele " + refSb.toString() + " of chr" + chr + ":" + oldStartPos + " in the sample data and database are not identical on " + refID + " of " + geneSymb);
+                                        break;
+                                    // LOG.warn("The variant chr" + chr + ":" + oldStartPos + " is mapped against problematic codon on " + refID + " of " + geneSym);
+                                    case 4:
+                                        break;
+                                    default:
+                                        break;
+                                }
+                                int index = gf.getName().lastIndexOf(':');
+                                if (index < 0) {
+                                    gf.setName(geneSymb + ":" + refID + ":" + gf.getName() + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":exon" + exonID);
+                                } else {
+                                    gf.setName(geneSymb + ":" + refID + ":" + gf.getName().substring(0, index) + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":exon" + exonID + ":" + gf.getName().substring(index + 1));
+                                }
+                                gfList.add(gf);
+                            }
+                        }
+                    }
+                    break;
+                case 1:
+                    altAlleles1 = null;
+                    if (varIndex + 1 < totalNum) {
+                        altAlleles1 = alts[varIndex + 1];
+                        move2 = true;
+                        refSb.append(refs[varIndex + 1]);
+                    }
+                    for (String allele0 : altAlleles) {
+                        for (String allele1 : altAlleles1) {
+                            altSb.delete(0, altSb.length());
+                            altSb.append(allele0);
+                            altSb.append(allele1);
+                            errorCode[0] = 0;
+                            gf = calculateAminoAcidChangeMulit(relativeCodingStartPos, refSb.toString(), altSb.toString(), startPos, gf.pos2CondingEnd, errorCode);
+                            switch (errorCode[0]) {
+                                case 1:
+                                    LOG.warn("The RefmRNA " + refID + " has no sequence data for the variant at chr" + chr + ":" + oldStartPos);
+                                    break;
+                                case 2:
+                                    LOG.warn("The RefmRNA " + refID + " has no sequence data for the variant at chr" + chr + ":" + oldStartPos);
+                                    break;
+                                case 3:
+                                    LOG.warn("The reference allele " + refSb.toString() + " of chr" + chr + ":" + oldStartPos + " in the sample data and database are not identical on " + refID + " of " + geneSymb);
+                                    break;
+                                // LOG.warn("The variant chr" + chr + ":" + oldStartPos + " is mapped against problematic codon on " + refID + " of " + geneSym);
+                                case 4:
+                                    break;
+                                default:
+                                    break;
+                            }
+                            int index = gf.getName().lastIndexOf(':');
+                            if (index < 0) {
+                                gf.setName(geneSymb + ":" + refID + ":" + gf.getName() + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":exon" + exonID);
+                            } else {
+                                gf.setName(geneSymb + ":" + refID + ":" + gf.getName().substring(0, index) + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":exon" + exonID + ":" + gf.getName().substring(index + 1));
+                            }
+                            gfList.add(gf);
+                        }
+                    }
+                    break;
+                default:
+                    //the last coden index
+                    leftNum--;
+                    varIndex++;
+                    continue;
+            }
+
+            if (gfList.size() > 1) {
+                Collections.sort(gfList, new GeneFeatureComparator());
+                gf = gfList.get(0);
+                if (gf.getInfor() == null) {
+                    gf.setInfor("");
+                }
+                for (int i = 1; i < gfList.size(); i++) {
+                    GeneFeature gf1 = gfList.get(i);
+                    gf.setName(gf.getName() + "&" + gf1.getName());
+                    gf.setInfor(gf.getInfor() + (gf1.getInfor() == null ? "" : "&" + gf1.getInfor()));
+                }
+            }
+
+            if (move3) {
+                posGF.put(varsTmp.get(varIndex).refStartPosition, gf);
+                posGF.put(varsTmp.get(varIndex + 1).refStartPosition, gf);
+                posGF.put(varsTmp.get(varIndex + 2).refStartPosition, gf);
+                leftNum -= 3;
+                varIndex += 3;
+            } else if (move2) {
+                posGF.put(varsTmp.get(varIndex).refStartPosition, gf);
+                posGF.put(varsTmp.get(varIndex + 1).refStartPosition, gf);
+                leftNum -= 2;
+                varIndex += 2;
+            }
+
+        }
+        return posGF;
     }
 
     public GeneFeature findCrudeFeature(int pos, int upstreamDis, int downstreamDis, int splicingDis, String ref, String alt) throws Exception {
@@ -655,9 +886,8 @@ public class RefmRNA extends SeqSegment {
                         relativeCodingStartPos = (pos - codingEnd);
                         return new GeneFeature(GlobalManager.VarFeatureIDMap.get("3UTR"), refID + ":c.*" + relativeCodingStartPos + ref + ">" + alt + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":3UTR");
                     }
-                } else {
-                    //  the shiftBpDel must be between 1 and exonIndex-1
-                    if (noCodingExon) {
+                } else //  the shiftBpDel must be between 1 and exonIndex-1
+                 if (noCodingExon) {
                         // ncRNA	7	variant overlaps a transcript without coding annotation in the gene definition (see Notes below for more explanation) 
                         return new GeneFeature(GlobalManager.VarFeatureIDMap.get("ncRNA"), refID + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":ncRNA");
                     } else if (pos <= exons.get(exonIndex - 1).end + splicingDis) {
@@ -720,10 +950,8 @@ public class RefmRNA extends SeqSegment {
                         relativeCodingStartPos = (pos - codingEnd);
                         return new GeneFeature(GlobalManager.VarFeatureIDMap.get("3UTR"), refID + ":c.*" + relativeCodingStartPos + ref + ">" + alt + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":3UTR");
                     }
-                }
-            } else {
-                //just at the  leftside boundary which is exclusive
-                if (noCodingExon) {
+            } else //just at the  leftside boundary which is exclusive
+             if (noCodingExon) {
                     return new GeneFeature(GlobalManager.VarFeatureIDMap.get("ncRNA"), refID + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":ncRNA");
                 } else if (pos <= codingStart) {
                     relativeCodingStartPos = (codingStart - pos + 1);
@@ -740,7 +968,6 @@ public class RefmRNA extends SeqSegment {
                     relativeCodingStartPos = (pos - codingEnd);
                     return new GeneFeature(GlobalManager.VarFeatureIDMap.get("3UTR"), refID + ":c.*" + relativeCodingStartPos + ref + ">" + alt + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":3UTR");
                 }
-            }
         } else if (strand == '-') {
             if (exonIndex < 0) {
                 exonIndex = -exonIndex - 1;
@@ -784,9 +1011,8 @@ public class RefmRNA extends SeqSegment {
                         relativeCodingStartPos = (pos - codingEnd);
                         return new GeneFeature(GlobalManager.VarFeatureIDMap.get("5UTR"), refID + ":c.-" + relativeCodingStartPos + ref + ">" + alt + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":5UTR");
                     }
-                } else {
-                    //the shiftBpDel must be between 1 and exonIndex-1
-                    if (noCodingExon) {
+                } else //the shiftBpDel must be between 1 and exonIndex-1
+                 if (noCodingExon) {
                         return new GeneFeature(GlobalManager.VarFeatureIDMap.get("ncRNA"), refID + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":ncRNA");
                     } else if (pos <= exons.get(exonIndex - 1).end + splicingDis) {
                         //the 5' and 3' are relative to the closet exon
@@ -852,10 +1078,8 @@ public class RefmRNA extends SeqSegment {
                         relativeCodingStartPos = (pos - codingEnd);
                         return new GeneFeature(GlobalManager.VarFeatureIDMap.get("5UTR"), refID + ":c.-" + relativeCodingStartPos + ref + ">" + alt + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":5UTR");
                     }
-                }
-            } else {
-                //just at the  rightside boundary which is inclusive for reverse strand mRAN
-                if (noCodingExon) {
+            } else //just at the  rightside boundary which is inclusive for reverse strand mRAN
+             if (noCodingExon) {
                     return new GeneFeature(GlobalManager.VarFeatureIDMap.get("ncRNA"), refID + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":ncRNA");
                 } else if (pos <= codingStart) {
                     relativeCodingStartPos = (codingStart - pos) + 1;
@@ -878,7 +1102,6 @@ public class RefmRNA extends SeqSegment {
                     relativeCodingStartPos = (pos - codingEnd);
                     return new GeneFeature(GlobalManager.VarFeatureIDMap.get("5UTR"), refID + ":c.-" + relativeCodingStartPos + ref + ">" + alt + ":(" + exonNum + "Exons" + (multipleMapping ? "MultiMap)" : ")") + ":5UTR");
                 }
-            }
         } else {
             //unrecognzed strand infor
             return new GeneFeature(GlobalManager.VarFeatureIDMap.get("unknown"), "unknown");
@@ -1005,11 +1228,12 @@ public class RefmRNA extends SeqSegment {
             char refP = '?';
             char altP = '?';
 
+<<<<<<< HEAD
             if (GlobalManager.codonTable.containsKey(codon)) {
                 refP = GlobalManager.codonTable.get(codon);
                 if (refP == '*') {
                     //an impossible stoploss
-                    if (pos2CondingEnd > 3) {                      
+                    if (pos2CondingEnd > 3) {
                         errorCode[0] = 4;
                         //Warning. not sure this is opproperate or not
                         info.append(":exonic");
@@ -1084,6 +1308,235 @@ public class RefmRNA extends SeqSegment {
         }
     }
 
+    public GeneFeature calculateAminoAcidChangeMulit(int relativeCodingStartPosInRef, String ref, String alt, int absPos, int pos2CondingEnd, byte[] errorCode) {
+        int shiftBpDel = 0;
+        int relativeCodingStartPosIncDNA = relativeCodingStartPosInRef;
+        StringBuilder info = new StringBuilder("c.");
+        int seqLen = ref.length();
+        if (delSites != null) {
+            /*
+             if (delSites[0] == 0) {
+             //when a deletion starts at 0 position, it is often problematic. So I prefer not to annoate it clearly
+             info.append(relativeCodingStartPosIncDNA + 1);
+             info.append(ref);
+             info.append('>');
+             info.append(alt);
+             errorCode[0] = 0;
+             info.append(":exonic");
+             return new GeneFeature(GlobalManager.VarFeatureIDMap.get("exonic"), info.toString());
+             }
+             */
+            shiftBpDel = Arrays.binarySearch(delSites, relativeCodingStartPosIncDNA + codingStartRelativeSiteInSequence);
+            if (shiftBpDel < 0) {
+                shiftBpDel = -shiftBpDel - 1;
+            }
+            //because the referenc genome has deletions, we should shif the relative CDNA positions
+            relativeCodingStartPosIncDNA += shiftBpDel;
+
+        }
+
+        int shiftBpIns = 0;
+        if (insSites != null) {
+            shiftBpIns = Arrays.binarySearch(insSites, relativeCodingStartPosIncDNA + codingStartRelativeSiteInSequence);
+            if (shiftBpIns < 0) {
+                shiftBpIns = -shiftBpIns - 1;
+            }
+            relativeCodingStartPosIncDNA -= shiftBpIns;
+        }
+
+        int incodonIndex = (relativeCodingStartPosIncDNA) % 3;
+        int curCodonStart = relativeCodingStartPosIncDNA - incodonIndex;
+
+        if (incodonIndex < 0) {
+            incodonIndex += 3;
+        }
+
+        //start with 0
+        info.append(relativeCodingStartPosIncDNA + 1);
+        info.append(ref);
+        info.append('>');
+        info.append(alt);
+        if (mRnaSequence == null) {
+            // System.out.println("The RefmRNA " + refID + " has no sequence data so the variant at site "+absPos+ " have no detailed coding change information");
+            //Warning. not sure this is opproperate or not
+            errorCode[0] = 1;
+            info.append(":exonic");
+            return new GeneFeature(GlobalManager.VarFeatureIDMap.get("exonic"), info.toString());
+        }
+
+        curCodonStart += codingStartRelativeSiteInSequence;
+        //because what we will obtain is the reference DNA so we need go back to the posistions of referce genome to get the correct referecne DNA
+        curCodonStart -= shiftBpDel;
+        curCodonStart += shiftBpIns;
+
+        //warning: by default it is 4. but this mixed the synonymous and unmapped varaint      
+        if (curCodonStart < 0) {
+            //warning: this mixed the synonymous and unmapped varaint 
+            info.append(":exonic");
+            return new GeneFeature(GlobalManager.VarFeatureIDMap.get("exonic"), info.toString());
+        }
+
+        String codon;
+        curCodonStart += 3;
+        if (curCodonStart <= mRnaSequence.length()) {
+            //mRnaSequence acually saved the cDNA sequence
+            codon = mRnaSequence.substring(curCodonStart - 3, curCodonStart).toUpperCase();
+        } else {
+            errorCode[0] = 2;
+            //warning: this mixed the synonymous and unmapped varaint 
+            info.append(":exonic");
+            return new GeneFeature(GlobalManager.VarFeatureIDMap.get("exonic"), info.toString());
+        }  //similar format c.G807A:p.Q269Q
+
+        if (!codon.substring(incodonIndex, seqLen + incodonIndex).equals(ref)) {
+            //LOG.warn("The reference alleles in the sample data and database are not identical at site " + absPos + " on " + refID + " of " + geneSym);
+            errorCode[0] = 3;
+            //System.out.println("The reference alleles in the sample data and database are not identical at site " + absPos + " on " + refID + " of " + geneSym);
+            //Warning. not sure this is opproperate or not
+            info.append(":exonic");
+            return new GeneFeature(GlobalManager.VarFeatureIDMap.get("exonic"), info.toString());
+        } else {
+            char refP = '?';
+            char altP = '?';
+
+            if (GlobalManager.codonTable.containsKey(codon)) {
+                refP = GlobalManager.codonTable.get(codon);
+                if (refP == '*') {
+                    //an impossible stoploss
+                    if (pos2CondingEnd > 3) {
+                        errorCode[0] = 4;
+                        //Warning. not sure this is opproperate or not
+                        info.append(":exonic");
+                        return new GeneFeature(GlobalManager.VarFeatureIDMap.get("exonic"), info.toString());
+                    }
+                }
+            }
+=======
+            if (GlobalManager.codonTable.containsKey(codon)) {
+                refP = GlobalManager.codonTable.get(codon);
+                if (refP == '*') {
+                    //an impossible stoploss
+                    if (pos2CondingEnd > 3) {                      
+                        errorCode[0] = 4;
+                        //Warning. not sure this is opproperate or not
+                        info.append(":exonic");
+                        return new GeneFeature(GlobalManager.VarFeatureIDMap.get("exonic"), info.toString());
+                    }
+                }
+            }
+>>>>>>> origin/master
+            info.append(':');
+            info.append("p.");
+            info.append(refP);
+            int codonIndex = (relativeCodingStartPosInRef) / 3 + 1;
+            StringBuilder sb = new StringBuilder(codon);
+            for (int i = 0; i < seqLen; i++) {
+                sb.setCharAt(incodonIndex + i, alt.charAt(i));
+            }
+
+            info.append(codonIndex);
+            codon = sb.toString().toUpperCase();
+            if (GlobalManager.codonTable.containsKey(codon)) {
+                altP = GlobalManager.codonTable.get(codon);
+                info.append(altP);
+            } else {
+                //Unspecified or unknown amino acid
+                info.append('?');
+            }
+
+            GeneFeature gf = new GeneFeature();
+            if (proteinDomainList != null) {
+                for (ProteinDomain pd : proteinDomainList) {
+                    if (codonIndex >= pd.start && codonIndex <= pd.end) {
+                        gf.infor = uniprotID + '|' + pd.toString();
+                    }
+                }
+            }
+
+            if (refP == altP) {
+                info.append(":");
+                info.append("synonymous");
+
+                gf.id = GlobalManager.VarFeatureIDMap.get("synonymous");
+                gf.name = info.toString();
+                return gf;
+                // return new GeneFeature(GlobalManager.VarFeatureIDMap.get("synonymous"), info.toString());
+            } else {
+                info.append(":");
+                if (codonIndex == 1 && refP == 'M') {
+                    info.append("startloss");
+                    gf.id = GlobalManager.VarFeatureIDMap.get("startloss");
+                    gf.name = info.toString();
+                    return gf;
+                } else if (refP != '*' && altP != '*') {
+                    info.append("missense");
+
+                    gf.id = GlobalManager.VarFeatureIDMap.get("missense");
+                    gf.name = info.toString();
+                    return gf;
+                    //return new GeneFeature(GlobalManager.VarFeatureIDMap.get("missense"), info.toString());
+                } else if (refP != '*') {
+                    info.append("stopgain");
+
+                    gf.id = GlobalManager.VarFeatureIDMap.get("stopgain");
+                    gf.name = info.toString();
+                    return gf;
+                    // return new GeneFeature(GlobalManager.VarFeatureIDMap.get("stopgain"), info.toString());
+                } else {
+                    info.append("stoploss");
+
+                    gf.id = GlobalManager.VarFeatureIDMap.get("stoploss");
+                    gf.name = info.toString();
+                    return gf;
+                    //  return new GeneFeature(GlobalManager.VarFeatureIDMap.get("stoploss"), info.toString());
+                }
+            }
+        }
+    }
+
+    public int calculateAminoAcidIndex(int relativeCodingStartPosInRef) {
+        int shiftBpDel = 0;
+        int relativeCodingStartPosIncDNA = relativeCodingStartPosInRef;
+
+        if (delSites != null) {
+            /*
+             if (delSites[0] == 0) {
+             //when a deletion starts at 0 position, it is often problematic. So I prefer not to annoate it clearly
+             info.append(relativeCodingStartPosIncDNA + 1);
+             info.append(ref);
+             info.append('>');
+             info.append(alt);
+             errorCode[0] = 0;
+             info.append(":exonic");
+             return new GeneFeature(GlobalManager.VarFeatureIDMap.get("exonic"), info.toString());
+             }
+             */
+            shiftBpDel = Arrays.binarySearch(delSites, relativeCodingStartPosIncDNA + codingStartRelativeSiteInSequence);
+            if (shiftBpDel < 0) {
+                shiftBpDel = -shiftBpDel - 1;
+            }
+            //because the referenc genome has deletions, we should shif the relative CDNA positions
+            relativeCodingStartPosIncDNA += shiftBpDel;
+
+        }
+
+        int shiftBpIns = 0;
+        if (insSites != null) {
+            shiftBpIns = Arrays.binarySearch(insSites, relativeCodingStartPosIncDNA + codingStartRelativeSiteInSequence);
+            if (shiftBpIns < 0) {
+                shiftBpIns = -shiftBpIns - 1;
+            }
+            relativeCodingStartPosIncDNA -= shiftBpIns;
+        }
+
+        int incodonIndex = (relativeCodingStartPosIncDNA) % 3;
+
+        if (incodonIndex < 0) {
+            incodonIndex += 3;
+        }
+        return incodonIndex;
+    }
+
     public GeneFeature calculateAminoAcidDeletion(int relativeCodingStartPosInRef, String ref, String alt, int delSeqLen, String geneSym) {
         int shiftBpDel = 0;
         int relativeCodingStartPosIncDNA = relativeCodingStartPosInRef;
@@ -1127,10 +1580,14 @@ public class RefmRNA extends SeqSegment {
             info.append(ref.substring(ref.length() - delSeqLen));
         } else {
             //reverse sequence
-            info.append('?');
+            //info.append('?');
+            //use the last char
+            info.append(ref.charAt(0));
             info.append(relativeCodingStartPosIncDNA - (ref.length() - delSeqLen));
-            info.append("del-");
+
+            info.append("del");
             info.append(ref.substring(0, delSeqLen));
+            info.append("-");
         }
 
         if (mRnaSequence == null) {
@@ -1382,10 +1839,12 @@ public class RefmRNA extends SeqSegment {
             info.append(ref.substring(ref.length() - delSeqLen));
         } else {
             //reverse sequence
-            info.append('?');
+            //info.append('?');
+            info.append(ref.charAt(0));
             info.append(relativeCodingStartPosIncDNA - (ref.length() - delSeqLen));
-            info.append("del-");
+            info.append("del");
             info.append(ref.substring(0, delSeqLen));
+            info.append("-");
         }
 
         if (mRnaSequence == null) {
@@ -1550,10 +2009,13 @@ public class RefmRNA extends SeqSegment {
             //the format will be like TC/AGC++
             //reverse sequence
             //unknown sequence
-            info.append('?');
+            //info.append('?');
+            //use the reverse
+            info.append(ref.charAt(0));
             info.append(relativeCodingStartPosIncDNA + 1);
             info.append("ins");
-            info.append(alt.substring(0, alt.length() - 1));
+            info.append(alt.substring(0, alt.length() - (ref.length() - 1)));
+
         } else {
             //the format will be like CT/++CGA
             info.append(ref.charAt(ref.length() - 1));

@@ -9,7 +9,10 @@ import cern.colt.list.DoubleArrayList;
 import cern.colt.list.FloatArrayList;
 import cern.colt.list.IntArrayList;
 import cern.colt.map.OpenIntIntHashMap;
+<<<<<<< HEAD
+=======
 import cern.colt.map.OpenLongObjectHashMap;
+>>>>>>> origin/master
 import htsjdk.samtools.util.BlockCompressedOutputStream;
 import java.awt.GraphicsEnvironment;
 import java.awt.Toolkit;
@@ -20,7 +23,6 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.ObjectInputStream;
 import java.io.OutputStreamWriter;
@@ -31,7 +33,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -73,6 +74,10 @@ import org.cobi.kggseq.controller.RVTest;
 import org.cobi.kggseq.controller.SKAT;
 import org.cobi.kggseq.controller.SequenceRetriever;
 import org.cobi.kggseq.controller.VCFParserFast;
+<<<<<<< HEAD
+import org.cobi.kggseq.entity.RefGene;
+=======
+>>>>>>> origin/master
 import org.cobi.randomforests.MyRandomForest;
 import org.cobi.util.file.LocalFileFunc;
 import org.cobi.util.net.NetUtils;
@@ -129,7 +134,11 @@ public class CUIApp implements Constants {
                     String infor = "Sorry, association analysis by RVTests can only run on Unix or Linux Or Mac OS!";
                     LOG.fatal(infor);
                     TimeUnit.SECONDS.sleep(1);
+<<<<<<< HEAD
+//                    System.exit(1);
+=======
                     System.exit(1);
+>>>>>>> origin/master
                 }
                 if (option.phenolyzer) {
                     String infor = "Sorry, \'--phenolyzer-prediction\' can only run on Unix or Linux Or Mac OS!";
@@ -165,6 +174,50 @@ public class CUIApp implements Constants {
                     }
                 }
             }
+<<<<<<< HEAD
+            if (option.needInternetChecking) {
+                GlobalManager.checkConnection();
+                if (!option.noLibCheck) {
+                    if (GlobalManager.isConnectInternet) {
+                        if (NetUtils.checkLibFileVersion(option.libUpdate)) {
+                            return;
+                        } else if (args.length == 1 && args[0].equals("--lib-update")) {
+                            String infor = "Your KGGSeq has already been the latest version!";
+                            System.out.println(infor);
+                            return;
+                        }
+                    }
+                }
+
+                if (GlobalManager.isConnectInternet) {
+                    if (option.phenolyzer) {
+                        String strURL = "https://github.com/WGLab/phenolyzer/archive/master.zip";
+                        NetUtils.checkInstallPhenolyzer(strURL, new File(PLUGIN_PATH + "phenolyzer-master.zip"));
+                    }
+
+                    if (option.rvtestGene || option.rvtestGeneset || option.rvtestVar) {
+                        boolean needMake1 = false, needMake2 = false;
+                        String strURL;
+                        /*
+                      strURL = "https://github.com/samtools/tabix/archive/master.zip";
+                    needMake1 = NetUtils.checkInstallCpp(strURL, new File(PLUGIN_PATH + "tabix-master.zip"));
+                         */
+                        strURL = "https://github.com/zhanxw/rvtests/archive/master.zip";
+                        needMake2 = NetUtils.checkInstallCpp(strURL, new File(PLUGIN_PATH + "rvtests-master.zip"));
+                        if (needMake1 || needMake2) {
+                            System.exit(1);
+                        }
+                    }
+                }
+
+                if (option.resCheck) {
+                    if (GlobalManager.isConnectInternet) {
+                        NetUtils.checkLatestResource(option);
+                    }
+                } else if (GlobalManager.isConnectInternet) {
+                    // must check avaible resources
+                    NetUtils.checkResourceList(option);
+=======
             if (!option.noLibCheck || option.resCheck) {
                 GlobalManager.checkConnection();
             }
@@ -199,6 +252,7 @@ public class CUIApp implements Constants {
             if (option.resCheck) {
                 if (GlobalManager.isConnectInternet) {
                     NetUtils.checkLatestResource(option);
+>>>>>>> origin/master
                 }
             } else if (GlobalManager.isConnectInternet) {
                 // must check avaible resources
@@ -207,6 +261,11 @@ public class CUIApp implements Constants {
 
             CUIApp main = new CUIApp(option);
             main.process();
+
+            if (option.hasTmpPedFile) {
+                File f = new File(option.pedFile);
+                f.delete();
+            }
             time = System.nanoTime() - time;
             if (option.hasTmpPedFile) {
                 File f = new File(option.pedFile);
@@ -263,8 +322,13 @@ public class CUIApp implements Constants {
         GeneAnnotator geneAnnotor = new GeneAnnotator();
         IntArrayList allEffectIndivIDs = new IntArrayList();
         VCFParserFast vsParser = new VCFParserFast();
+<<<<<<< HEAD
+        // OpenLongObjectHashMap wahBit = null;
+        //OpenLongObjectHashMap wahBitGeneset = new OpenLongObjectHashMap();
+=======
         OpenLongObjectHashMap wahBit = null;
         OpenLongObjectHashMap wahBitGeneset = new OpenLongObjectHashMap();
+>>>>>>> origin/master
         int maxEffectiveColVCF;
         boolean[] origionallySorted = new boolean[1];
         int[] maxThreadID = new int[1];
@@ -297,6 +361,22 @@ public class CUIApp implements Constants {
                 dbPathwaySet = genesetExplor.getGeneSetSet();
             }
 
+<<<<<<< HEAD
+            if (!options.scoreDBLableList.isEmpty()) {
+                for (String dbLabelName : options.scoreDBLableList) {
+                    if (dbLabelName.equals("dbncfp_all")) {
+                        String annNCFPPath = GlobalManager.RESOURCE_PATH + options.refGenomeVersion + "/" + options.refGenomeVersion + "_all_SNV_dbNCFP.gz";
+                        File annFile = new File(annNCFPPath);
+                        if (!annFile.exists()) {
+                            String infor = "The resource file " + annFile.getCanonicalPath() + " does not exist! Please manually download the file from ftp://jjwanglab.org/MX/score/ANN/" + annFile.getName() + " by efficient tools (e.g. FileZilla).";
+                            throw new Exception(infor);
+                        }
+                    }
+                }
+            }
+
+=======
+>>>>>>> origin/master
             Map<String, List<Variant>> genesetVars = new HashMap<String, List<Variant>>();
             //assigne variants into genes and pathways
             Map<String, List<Variant>> geneVars = new HashMap<String, List<Variant>>();
@@ -311,7 +391,11 @@ public class CUIApp implements Constants {
                     uniqueGenome = vsParser.readVariantGtyFilterOnly(options.outputFileName, options.threadNum, null, options.inputFileName, options.seqQual, options.minMappingQuality, options.maxStandBias,
                             options.maxFisherStandBias, options.maxGtyAlleleNum, options.gtyQual, options.minGtySeqDP, options.maxAltAlleleFracRefHom, options.minAltAlleleFractHet,
                             options.minAltAlleleFractAltHom, options.vcfFilterLabelsIn, -1, options.sampleMafOver, options.sampleMafLess, options.considerSNV, options.considerIndel,
+<<<<<<< HEAD
+                            options.gtySecPL, options.gtyBestGP, options.needProgressionIndicator, false, false, false, false, false, false, null, null, null, null, null, null);
+=======
                             options.gtySecPL, options.gtyBestGP, options.needProgressionIndicator, false, false, false, false, false, null, null, null, null, null, null);
+>>>>>>> origin/master
 
                     File localFileFiler = new File(options.outputFileName + ".kggseq.filter.txt");
                     LOG.info("Prepare annotation resources from local VCF file(s)...");
@@ -365,7 +449,11 @@ public class CUIApp implements Constants {
                     uniqueGenome = vsParser.readVariantGtyFilterOnly(options.outputFileName + File.separator + localFileFiler.getName(), options.threadNum, null, localFilterFileName, options.seqQual, options.minMappingQuality, options.maxStandBias,
                             options.maxFisherStandBias, options.maxGtyAlleleNum, options.gtyQual, options.minGtySeqDP, options.maxAltAlleleFracRefHom, options.minAltAlleleFractHet,
                             options.minAltAlleleFractAltHom, options.vcfFilterLabelsIn, -1, options.sampleMafOver, options.sampleMafLess, options.considerSNV, options.considerIndel,
+<<<<<<< HEAD
+                            options.gtySecPL, options.gtyBestGP, options.needProgressionIndicator, false, false, false, false, false, false, null, null, null, null, null, null);
+=======
                             options.gtySecPL, options.gtyBestGP, options.needProgressionIndicator, false, false, false, false, false, null, null, null, null, null, null);
+>>>>>>> origin/master
 
                     BufferedWriter annovarFilteredInFileWriter = null;
                     if (options.outGZ) {
@@ -375,7 +463,6 @@ public class CUIApp implements Constants {
                         annovarFilteredInFileWriter = new BufferedWriter(new FileWriter(localFileFiler));
                     }
                     Chromosome[] chromosomes = uniqueGenome.getChromosomes();
-
                     for (int chromID = 0; chromID < chromosomes.length; chromID++) {
                         uniqueGenome.loadVariantFromDisk(chromID, false, origionallySorted, maxThreadID);
                         List<Variant> chromosomeVar = chromosomes[chromID].variantList;
@@ -411,7 +498,11 @@ public class CUIApp implements Constants {
                     uniqueGenome = vsParser.readVariantGtyFilterOnly(options.outputFileName + File.separator + localFileFiler.getName(), options.threadNum, null, localFilterFileName, options.seqQual, options.minMappingQuality, options.maxStandBias,
                             options.maxFisherStandBias, options.maxGtyAlleleNum, options.gtyQual, options.minGtySeqDP, options.maxAltAlleleFracRefHom, options.minAltAlleleFractHet,
                             options.minAltAlleleFractAltHom, options.vcfFilterLabelsIn, options.minOBS, options.sampleMafOver, options.sampleMafLess, options.considerSNV, options.considerIndel,
+<<<<<<< HEAD
+                            options.gtySecPL, options.gtyBestGP, options.needProgressionIndicator, needGty, false, options.isVCFOut || options.isVCFOutFilterd, options.isSimpleVCFOut || options.isVCFOut || options.isVCFOutFilterd, true, options.forced2Unphased, subjectList, allEffectIndivIDs, null, null, options.regionsInPos, options.regionsOutPos);
+=======
                             options.gtySecPL, options.gtyBestGP, options.needProgressionIndicator, needGty, false, options.isVCFOut || options.isVCFOutFilterd, options.isSimpleVCFOut || options.isVCFOut || options.isVCFOutFilterd, true, subjectList, allEffectIndivIDs, null, null, options.regionsInPos, options.regionsOutPos);
+>>>>>>> origin/master
 
                     BufferedWriter annovarFilteredInFileWriter = null;
                     if (options.outGZ) {
@@ -511,7 +602,11 @@ public class CUIApp implements Constants {
                     if (caseSet.isEmpty() && controlSet.isEmpty()) {
                         String infor = ("All subjects in phenotype or pedigree file have unknown disease status.\n"
                                 + "    Please specify the clear disease status for AT LEAST one subject!!");
+<<<<<<< HEAD
+                        // throw new Exception(infor);
+=======
                        // throw new Exception(infor);
+>>>>>>> origin/master
                     }
                 }
 
@@ -526,9 +621,14 @@ public class CUIApp implements Constants {
                     }
                 } else if (options.ibsCheckCase >= 0 || options.homozygousRegionCase >= 0) {
                     needGty = true;
-                } else if (options.doubleHitGenePhasedFilter || options.doubleHitGeneTriosFilter) {
+                } else if (options.doubleHitGenePhasedFilter || options.doubleHitGeneTriosFilter || options.doubleHitGeneTriosCasePsudo || options.doubleHitGeneTriosCaseControl) {
                     needGty = true;
                 } else if (options.skatGene || options.skatGeneset || (dbPathwaySet != null && !dbPathwaySet.isEmpty())) {
+<<<<<<< HEAD
+                    needGty = true;
+                } else if (options.overlappedGeneFilter) {
+=======
+>>>>>>> origin/master
                     needGty = true;
                 }
 
@@ -566,7 +666,11 @@ public class CUIApp implements Constants {
                 uniqueGenome = vsParser.readVariantGtyFilterOnly(options.outputFileName, options.threadNum, null, options.inputFileName, options.seqQual, options.minMappingQuality, options.maxStandBias,
                         options.maxFisherStandBias, options.maxGtyAlleleNum, options.gtyQual, options.minGtySeqDP, options.maxAltAlleleFracRefHom, options.minAltAlleleFractHet,
                         options.minAltAlleleFractAltHom, options.vcfFilterLabelsIn, options.minOBS, options.sampleMafOver, options.sampleMafLess, options.considerSNV, options.considerIndel,
+<<<<<<< HEAD
+                        options.gtySecPL, options.gtyBestGP, options.needProgressionIndicator, needGty, needReadsInfor, options.isVCFOut || options.isVCFOutFilterd, options.isSimpleVCFOut || options.isVCFOut || options.isVCFOutFilterd, false, options.forced2Unphased, subjectList, allEffectIndivIDs,
+=======
                         options.gtySecPL, options.gtyBestGP, options.needProgressionIndicator, needGty, needReadsInfor, options.isVCFOut || options.isVCFOutFilterd, options.isSimpleVCFOut || options.isVCFOut || options.isVCFOutFilterd, false, subjectList, allEffectIndivIDs,
+>>>>>>> origin/master
                         caeSetID, controlSetID, options.regionsInPos, options.regionsOutPos);
                 pedEncodeGytIDMap = vsParser.getPedEncodeGytIDMap();
                 /*
@@ -588,7 +692,11 @@ public class CUIApp implements Constants {
                 uniqueGenome = vsParser.readVariantGtyFilterOnly(options.outputFileName, options.threadNum, null, options.inputFileName, options.seqQual, options.minMappingQuality, options.maxStandBias,
                         options.maxFisherStandBias, options.maxGtyAlleleNum, options.gtyQual, options.minGtySeqDP, options.maxAltAlleleFracRefHom, options.minAltAlleleFractHet,
                         options.minAltAlleleFractAltHom, options.vcfFilterLabelsIn, options.minOBS, options.sampleMafOver, options.sampleMafLess, options.considerSNV, options.considerIndel,
+<<<<<<< HEAD
+                        options.gtySecPL, options.gtyBestGP, options.needProgressionIndicator, needGty, false, false, false, true, options.forced2Unphased, subjectList, allEffectIndivIDs, null, null, options.regionsInPos, options.regionsOutPos);
+=======
                         options.gtySecPL, options.gtyBestGP, options.needProgressionIndicator, needGty, false, false, false, true, subjectList, allEffectIndivIDs, null, null, options.regionsInPos, options.regionsOutPos);
+>>>>>>> origin/master
             } else if (options.inputFormat.endsWith("--ked-file")) {
                 BinaryGtyProcessor bgp = new BinaryGtyProcessor(options.inputFileName);
                 bgp.readPedigreeFile(subjectList);
@@ -605,6 +713,7 @@ public class CUIApp implements Constants {
                     pedEncodeGytIDMap[i] = i;
                 }
                 for (Individual indiv : subjectList) {
+                    indiv.setHasGenotypes(true);
                     if (indiv.getAffectedStatus() == 1) {
                         controlSet.add(indiv.getLabelInChip());
                     } else if (indiv.getAffectedStatus() == 2) {
@@ -622,13 +731,16 @@ public class CUIApp implements Constants {
                     }
                 } else if (options.ibsCheckCase >= 0 || options.homozygousRegionCase >= 0) {
                     needGty = true;
-                } else if (options.doubleHitGenePhasedFilter || options.doubleHitGeneTriosFilter) {
+                } else if (options.doubleHitGenePhasedFilter || options.doubleHitGeneTriosFilter || options.doubleHitGeneTriosCasePsudo || options.doubleHitGeneTriosCaseControl) {
                     needGty = true;
                 }
                 StringBuilder message = null;
                 if (needGty) {
                     message = bgp.readBinaryGenotype(subjectList, uniqueGenome, options.minOBS, options.maxGtyAlleleNum, options.sampleMafOver, options.sampleMafLess, options.considerSNV, options.considerIndel);
+<<<<<<< HEAD
+=======
 
+>>>>>>> origin/master
                 }
 
                 // subject to do something more
@@ -656,7 +768,6 @@ public class CUIApp implements Constants {
             minMissingQCFilter1.initiateAMessage(0, "variants are ignored due to the number of non-null genotypes in controls <" + options.minOBSU + ".");
             minMissingQCFilter1.initiateAMessage(0, "variant(s) are left after filtration according to minimal successful genotype calling rates in patients and healthy individuals.");
 
-            String hardFilterModel = options.sampleGtyHardFilterCode;
             int filterNum = 6;
             boolean[] uniqueFilters = new boolean[2];
             boolean[] genotypeFilters = new boolean[filterNum];
@@ -676,6 +787,7 @@ public class CUIApp implements Constants {
 //            if(altLocalFilterFiles!=null && !altLocalFilterFiles.isEmpty()){
 //                assLFF1=new AnnotationSummarySet("LocalFileFilter",null,null,0,0,0,uniqueGenome.getVariantFeatureNum());               
 //            }
+            String hardFilterModel = options.sampleGtyHardFilterCode;
             if (options.sampleGtyHardFilterCode != null && options.sampleGtyHardFilterCode.length() > 0) {
                 for (int i = 0; i < filterNum; i++) {
                     String[] cells = options.sampleGtyHardFilterCode.split(",");
@@ -687,12 +799,27 @@ public class CUIApp implements Constants {
                         }
                     }
                 }
+                //the de novel mutation filltering will be processed seperately
+                if (hardFilterModel.indexOf('7') >= 0) {
+                    String[] cells = options.sampleGtyHardFilterCode.split(",");
+                    hardFilterModel = "";
+                    for (String s : cells) {
+                        if (s.equals("7")) {
+                            continue;
+                        }
+                        hardFilterModel += s;
+                        hardFilterModel += ",";
+                    }
+                    if (hardFilterModel.length() > 0) {
+                        hardFilterModel = hardFilterModel.substring(0, hardFilterModel.length() - 1);
+                    }
+                }
             }
 
             if (filterByModel) {
                 inheritanceModelFilter2 = new FiltrationSummarySet("InheritanceModel", uniqueGenome.getVariantFeatureNum());
                 inheritanceModelFilter2.initiateAMessage(0, "variants are ignored by genotype-based hard-filtering.");
-                inheritanceModelFilter2.initiateAMessage(0, "variant(s) are left after filtration according to inheritance mode at genotypes, " + hardFilterModel + "!");
+                inheritanceModelFilter2.initiateAMessage(0, "variant(s) are left after filtration according to inheritance mode at genotypes, " + hardFilterModel + ".");
             }
 
             if (options.sampleGtyHardFilterCode != null && (options.sampleGtyHardFilterCode.contains("7"))) {
@@ -794,12 +921,35 @@ public class CUIApp implements Constants {
             }
 
             dbFileSize = options.varaintDBLableList != null ? options.varaintDBLableList.size() : 0;
+            int[] exacFreqCols = null;
             if (dbFileSize > 0) {
                 varaintDBFilterFiles6 = new AnnotationSummarySet[dbFileSize];
                 for (int i = 0; i < dbFileSize; i++) {
                     String dbLabelName = options.varaintDBLableList.get(i);
-                    varaintDBFilterFiles6[i] = new AnnotationSummarySet(dbLabelName, LocalFileFunc.getBufferedReader(GlobalManager.RESOURCE_PATH + "/" + options.PUBDB_FILE_MAP.get(dbLabelName)), new StringBuilder(), 0, 0, 0, uniqueGenome.getVariantFeatureNum());
-                    uniqueGenome.addVariantFeatureLabel("altFreq@" + dbLabelName);
+                    if (dbLabelName.startsWith("exac")) {
+                        BufferedReader br = LocalFileFunc.getBufferedReader(GlobalManager.RESOURCE_PATH + "/" + options.PUBDB_FILE_MAP.get("exac"));
+                        String rowS = br.readLine();
+                        br.close();
+                        varaintDBFilterFiles6[i] = new AnnotationSummarySet("exac", null, new StringBuilder(), 0, 0, 0, uniqueGenome.getVariantFeatureNum());
+                        exacFreqCols = new int[options.exacPopLables.size()];
+                        String[] rowSS = rowS.split("\t");
+                        for (int k = 0; k < exacFreqCols.length; k++) {
+                            rowS = options.exacPopLables.get(k);
+                            //the populaiton label start at the forth column
+                            for (int t = 4; t < rowSS.length; t++) {
+                                if (rowS.equals(rowSS[t])) {
+                                    exacFreqCols[k] = t;
+                                    uniqueGenome.addVariantFeatureLabel("altFreq@exac" + rowS);
+                                    break;
+                                }
+                            }
+                        }
+
+                    } else {
+                        varaintDBFilterFiles6[i] = new AnnotationSummarySet(dbLabelName, null, new StringBuilder(), 0, 0, 0, uniqueGenome.getVariantFeatureNum());
+                        uniqueGenome.addVariantFeatureLabel("altFreq@" + dbLabelName);
+                    }
+
                 }
             }
 
@@ -907,7 +1057,10 @@ public class CUIApp implements Constants {
                     assFBAFIM = new AnnotationSummarySet("filterByAlleleFreqIncModel", null, null, 0, 0, 0, uniqueGenome.getVariantFeatureNum());
                 }
             }
-
+            AnnotationSummarySet ldPruningASS = null;
+            if (options.ldPruning) {
+                ldPruningASS = new AnnotationSummarySet("LDPruning", null, null, 0, 0, 0, uniqueGenome.getVariantFeatureNum());
+            }
             FiltrationSummarySet geneDBFilter7 = null;
             int[] variantsCounters = null;
             dbFileSize = options.geneDBLabels != null ? options.geneDBLabels.length : 0;
@@ -926,6 +1079,7 @@ public class CUIApp implements Constants {
                     String geneDBLabel = options.geneDBLabels[i];
                     String dbFileName = options.PUBDB_FILE_MAP.get(geneDBLabel);
                     File idMapFile = null;
+
                     if (geneDBLabel.equals("gencode")) {
                         idMapFile = new File(GlobalManager.RESOURCE_PATH + "/UniprotEnsemblMap.tab.gz");
                         referenceGenomes[i] = grp.readRefGeneSeq(GlobalManager.RESOURCE_PATH + "/" + dbFileName, geneDBLabel, options.splicingDis, options.neargeneDis, domainFile, idMapFile);
@@ -960,6 +1114,12 @@ public class CUIApp implements Constants {
                         uniqueGenome.setKnownAnnot(true);
                         availableFeatureSizeForGeneDB[i] = uniqueGenome.getVariantFeatureNum();
                         uniqueGenome.addVariantFeatureLabel("UniProtFeatureForKnownGene");
+                    } else {
+                        File dbFile = new File(geneDBLabel);
+                        uniqueGenome.setCustomizeAnnot(true);
+                        availableFeatureSizeForGeneDB[i] = uniqueGenome.getVariantFeatureNum();
+                        referenceGenomes[i] = grp.readRefGeneSeq(dbFile.getCanonicalPath(), dbFile.getName(), options.splicingDis, options.neargeneDis, null, null);
+                        referenceGenomes[i].setName(dbFile.getName());
                     }
                     referenceGenomes[i].setName(geneDBLabel);
                 }
@@ -1005,6 +1165,7 @@ public class CUIApp implements Constants {
             FiltrationSummarySet dbNSFPPred9 = null;
 
             //zhicheng noncoding
+            AnnotationSummarySet dbNoncodePred9d0 = null;
             FiltrationSummarySet dbNoncodePred9d1 = null;
             String resourcePathList[];
             boolean[] resourceTypeIsRegion;
@@ -1021,7 +1182,7 @@ public class CUIApp implements Constants {
             // LiJun noncoding
             FiltrationSummarySet dbNoncodePred9d2 = null;
             BufferedReader[] lineReaderList9d2 = null;
-            Bayes bayesPredictor = new Bayes(options.refGenomeVersion);
+            Bayes bayesPredictor = new Bayes(GlobalManager.RESOURCE_PATH, options.refGenomeVersion);
 
             // end
             List<CombOrders> combOrderList = new ArrayList<CombOrders>();
@@ -1031,11 +1192,150 @@ public class CUIApp implements Constants {
             // dbNSFP3.0
             int[] dbNSFP3ScoreIndexes = new int[]{5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18};
             int[] dbNSFP3PredicIndex = new int[]{19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
+            String annNCFPPath = null;
+            //String annNCFPPath = GlobalManager.RESOURCE_PATH + options.refGenomeVersion + "/hg19_all_SNV_dbNCFP.gz";
+
+            /*
+            final HashMap<String, Double> missingIndex = new HashMap<String, Double>() {
+                {
+                    put("CADD_cscore", (double) -0.0784622);
+                    put("CADD_PHRED", (double) 3.68016);
+                    put("DANN_score", (double) 0.291601);
+                    put("FunSeq_score", (double) 1);
+                    put("FunSeq2_score", (double) 0.287838);
+                    put("GWAS3D_score", (double) 2.80186);
+                    put("GWAVA_region_score", (double) 0.153309);
+                    put("GWAVA_TSS_score", (double) 0.205698);
+                    put("GWAVA_unmatched_score", (double) 0.33259);
+                    put("SuRFR_score", (double) 9.44965);
+                    put("Fathmm_MKL_score", (double) 0.00403947);
+                }
+            };
+             */
+            String[] nonCodingPredicLabels = new String[]{"GWAVA.matched", "GWAVA.tss", "GWAVA.unmatched", "CADD.CScore", "DANN", "fathmm-MKL", "FunSeq", "FunSeq2", "GWAS3D", "SuRFR"};
+            double[] meanNonCodingPredic = new double[]{0.153309, 0.205698, 0.33259, -0.0784622, 0.291601, 0.00403947, 1, 0.287838, 2.80186, 9.44965};
+            double[] baye1NonCodingPredic = new double[]{1.920773254522716, 1.4062755776550864, 8.931983960714861, 1.3731949333636428, 0.6465087024693027, 2.8994079489732445, 1.830225759450194, 0.4278010512234839, 1.3486363708941753, 8.010294623730767};
+            double[] baye2NonCodingPredic = new double[]{0.6576249120154963, 0.5844200018958348, 0.8993151817446124, 0.5786271132044547, 0.39265428813083125, 0.743550812562889, 0.6466712958635984, 0.2996223114256015, 0.574221019314591, 0.8890158377988816};
             if (!options.scoreDBLableList.isEmpty()) {
                 for (String dbLabelName : options.scoreDBLableList) {
-                    if (dbLabelName.equals("noncoding") || dbLabelName.equals("dbncfp")) {
+                    if (dbLabelName.equals("dbncfp_known") || dbLabelName.equals("dbncfp_all")) {
+                        if (dbLabelName.equals("dbncfp_known")) {
+                            annNCFPPath = GlobalManager.RESOURCE_PATH + options.refGenomeVersion + "/" + options.refGenomeVersion + "_known_SNV_dbNCFP.gz";
+                        } else {
+                            annNCFPPath = GlobalManager.RESOURCE_PATH + options.refGenomeVersion + "/" + options.refGenomeVersion + "_all_SNV_dbNCFP.gz";
+                        }
                         String comPath = options.refGenomeVersion + "/" + options.refGenomeVersion + "_funcnote";
+<<<<<<< HEAD
+
+                        dbNoncodePred9d0 = new AnnotationSummarySet("noncodeScore", uniqueGenome.getVariantFeatureNum());
+                        for (String str : nonCodingPredicLabels) {
+                            uniqueGenome.addVariantScore2Label(str);
+                        }
+                        if (options.ncFuncPred) {
+                            dbNoncodePred9d1 = new FiltrationSummarySet("noncode Random Forest", uniqueGenome.getVariantFeatureNum());
+                            resourcePathList = new String[]{
+                                GlobalManager.RESOURCE_PATH + comPath + "_encode_megamix.bed.gz.DNase-seq.cmp.gz",
+                                GlobalManager.RESOURCE_PATH + comPath + "_encode_megamix.bed.gz.FAIRE-seq.cmp.gz",
+                                GlobalManager.RESOURCE_PATH + comPath + "_encode_megamix.bed.gz.Histone.cmp.gz",
+                                GlobalManager.RESOURCE_PATH + comPath + "_encode_megamix.bed.gz.Tfbs.cmp.gz",
+                                GlobalManager.RESOURCE_PATH + comPath + "_all.footprints.bed.gz.cmp.gz"
+                            };
+                            resourceTypeIsRegion = new boolean[]{true, true, true, true, true};
+
+                            uniqueGenome.addVariantFeatureLabel("IsComplexDiseasePathogenic");
+                            uniqueGenome.addVariantFeatureLabel("RandomForestScore");
+
+                            String genicRegion[] = new String[]{"5UTR", "3UTR", "intronic", "upstream", "downstream", "ncRNA", "intergenic"};
+                            for (int i = 0; i < genicRegion.length; i++) {
+                                genicMap.put(genicRegion[i], i);
+                            }
+
+                            List<String> tmpStringCurrentList = new ArrayList<String>();
+                            List<BufferedReader> tmpLineReadersList = new ArrayList<BufferedReader>();
+                            List<Boolean> isRegionResource = new ArrayList<Boolean>();
+
+                            for (int i = 0; i < resourcePathList.length; i++) {
+                                File rsFile = new File(resourcePathList[i]);
+                                if (!rsFile.exists()) {
+                                    LOG.warn(rsFile.getCanonicalPath() + " does not exist! Scores on this chromosome are ignored!");
+                                    return;
+                                } else {
+                                    try {
+                                        BufferedReader lineReader = LocalFileFunc.getBufferedReader(rsFile.getCanonicalPath());
+                                        tmpLineReadersList.add(lineReader);
+                                        isRegionResource.add(resourceTypeIsRegion[i]);
+                                        if (resourceTypeIsRegion[i]) {
+                                            //The ANN format has no head
+                                            tmpStringCurrentList.add(lineReader.readLine());
+                                        }
+                                    } catch (Exception e) {
+                                        // TODO: handle exception
+                                        e.printStackTrace();
+                                    }
+                                }
+                            }
+
+                            currentLineList = tmpStringCurrentList.toArray(new String[tmpStringCurrentList.size()]);
+                            lineReaderList = tmpLineReadersList.toArray(new BufferedReader[tmpLineReadersList.size()]);
+                            isReigonList = isRegionResource.toArray(new Boolean[isRegionResource.size()]);
+                            String cells[] = null;
+                            String[] currentChrom = new String[isReigonList.length];
+                            int[] currentStartPos = new int[isReigonList.length];
+                            int[] currentEndPos = new int[isReigonList.length];
+
+                            fixedPosition = new int[isReigonList.length + 1];
+                            fixedPosition[0] = 0;
+                            List<String> scoreLabels = new ArrayList<String>();
+                            int startPosition = 3;
+                            for (int i = 0; i < currentLineList.length; i++) {
+                                //only consider regions
+                                if (isReigonList[i]) {
+                                    cells = Util.tokenize(currentLineList[i], '\t');
+                                    startPosition = 3;
+                                    currentEndPos[i] = Util.parseInt(cells[2]);
+                                    for (int j = startPosition; j < cells.length; j++) {
+                                        scoreLabels.add(cells[j]);
+                                        scoreIndexNum++;
+                                    }
+                                    fixedPosition[i + 1] = cells.length - startPosition + fixedPosition[i];
+                                }
+                                currentLineList[i] = lineReaderList[i].readLine();
+                            }
+
+                            if (options.needVerboseNoncode) {
+                                uniqueGenome.getVariantScore2Labels().addAll(scoreLabels);
+                            }
+                            scoreLabels.clear();
+                            iniScore = new double[scoreIndexNum];
+
+                            Arrays.fill(iniScore, Double.NaN);
+                            for (int k = 0; k < fixedPosition.length - 1; k++) {
+                                if (isReigonList[k]) {
+                                    for (int k2 = fixedPosition[k]; k2 < fixedPosition[k + 1]; k2++) {
+                                        iniScore[k2] = 0.0;
+                                    }
+                                }
+                            }
+                            myRandomForestList = new MyRandomForest[options.threadNum][];
+                            for (int k = 0; k < options.threadNum; k++) {
+                                String fileName = GlobalManager.RESOURCE_PATH + "hgmd_model.obj";
+                                FileInputStream objFIn = new FileInputStream(fileName);
+                                BufferedInputStream objIBfs = new BufferedInputStream(objFIn);
+                                ObjectInputStream localObjIn = new ObjectInputStream(objIBfs);
+                                myRandomForestList[k] = (MyRandomForest[]) localObjIn.readObject();
+                                localObjIn.close();
+                                objIBfs.close();
+                                objFIn.close();
+                            }
+
+                            dbNoncodePred9d1.initiateAMessage(0, "variants are predicted to be complex-disease-pathogenic;");
+                            dbNoncodePred9d1.initiateAMessage(0, "variants are predicted to be non-pathogenic according to the Random forest prediction model.");
+                            dbNoncodePred9d1.initiateAMessage(0, "variant(s) are left after filtered by the complex disease prediction.");
+                        }
+                        /*else if (options.ncFuncPred == 1) {
+=======
                         if (options.causingNCPredType == 1) {
+>>>>>>> origin/master
                             dbNoncodePred9d1 = new FiltrationSummarySet("noncode Random Forest", uniqueGenome.getVariantFeatureNum());
                             resourcePathList = new String[]{
                                 GlobalManager.RESOURCE_PATH + comPath + "_encode_megamix.bed.gz.DNase-seq.cmp.gz",
@@ -1053,6 +1353,7 @@ public class CUIApp implements Constants {
                                 GlobalManager.RESOURCE_PATH + comPath + "_SuRFR.gz"
                             };
                             resourceTypeIsRegion = new boolean[]{true, true, true, true, true, false, false, false, false, false, false, false, false};
+
                             uniqueGenome.addVariantFeatureLabel("IsComplexDiseasePathogenic");
                             uniqueGenome.addVariantFeatureLabel("RandomForestScore");
 
@@ -1061,9 +1362,9 @@ public class CUIApp implements Constants {
                                 genicMap.put(genicRegion[i], i);
                             }
 
-                            LinkedList<String> tmpStringCurrentList = new LinkedList<String>();
-                            LinkedList<BufferedReader> tmpLineReadersList = new LinkedList<BufferedReader>();
-                            LinkedList<Boolean> isRegionResource = new LinkedList<Boolean>();
+                            List<String> tmpStringCurrentList = new ArrayList<String>();
+                            List<BufferedReader> tmpLineReadersList = new ArrayList<BufferedReader>();
+                            List<Boolean> isRegionResource = new ArrayList<Boolean>();
 
                             for (int i = 0; i < resourcePathList.length; i++) {
                                 File rsFile = new File(resourcePathList[i]);
@@ -1144,17 +1445,27 @@ public class CUIApp implements Constants {
                             dbNoncodePred9d1.initiateAMessage(0, "variants are predicted to be complex-disease-pathogenic;");
                             dbNoncodePred9d1.initiateAMessage(0, "variants are predicted to be non-pathogenic according to the Random forest prediction model.");
                             dbNoncodePred9d1.initiateAMessage(0, "variant(s) are left after filtered by the complex disease prediction.");
+<<<<<<< HEAD
+                        } else */
+
+                        boolean cellTypeSpec = options.cellLineName != null;
+                        if (options.ncRegPred) {
+=======
                         } else if (options.causingNCPredType == 3) {
+>>>>>>> origin/master
                             dbNoncodePred9d2 = new FiltrationSummarySet("noncode Bayes model", uniqueGenome.getVariantFeatureNum());
-                            bayesPredictor.changeFeatureNum(options.dbncfpFeatureColumn);
-                            bayesPredictor.changeCellLineName(options.cellLineName);
-                            bayesPredictor.readResource();
+                            // bayesPredictor.changeFeatureNum(options.dbncfpFeatureName);
+                            if (cellTypeSpec) {
+                                bayesPredictor.changeCellLineName(options.cellLineName);
+                            }
+                            bayesPredictor.readResource(cellTypeSpec);
+                            /*
                             LinkedList<BufferedReader> tmpLineReadersList = new LinkedList<BufferedReader>();
                             comPath = options.refGenomeVersion + "/" + options.refGenomeVersion + "_funcnote_";
-                            for (int i = 0; i < options.dbncfpFeatureColumn.length; i++) {
-                                File rsFile = new File(GlobalManager.RESOURCE_PATH + comPath + options.dbncfpFeatureColumn[i] + ".gz");
+                            for (int i = 0; i < options.dbncfpFeatureName.length; i++) {
+                                File rsFile = new File(GlobalManager.RESOURCE_PATH + comPath + options.dbncfpFeatureName[i] + ".gz");
                                 if (!rsFile.exists()) {
-                                    LOG.error(options.dbncfpFeatureColumn[i] + " does not exist! Scores on this chromosome are ignored!");
+                                    LOG.error(options.dbncfpFeatureName[i] + " does not exist! Scores on this chromosome are ignored!");
                                 } else {
                                     try {
                                         BufferedReader lineReader = LocalFileFunc.getBufferedReader(rsFile.getCanonicalPath());;
@@ -1165,14 +1476,17 @@ public class CUIApp implements Constants {
                                     }
                                 }
                             }
-                            for (int i = 0; i < options.dbncfpFeatureColumn.length; i++) {
-                                uniqueGenome.addVariantFeatureLabel(options.dbncfpFeatureColumn[i]);
+                            for (int i = 0; i < options.dbncfpFeatureName.length; i++) {
+                                uniqueGenome.addVariantFeatureLabel(options.dbncfpFeatureName[i]);
                             }
+                            lineReaderList9d2 = tmpLineReadersList.toArray(new BufferedReader[tmpLineReadersList.size()]);
+                             */
                             uniqueGenome.addVariantFeatureLabel("BF");
                             uniqueGenome.addVariantFeatureLabel("Composite_P");
-                            uniqueGenome.addVariantFeatureLabel("Cell_P");
-                            uniqueGenome.addVariantFeatureLabel("Combine_P");
-                            lineReaderList9d2 = tmpLineReadersList.toArray(new BufferedReader[tmpLineReadersList.size()]);
+                            if (cellTypeSpec) {
+                                uniqueGenome.addVariantFeatureLabel("Cell_P");
+                                uniqueGenome.addVariantFeatureLabel("Combine_P");
+                            }
                         }
                     }
 
@@ -1195,7 +1509,7 @@ public class CUIApp implements Constants {
                         }
                         if (options.causingNSPredType == 0) {
                             // MendelFilter
-                            String logitParamFile = GlobalManager.RESOURCE_PATH + "/mendelcausalrare" + options.dbsnfpVersion + ".param.gz";
+                            String logitParamFile = GlobalManager.RESOURCE_PATH + "/mendelcausalrare" + options.dbnsfpVersion + ".param.gz";
                             br = LocalFileFunc.getBufferedReader(logitParamFile);
                             String line = null;
 
@@ -1252,10 +1566,16 @@ public class CUIApp implements Constants {
                             dbNSFPPred9.initiateAMessage(0, "variants are predicted to be non-disease-causal according to the Logistic regression prediction model trained by ExoVar dataset (http://grass.cgs.hku.hk/limx/kggseq/download/ExoVar.xls)");
                             dbNSFPPred9.initiateAMessage(0, "variant(s) are left after filtered by the disease mutation prediction.");
                         } else if (options.causingNSPredType == 2) {
+<<<<<<< HEAD
+                            for (int s = 0; s < options.threadNum; s++) {
+                                try {
+                                    File fileName = new File(GlobalManager.RESOURCE_PATH + "/CancerRandomForests" + options.dbnsfpVersion + ".obj");
+=======
 
                             for (int s = 0; s < options.threadNum; s++) {
                                 try {
                                     File fileName = new File(GlobalManager.RESOURCE_PATH + "/CancerRandomForests" + options.dbsnfpVersion + ".obj");
+>>>>>>> origin/master
                                     if (!fileName.exists()) {
                                         throw new Exception("Cannot find data in hard disk!");
                                     }
@@ -1386,6 +1706,7 @@ public class CUIApp implements Constants {
             Map<String, Double> geneLengths = null;
             AnnotationSummarySet assGIS17d3 = null;
             AnnotationSummarySet assGOS17d4 = null;
+            Map<String, RefGene> mergedGeneCodingRegions = null;
             if (options.geneDBLabels != null) {
                 GeneRegionParser grp = new GeneRegionParser();
                 // geneLengths =
@@ -1395,10 +1716,18 @@ public class CUIApp implements Constants {
                 String[] pathes = new String[options.geneDBLabels.length];
                 int ii = 0;
                 for (String lbs : options.geneDBLabels) {
-                    pathes[ii] = GlobalManager.RESOURCE_PATH + "/" + options.PUBDB_FILE_MAP.get(lbs);
+                    File f = new File(lbs);
+                    if (f.exists()) {
+                        pathes[ii] = lbs;
+                    } else {
+                        pathes[ii] = GlobalManager.RESOURCE_PATH + "/" + options.PUBDB_FILE_MAP.get(lbs);
+                    }
                     ii++;
                 }
-                geneLengths = grp.readMergeRefGeneCodingLength(pathes, options.splicingDis, true);
+                if (options.simulGeneRegionsGty) {
+                    mergedGeneCodingRegions = new HashMap<String, RefGene>();
+                }
+                geneLengths = grp.readMergeRefGeneCodingLength(pathes, options.splicingDis, true, mergedGeneCodingRegions);
 
                 // only keep genes in inGeneSet
                 if (!options.inGeneSet.isEmpty()) {
@@ -1447,7 +1776,7 @@ public class CUIApp implements Constants {
             Set<String> controlDoubleHitTriosGenes = null;
             int pathogenicPredicIndex = -1;
 
-            if (options.doubleHitGeneTriosFilter) {
+            if (options.doubleHitGeneTriosFilter || options.doubleHitGeneTriosCasePsudo || options.doubleHitGeneTriosCaseControl) {
                 hitDisCountsTriosGenes = new ArrayList<String[]>();
                 hitDisCounTriosReads = new ArrayList<String[]>();
                 doubleHitGeneModelFilter19 = new FiltrationSummarySet("DoubleHitModel", uniqueGenome.getVariantFeatureNum());
@@ -1484,6 +1813,8 @@ public class CUIApp implements Constants {
                 headActual.add("Gene");
                 headActual.add("PubMed");
                 headActual.add("ExonLen");
+<<<<<<< HEAD
+=======
                 headActual.add("CountHit");
                 int effectiveIndivSize = 0;
 
@@ -1491,12 +1822,41 @@ public class CUIApp implements Constants {
                     headActual.add("CountHitPseudoControl");
                 }
 
+>>>>>>> origin/master
                 List<String> headPhenotype = new ArrayList<String>();
                 headPhenotype.add("Disease");
                 headPhenotype.add(".");
                 headPhenotype.add(".");
+<<<<<<< HEAD
+
+                int effectiveIndivSize = 0;
+                if (options.doubleHitGeneTriosFilter) {
+                    headActual.add("CountHitCase");
+                    headPhenotype.add(".");
+                    headActual.add("CountHitControl");
+                    headPhenotype.add(".");
+
+                } else if (options.doubleHitGeneTriosCasePsudo) {
+                    headActual.add("CountHitCase");
+                    headActual.add("CountHitPseudoControl");
+                    headActual.add("TotalNum");
+                    headActual.add("p-Value");
+                    headPhenotype.add(".");
+                    headPhenotype.add(".");
+                    headPhenotype.add(".");
+                    headPhenotype.add(".");
+                } else if (options.doubleHitGeneTriosCaseControl) {
+                    headActual.add("CountHitCase");
+                    headActual.add("TotalNumCase");
+                    headActual.add("CountHitControl");
+                    headActual.add("TotalNumControl");
+                    headActual.add("p-Value");
+                    headPhenotype.add(".");
+                    headPhenotype.add(".");
+=======
                 headPhenotype.add(".");
                 if (options.countAllPsudoControl) {
+>>>>>>> origin/master
                     headPhenotype.add(".");
                 }
 
@@ -1522,6 +1882,13 @@ public class CUIApp implements Constants {
                     String infor = "No valid trios for double-hit gene checking!";
                     LOG.warn(infor);
                     return;
+                }
+
+                if (options.doubleHitGeneTriosCaseControl && caeSetID == null) {
+                    throw new Exception("No cases for '--double-hit-gene-trio-case-control'!");
+                }
+                if (options.doubleHitGeneTriosCaseControl && controlSetID == null) {
+                    throw new Exception("No controls for '--double-hit-gene-trio-case-control'!");
                 }
             }
 
@@ -1631,8 +1998,8 @@ public class CUIApp implements Constants {
             if (options.superdupAnnotate) {
                 grpSD = new CNVRegionParser();
                 refGenomeSD = grpSD.readSuperDupRegions(GlobalManager.RESOURCE_PATH + "/" + options.PUBDB_FILE_MAP.get("superdup"));
-                assSDA22 = new AnnotationSummarySet("superdup", null, null, 0, 0, 0, uniqueGenome.getmRNAFeatureNum());
-                uniqueGenome.addmRNAFeatureLabel("SuperDupKValue");
+                assSDA22 = new AnnotationSummarySet("superdup", null, null, 0, 0, 0, uniqueGenome.getVariantFeatureNum());
+                uniqueGenome.addVariantFeatureLabel("SuperDupKValue");
             } else if (options.superdupFilter) {
                 grpSD = new CNVRegionParser();
                 refGenomeSD = grpSD.readSuperDupRegions(GlobalManager.RESOURCE_PATH + "/" + options.PUBDB_FILE_MAP.get("superdup"));
@@ -1682,6 +2049,7 @@ public class CUIApp implements Constants {
             AnnotationSummarySet assMousePheno = null;
 
             Map<String, String[]> g2MP = null;
+<<<<<<< HEAD
 
             if (options.phenoMouse) {
                 assMousePheno = new AnnotationSummarySet("phenotype_mouse", null, null, 0, 0, 0, uniqueGenome.getVariantFeatureNum());
@@ -1691,6 +2059,17 @@ public class CUIApp implements Constants {
                 geneAnnotor.readMousePhenotype(g2MP);
             }
 
+=======
+
+            if (options.phenoMouse) {
+                assMousePheno = new AnnotationSummarySet("phenotype_mouse", null, null, 0, 0, 0, uniqueGenome.getVariantFeatureNum());
+                uniqueGenome.addVariantFeatureLabel("MousePhenotypeMGI");
+                uniqueGenome.addVariantFeatureLabel("MousePhenotypeIMPC");
+                g2MP = new HashMap<String, String[]>();
+                geneAnnotor.readMousePhenotype(g2MP);
+            }
+
+>>>>>>> origin/master
             AnnotationSummarySet assZebra = null;
 
             HashMap<String, String> xebraP2Phe = null;
@@ -1703,10 +2082,25 @@ public class CUIApp implements Constants {
 
             AnnotationSummarySet assDDD = null;
             HashMap<String, String> dddP2Phe = null;
+<<<<<<< HEAD
+            File fisher = new File(GlobalManager.RESOURCE_PATH + "/DDG2P.csv.gz");
+=======
+>>>>>>> origin/master
             if (options.dddPhenotypes) {
                 assDDD = new AnnotationSummarySet("phenotypeDDD", null, null, 0, 0, 0, uniqueGenome.getVariantFeatureNum());
                 uniqueGenome.addVariantFeatureLabel("DDDPhenotype");
 
+<<<<<<< HEAD
+                BufferedReader br = LocalFileFunc.getBufferedReader(fisher.getCanonicalPath());
+                //skip the headline
+                br.readLine();
+                br.readLine();
+
+                dddP2Phe = new HashMap<String, String>();
+                String strLine;
+                while ((strLine = br.readLine()) != null) {
+                    String[] strItems = Util.splitCVS(strLine);
+=======
                 File fisher = new File(GlobalManager.RESOURCE_PATH + "/ddg2p/ddg2p.txt");
                 BufferedReader br = new BufferedReader(new FileReader(fisher));
                 //skip the headline
@@ -1716,6 +2110,7 @@ public class CUIApp implements Constants {
                 String strLine;
                 while ((strLine = br.readLine()) != null) {
                     String[] strItems = strLine.split("\t", -1);
+>>>>>>> origin/master
                     String pheno = strItems[2] + ";" + strItems[4] + ";" + strItems[7];
                     dddP2Phe.put(strItems[0], pheno);
                 }
@@ -1837,8 +2232,10 @@ public class CUIApp implements Constants {
             AnnotationSummarySet assRSID25 = null;
             OpenIntIntHashMap[] altMapID = null;
             if (options.rsid) {
+                String urlT = options.PUBDB_URL_MAP.get("rsid");
+                urlT = urlT.substring(urlT.lastIndexOf("/") + 1);
                 assRSID25 = new AnnotationSummarySet("RSID", null, null, 0, 0, 0, uniqueGenome.getVariantFeatureNum());
-                File resourceFileRSID = new File(GlobalManager.RESOURCE_PATH + "/" + options.refGenomeVersion + "/b142_SNPChrPosOnRef_GRCh19p105.bcp.gz");
+                File resourceFileRSID = new File(GlobalManager.RESOURCE_PATH + "/" + options.refGenomeVersion + "/" + urlT);
                 altMapID = new OpenIntIntHashMap[STAND_CHROM_NAMES.length];
                 for (int i = 0; i < STAND_CHROM_NAMES.length; i++) {
                     altMapID[i] = new OpenIntIntHashMap();
@@ -1913,18 +2310,28 @@ public class CUIApp implements Constants {
 
                 BufferedReader br = LocalFileFunc.getBufferedReader(GlobalManager.RESOURCE_PATH + "/" + geneMendelPredFilePath);
                 String strLine = br.readLine();
-                String[] title = strLine.split("\t");
-                intPatho = 9;
+                String[] title = strLine.split(",");
+                intPatho = 11;
+
                 for (int i = 1; i < intPatho; i++) {
                     uniqueGenome.addVariantFeatureLabel(title[i]);
                 }
 
                 while ((strLine = br.readLine()) != null) {
-                    String[] items = strLine.split("\t");
+                    String[] items = strLine.split(",");
                     String[] values = new String[intPatho - 1];
                     System.arraycopy(items, 1, values, 0, values.length);
                     hmpPatho.put(items[0], values);
                 }
+            }
+
+            Map<String, Map<String, Integer>> cosmicGeneMut = null;
+            AnnotationSummarySet cosmicDBAnnot28 = null;
+            if (options.cosmicAnnotate) {
+                fileName = options.PUBDB_FILE_MAP.get("cosmicdb");
+                cosmicGeneMut = geneAnnotor.readCosmicGeneAnnotation(GlobalManager.RESOURCE_PATH + "/" + fileName);
+                cosmicDBAnnot28 = new AnnotationSummarySet("COSMIC data", uniqueGenome.getVariantFeatureNum());
+                uniqueGenome.addVariantFeatureLabel("COSMICCancerInfo");
             }
 
             File annovarFilteredInFile = null;
@@ -1942,7 +2349,10 @@ public class CUIApp implements Constants {
             BufferedWriter bwGeneVarGroupFile = null;
             if (options.isGeneVarGroupFileOut) {
                 if (options.outGZ) {
+<<<<<<< HEAD
+=======
 
+>>>>>>> origin/master
                     GZIPOutputStream gzOut = new GZIPOutputStream(new FileOutputStream(options.outputFileName + ".gene.epacts.grp.gz"));
                     bwGeneVarGroupFile = new BufferedWriter(new OutputStreamWriter(gzOut));
                 } else {
@@ -2118,10 +2528,41 @@ public class CUIApp implements Constants {
                 //vcfFilteredInFileWriter = new BufferedWriter(new FileWriter(vcfFilteredInFile));
                 vcfFilteredInFileWriter.write(vsParser.getVcfHead().toString().getBytes());
                 vcfFilteredInFileWriter.write("#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT".getBytes());
+<<<<<<< HEAD
                 for (Individual indiv : subjectList) {
                     if (!indiv.isHasGenotypes()) {
                         continue;
                     }
+                    vcfFilteredInFileWriter.write("\t".getBytes());
+                    vcfFilteredInFileWriter.write(indiv.getLabelInChip().getBytes());
+                }
+                vcfFilteredInFileWriter.write("\n".getBytes());
+            }
+
+            File simpleVcfFilteredInFile = null;
+            BlockCompressedOutputStream simpleVcfFilteredInFileWriter = null;
+
+            if (options.isSimpleVCFOut) {
+                simpleVcfFilteredInFile = new File(options.outputFileName + ".flt.simple.vcf.gz");
+                simpleVcfFilteredInFileWriter = new BlockCompressedOutputStream(simpleVcfFilteredInFile);
+                if (options.inputFormat.endsWith("--ked-file")) {
+                    simpleVcfFilteredInFileWriter.write("##fileformat=VCFv4.1\n".getBytes());
+                    simpleVcfFilteredInFileWriter.write("##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n".getBytes());
+                } else {
+                    simpleVcfFilteredInFileWriter.write(vsParser.getVcfHead().toString().getBytes());
+                }
+                simpleVcfFilteredInFileWriter.write("#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT".getBytes());
+=======
+>>>>>>> origin/master
+                for (Individual indiv : subjectList) {
+                    if (!indiv.isHasGenotypes()) {
+                        continue;
+                    }
+<<<<<<< HEAD
+                    simpleVcfFilteredInFileWriter.write("\t".getBytes());
+                    simpleVcfFilteredInFileWriter.write(indiv.getLabelInChip().getBytes());
+                }
+=======
                     vcfFilteredInFileWriter.write("\t".getBytes());
                     vcfFilteredInFileWriter.write(indiv.getLabelInChip().getBytes());
                 }
@@ -2145,6 +2586,7 @@ public class CUIApp implements Constants {
                     simpleVcfFilteredInFileWriter.write("\t".getBytes());
                     simpleVcfFilteredInFileWriter.write(indiv.getLabelInChip().getBytes());
                 }
+>>>>>>> origin/master
                 simpleVcfFilteredInFileWriter.write("\n".getBytes());
             }
 
@@ -2164,22 +2606,32 @@ public class CUIApp implements Constants {
                     finalFilteredInFile = new File(options.outputFileName + ".flt.xls.gz");
                     GZIPOutputStream gzOut = new GZIPOutputStream(new FileOutputStream(finalFilteredInFile.getCanonicalPath()));
                     finalExportWriter = new BufferedWriter(new OutputStreamWriter(gzOut));
+                    //finalExportWriter = LocalFileFunc.getBufferedWriter(finalFilteredInFile.getCanonicalPath(), true);
                 } else {
                     finalFilteredInFile = new File(options.outputFileName + ".flt.xls");
                     finalExportWriter = new BufferedWriter(new FileWriter(finalFilteredInFile));
+                    //finalExportWriter = LocalFileFunc.getBufferedWriter(finalFilteredInFile.getCanonicalPath(), false);
                 }
             } else if (options.outGZ) {
                 finalFilteredInFile = new File(options.outputFileName + ".flt.txt.gz");
                 GZIPOutputStream gzOut = new GZIPOutputStream(new FileOutputStream(finalFilteredInFile.getCanonicalPath()));
                 finalExportWriter = new BufferedWriter(new OutputStreamWriter(gzOut));
+<<<<<<< HEAD
+                //finalExportWriter = LocalFileFunc.getBufferedWriter(finalFilteredInFile.getCanonicalPath(), true);
             } else {
                 finalFilteredInFile = new File(options.outputFileName + ".flt.txt");
                 finalExportWriter = new BufferedWriter(new FileWriter(finalFilteredInFile));
+                //finalExportWriter = LocalFileFunc.getBufferedWriter(finalFilteredInFile.getCanonicalPath(), false);
+=======
+            } else {
+                finalFilteredInFile = new File(options.outputFileName + ".flt.txt");
+                finalExportWriter = new BufferedWriter(new FileWriter(finalFilteredInFile));
+>>>>>>> origin/master
             }
 
             Genome refhapGenome = null;
             List<Individual> refIndivList = null;
-            BufferedWriter bwMap = null;
+            BufferedWriter mergedBwMap = null;
             BufferedOutputStream mergedFileStream = null;
             WritableByteChannel mergedFileChannel = null;
             int[] coutVar = new int[1];
@@ -2188,6 +2640,10 @@ public class CUIApp implements Constants {
 
             if (options.mergeGtyDb != null && (options.isPlinkPedOut || options.isPlinkBedOut)) {
                 refIndivList = new ArrayList<Individual>();
+<<<<<<< HEAD
+                String vcfFilePath = GlobalManager.RESOURCE_PATH + "/" + options.mergeGtyDb + ".chr1.vcf.gz";
+                vsParser.extractSubjectIDsVCFInFile(vcfFilePath, refIndivList);
+=======
                 String vcfFilePath = GlobalManager.RESOURCE_PATH + "/" + options.mergeGtyDb + ".chr_CHROM_.vcf.gz";
                 vsParser.extractSubjectIDsVCFInFile(vcfFilePath.replaceAll("_CHROM_", "1"), refIndivList);
 
@@ -2195,17 +2651,17 @@ public class CUIApp implements Constants {
                         options.maxFisherStandBias, options.maxGtyAlleleNum, options.gtyQual, options.minGtySeqDP, options.maxAltAlleleFracRefHom, options.minAltAlleleFractHet,
                         options.minAltAlleleFractAltHom, options.vcfFilterLabelsIn, options.minOBS, options.sampleMafOver, options.sampleMafLess, options.considerSNV, options.considerIndel,
                         options.gtySecPL, options.gtyBestGP, options.needProgressionIndicator, false, false, false, false, false, null, null, null, null, null, null);
+>>>>>>> origin/master
 
                 if (!subjectList.isEmpty() && !refIndivList.isEmpty()) {
                     if (options.isPlinkBedOut) {
                         coutVar[0] = 0;
                         intsIndiv[0] = 0;
-
                         if (options.outGZ) {
                             GZIPOutputStream gzOut = new GZIPOutputStream(new FileOutputStream(options.outputFileName + ".merged.bim" + ".gz"));
-                            bwMap = new BufferedWriter(new OutputStreamWriter(gzOut));
+                            mergedBwMap = new BufferedWriter(new OutputStreamWriter(gzOut));
                         } else {
-                            bwMap = new BufferedWriter(new FileWriter(options.outputFileName + ".merged.bim"));
+                            mergedBwMap = new BufferedWriter(new FileWriter(options.outputFileName + ".merged.bim"));
                         }
 
                         File bedMergedFile = new File(options.outputFileName + ".merged.bed");
@@ -2215,12 +2671,25 @@ public class CUIApp implements Constants {
 
                         if (options.outGZ) {
                             mergedFileChannel = Channels.newChannel(new FileOutputStream(bedMergedFile.getCanonicalPath() + ".gz"));
-                            mergedFileStream = new BufferedOutputStream(new GZIPOutputStream(Channels.newOutputStream(wbcFileBed)));
+                            mergedFileStream = new BufferedOutputStream(new GZIPOutputStream(Channels.newOutputStream(mergedFileChannel)));
                             //bwFileChannelBed=new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(Channels.newOutputStream(wbcFileBed))));
                         } else {
                             mergedFileChannel = Channels.newChannel(new FileOutputStream(bedMergedFile));
-                            mergedFileStream = new BufferedOutputStream(Channels.newOutputStream(wbcFileBed));
+                            mergedFileStream = new BufferedOutputStream(Channels.newOutputStream(mergedFileChannel));
                         }
+
+                        byte[] byteInfo = new byte[3];
+                        //|-magic number-
+                        //01101100 00011011
+                        byteInfo[0] = (byte) 0x6C;
+
+                        byteInfo[1] = (byte) 0x1B;
+
+                        //|-mode-| 00000001 (SNP-major)
+                        //00000001 
+                        byteInfo[2] = 1;
+                        mergedFileStream.write(byteInfo);
+
                         uniqueGenome.exportPlinkBinaryGtyFam(subjectList, refIndivList, options.outputFileName, intsIndiv, options.outGZ);
                     }
 
@@ -2229,9 +2698,9 @@ public class CUIApp implements Constants {
                         intsSPV[1] = 0;
                         if (options.outGZ) {
                             GZIPOutputStream gzOut = new GZIPOutputStream(new FileOutputStream(options.outputFileName + ".merged.map" + ".gz"));
-                            bwMap = new BufferedWriter(new OutputStreamWriter(gzOut));
+                            mergedBwMap = new BufferedWriter(new OutputStreamWriter(gzOut));
                         } else {
-                            bwMap = new BufferedWriter(new FileWriter(options.outputFileName + ".merged.map"));
+                            mergedBwMap = new BufferedWriter(new FileWriter(options.outputFileName + ".merged.map"));
                         }
                     }
                 }
@@ -2255,10 +2724,14 @@ public class CUIApp implements Constants {
             boolean needHead = true;
             List<Variant> chromosomeVarAll = new ArrayList<Variant>();
             int finalVarNum = 0;
-
+            //MemoryCounter mc = new MemoryCounter();
             for (int chromID = 0; chromID < chromosomes.length; chromID++) {
+<<<<<<< HEAD
+                uniqueGenome.loadVariantFromDisk(chromID, needGty, origionallySorted, maxThreadID);//time-consuming part.                  
+=======
                 wahBit = uniqueGenome.loadVariantFromDisk(chromID, needGty, origionallySorted, maxThreadID);//time-consuming part. 
 
+>>>>>>> origin/master
                 if (chromosomes[chromID].variantList == null || chromosomes[chromID].variantList.isEmpty()) {
                     continue;
                 }
@@ -2273,7 +2746,11 @@ public class CUIApp implements Constants {
                 }
 
                 if (inheritanceModelFilter2 != null) {
+<<<<<<< HEAD
+                    varFilter.inheritanceModelFilterVar(chromosomes[chromID], uniqueGenome.isIsPhasedGty(), subjectList, pedEncodeGytIDMap, caeSetID, controlSetID, genotypeFilters, inheritanceModelFilter2);
+=======
                     varFilter.inheritanceModelFilterVar(chromosomes[chromID], wahBit, uniqueGenome.isIsPhasedGty(), subjectList, pedEncodeGytIDMap, caeSetID, controlSetID, genotypeFilters, hardFilterModel, inheritanceModelFilter2);
+>>>>>>> origin/master
 
                 }
                 if (denovoModelFilter3 != null) {
@@ -2281,7 +2758,11 @@ public class CUIApp implements Constants {
                 }
 
                 if (needGty && options.sampleGtyHardFilterCode != null && (options.sampleGtyHardFilterCode.contains("8"))) {
+<<<<<<< HEAD
+                    varFilter.somaticMutationFilterVar(chromosomes[chromID], uniqueGenome.isIsPhasedGty(), subjectList, pedEncodeGytIDMap, controlSetID, setSampleIDList, setSampleLabelList, somaticModelFilter4, options.somatReadsP);
+=======
                     varFilter.somaticMutationFilterVar(chromosomes[chromID], wahBit, uniqueGenome.isIsPhasedGty(), subjectList, pedEncodeGytIDMap, controlSetID, setSampleIDList, setSampleLabelList, somaticModelFilter4, options.somatReadsP);
+>>>>>>> origin/master
 
                 }
 
@@ -2312,10 +2793,21 @@ public class CUIApp implements Constants {
 
                 if (varaintDBFilterFiles6 != null) {
                     for (int i = 0; i < varaintDBFilterFiles6.length; i++) {
+<<<<<<< HEAD
+                        // varAnnoter.markByANNOVARefFormat(chromosomes[chromID], chromID, varaintDBFilterFiles6[i], options.needProgressionIndicator);
+                        String dbLabelName = options.varaintDBLableList.get(i);
+                        String filePath = GlobalManager.RESOURCE_PATH + "/" + options.PUBDB_FILE_MAP.get(dbLabelName);
+                        if (filePath.endsWith("vcf.gz")) {
+                            varAnnoter.markByVCFAlleleFormatThread(filePath, exacFreqCols, chromosomes[chromID], varaintDBFilterFiles6[i], options.threadNum);
+                        } else {
+                            varAnnoter.markByANNOVARefFormatThread(filePath, chromosomes[chromID], varaintDBFilterFiles6[i], options.threadNum);
+                        }
+=======
                         //varAnnoter.markByANNOVARefFormat(chromosomes[chromID], chromID, varaintDBFilterFiles6[i], options.needProgressionIndicator);
                         String dbLabelName = options.varaintDBLableList.get(i);
                         String filePath = GlobalManager.RESOURCE_PATH + "/" + options.PUBDB_FILE_MAP.get(dbLabelName);
                         varAnnoter.markByANNOVARefFormatThread(filePath, chromosomes[chromID], varaintDBFilterFiles6[i], options.threadNum);
+>>>>>>> origin/master
                     }
                 }
 
@@ -2387,21 +2879,28 @@ public class CUIApp implements Constants {
                         // varAnnoter.geneFeatureAnnot(chromosomes[chromID], chromID, referenceGenomes[i], options.geneFeatureIn, availableFeatureSizeForGeneDB[i]);
 
                     }
-
                     //this should not be filttered by gene-feature
                     if (somatNumIndex >= 0) {
                         varAnnoter.summarizeSomatNSVarPerGene(chromosomes[chromID], somatNumIndex, readInfoIndex, options.dependentGeneFeature, options.independentGeneFeature);
                     } else {
                         varAnnoter.summarizeAltNSVarPerGene(chromosomes[chromID], options.dependentGeneFeature, options.independentGeneFeature);
                     }
+
+                    // varFilter.annotateConsecutiveVar(chromosomes[chromID], referenceGenomes, options.geneFeatureIn);
                     varFilter.geneFeatureFilter(chromosomes[chromID], variantsCounters, options.geneFeatureIn, geneDBFilter7);
 
                     if (options.geneDBLabels != null) {
+<<<<<<< HEAD
+                        if (!options.inGeneSet.isEmpty()) {
+                            varFilter.keepGenesInSet(chromosomes[chromID], assGIS17d3, options.inGeneSet);
+                        }
+=======
 
                         if (!options.inGeneSet.isEmpty()) {
                             varFilter.keepGenesInSet(chromosomes[chromID], assGIS17d3, options.inGeneSet);
                         }
 
+>>>>>>> origin/master
                         // only keep genes in outGeneSet
                         if (!options.outGeneSet.isEmpty()) {
                             varFilter.keepGenesOutSet(chromosomes[chromID], assGOS17d4, options.outGeneSet);
@@ -2410,6 +2909,22 @@ public class CUIApp implements Constants {
                 }
 
                 if (dbNSFPAnnot8 != null) {
+<<<<<<< HEAD
+                    String dbLabelName = "dbnsfp";
+
+                    if (options.scoreDBLableList.contains(dbLabelName)) {
+                        String dbFileName = options.PUBDB_FILE_MAP.get(dbLabelName);
+                        // varAnnoter.readExonicScoreNSFPNucleotideMerge(chromosomes[chromID], GlobalManager.RESOURCE_PATH + "/" + dbFileName, options.refGenomeVersion, dbNSFP3ScoreIndexes, dbNSFP3PredicIndex, dbNSFPAnnot8, options.needProgressionIndicator);
+                        varAnnoter.readExonicScoreNSFPNucleotideMergeMultiThread(chromosomes[chromID], GlobalManager.RESOURCE_PATH + "/" + dbFileName, options.refGenomeVersion, dbNSFP3ScoreIndexes, dbNSFP3PredicIndex, dbNSFPAnnot8, options.needProgressionIndicator, options.threadNum);
+
+                        if (options.causingNSPredType == 0) {
+//riskPredictionRareDiseaseAll(Chromosome chromosome, List<CombOrders> combOrderList, boolean filterNonDisMut, List<String> names, FiltrationSummarySet dbNSFPPred9)
+                            if (options.predictExplanatoryVar.startsWith("best")) {
+                                varAnnoter.riskPredictionRareDiseaseAll(chromosomes[chromID], combOrderList, options.mendelBestModelNum, options.filterNonDiseaseMut, uniqueGenome.getScore1Labels(), options.threadNum, dbNSFPPred9);
+                            } /*else if (options.predictExplanatoryVar.startsWith("best")) {
+                                varAnnoter.riskPredictionRareDiseaseBest(chromosomes[chromID], combOrderList, options.filterNonDiseaseMut, uniqueGenome.getScore1Labels(), dbNSFPPred9);
+                            }*/ else {
+=======
 
                     for (String dbLabelName : options.scoreDBLableList) {
                         if (dbLabelName.equals("dbnsfp")) {
@@ -2425,28 +2940,58 @@ public class CUIApp implements Constants {
                             } else if (options.predictExplanatoryVar.startsWith("best")) {
                                 varAnnoter.riskPredictionRareDiseaseBest(chromosomes[chromID], combOrderList, options.filterNonDiseaseMut, uniqueGenome.getScore1Labels(), dbNSFPPred9);
                             } else {
+>>>>>>> origin/master
                                 varAnnoter.riskPredictionRareDiseaseFixParam(chromosomes[chromID], fixedComb, options.filterNonDiseaseMut, uniqueGenome.getScore1Labels(), dbNSFPPred9);
                             }
                         } else if (options.causingNSPredType == 2) {
                             //Chromosome chromosome, MyRandomForest myRandomForestsCancer, boolean filterNonDisMut, FiltrationSummarySet dbNSFPPred9
                             varAnnoter.riskPredictionRandomForest(chromosomes[chromID], myRandomForestsCancer, options.threadNum, options.filterNonDiseaseMut, dbNSFPPred9);
                         }
+
                     }
                 }
 
+                if (dbNoncodePred9d0 != null) {
+                    varAnnoter.readNocodeScoreNucleotideMultiThread(annNCFPPath, chromosomes[chromID], dbNoncodePred9d0, options.threadNum);
+                }
                 if (dbNoncodePred9d1 != null) {
+<<<<<<< HEAD
+                    /*
+=======
+>>>>>>> origin/master
                     //varAnnoter.noncodingRandomForestGFC(chromosomes[chromID], needProgressionIndicator, filterNonDisMut, needThreadNumber);
                     currentLineList = varAnnoter.noncodingRandomForestGFC(chromosomes[chromID], options.needProgressionIndicator, options.filterNonDiseaseMut,
                             options.threadNum, isReigonList, iniScore, currentLineList, fixedPosition,
                             lineReaderList, scoreIndexNum, myRandomForestList, genicMap,
                             options.needVerboseNoncode, dbNoncodePred9d1.getAvailableFeatureIndex(), chromID, dbNoncodePred9d1);
+                     */
+
+                    currentLineList = varAnnoter.noncodingRandomForestGFRegions(chromosomes[chromID], options.needProgressionIndicator, options.filterNonDiseaseMut,
+                            options.threadNum, isReigonList, iniScore, currentLineList, fixedPosition,
+                            lineReaderList, scoreIndexNum, myRandomForestList, genicMap,
+                            options.needVerboseNoncode, dbNoncodePred9d1.getAvailableFeatureIndex(), chromID, dbNoncodePred9d1);
+
                 }
+
                 if (dbNoncodePred9d2 != null) {
                     // noncode 4 represents 4 calcualting parameters (BF,Composite_P,Cell_P,Combine_P)
+                    /*
                     varAnnoter.noncodingCellTypeSpecificPrediction(chromosomes[chromID], options.needProgressionIndicator, lineReaderList9d2,
                             bayesPredictor, chromID, dbNoncodePred9d2.getAvailableFeatureIndex(),
                             dbNoncodePred9d2.getAvailableFeatureIndex() + options.dbncfpFeatureColumn.length + 4);
+                     */
+
+                    varAnnoter.noncodingCompositPredictionMultiThread(chromosomes[chromID], options.usedDBncfpFeatureIndex,
+                            bayesPredictor, dbNoncodePred9d2.getAvailableFeatureIndex(), options.threadNum, baye1NonCodingPredic,
+                            baye2NonCodingPredic, options.cellLineName != null);
                 }
+                if (options.ldPruning) {
+                    varAnnoter.LDPruneWithinDistance(chromosomes[chromID], subjectList, pedEncodeGytIDMap, uniqueGenome.isIsPhasedGty(), options.threadNum, options.ldPrunWindowSize, options.ldPrunR2, ldPruningASS);
+                }
+<<<<<<< HEAD
+
+=======
+>>>>>>> origin/master
                 System.gc();
                 if (options.geneVarFilter > 0) {
                     varFilter.filterByGeneVarNum(chromosomes[chromID], assGVF10, options.geneVarFilter, uniqueGenome.getVariantFeatureLabels(), uniqueGenome.isIsPhasedGty());
@@ -2483,11 +3028,14 @@ public class CUIApp implements Constants {
 
                     varAnnoter.exploreLongIBSRegion(chromosomes[chromID], assIBS17d1, chromosomeVarAll, wahBit, options.ibsCheckCase * 1000, uniqueGenome.isIsPhasedGty(), subjectList, pedEncodeGytIDMap, caeSetID);
                 }
+<<<<<<< HEAD
+=======
 
                 if (options.homozygousRegionCase >= 0 && options.inputFormat.endsWith("--vcf-file")) {
 
                     varAnnoter.exploreLongHomozygosityRegion(chromosomes[chromID], assHRC17d2, chromosomeVarAll, wahBit, options.homozygousRegionCase * 1000, uniqueGenome.isIsPhasedGty(), subjectList, pedEncodeGytIDMap, caeSetID, controlSetID);
                 }
+>>>>>>> origin/master
                 //to save memory
                 chromosomeVarAll.clear();
 
@@ -2502,11 +3050,27 @@ public class CUIApp implements Constants {
 
                 // System.out.println(chromID);
                 if (doubleHitGeneModelFilter19 != null) {
+<<<<<<< HEAD
+                    if (options.doubleHitGeneTriosCasePsudo) {
+                        varFilter.doubleHitGeneExploreVarTriosSudoControl(chromosomes[chromID], uniqueGenome.isIsPhasedGty(), subjectList, pedEncodeGytIDMap, triosIDList, effectiveIndivIDsTrios, options.searchList, geneNamesMap, genePubMedID,
+                                options.noHomo, hitDisCountsTriosGenes, hitDisCounTriosReads, caseDoubleHitTriosGenes, controlDoubleHitTriosGenes, options.countAllPsudoControl, doubleHitGeneModelFilter19, options.pubmedMiningGene);
+                    } else if (options.doubleHitGeneTriosFilter) {
+                        varFilter.doubleHitGeneExploreVarTriosFilter(chromosomes[chromID], uniqueGenome.isIsPhasedGty(), subjectList, pedEncodeGytIDMap, triosIDList, effectiveIndivIDsTrios, options.searchList, geneNamesMap, genePubMedID,
+                                options.noHomo, hitDisCountsTriosGenes, hitDisCounTriosReads, caseDoubleHitTriosGenes, doubleHitGeneModelFilter19, options.pubmedMiningGene);
+                    } else if (options.doubleHitGeneTriosCaseControl) {
+                        varFilter.doubleHitGeneExploreVarTriosCaseControl(chromosomes[chromID], uniqueGenome.isIsPhasedGty(), subjectList, pedEncodeGytIDMap, triosIDList, effectiveIndivIDsTrios, options.searchList, geneNamesMap, genePubMedID,
+                                options.noHomo, hitDisCountsTriosGenes, hitDisCounTriosReads, caseDoubleHitTriosGenes, controlDoubleHitTriosGenes, doubleHitGeneModelFilter19, options.pubmedMiningGene);
+                    }
+                }
+                if (doubleHitGeneModelFilter19d1 != null) {
+                    varFilter.doubleHitGeneExploreVarPhasedGty(chromosomes[chromID], pedEncodeGytIDMap, caeSetID, controlSetID, options.searchList, geneNamesMap, genePubMedID,
+=======
                     varFilter.doubleHitGeneExploreVarTriosSudoControl(chromosomes[chromID], wahBit, uniqueGenome.isIsPhasedGty(), subjectList, pedEncodeGytIDMap, triosIDList, effectiveIndivIDsTrios, options.searchList, geneNamesMap, genePubMedID,
                             options.noHomo, hitDisCountsTriosGenes, hitDisCounTriosReads, caseDoubleHitTriosGenes, controlDoubleHitTriosGenes, options.countAllPsudoControl, doubleHitGeneModelFilter19, options.pubmedMiningGene);
                 }
                 if (doubleHitGeneModelFilter19d1 != null) {
                     varFilter.doubleHitGeneExploreVarPhasedGty(chromosomes[chromID], wahBit, pedEncodeGytIDMap, caeSetID, controlSetID, options.searchList, geneNamesMap, genePubMedID,
+>>>>>>> origin/master
                             options.noHomo, pathogenicPredicIndex, doubleHitGenePhasedGenes, doubleHitGenePhasedReads, caseDoubleHitPhasedGenes, controlDoubleHitPhasedGenes, doubleHitGeneModelFilter19d1, options.pubmedMiningGene);
                 }
 
@@ -2544,7 +3108,11 @@ public class CUIApp implements Constants {
                 }
 
                 if (options.overlappedGeneFilter) {
+<<<<<<< HEAD
+                    varAnnoter.overlappedGeneExploreVar(chromosomes[chromID], assOLGF, subjectList, pedEncodeGytIDMap, options.filterNonDiseaseMut, caseSubIDs, controlSubIDs, pathogenicPredicIndex, uniqueGenome);
+=======
                     varAnnoter.overlappedGeneExploreVar(chromosomes[chromID], wahBit, assOLGF, subjectList, pedEncodeGytIDMap, options.filterNonDiseaseMut, caseSubIDs, controlSubIDs, pathogenicPredicIndex, uniqueGenome);
+>>>>>>> origin/master
                 }
 
                 if (options.phenoMouse) {
@@ -2598,15 +3166,27 @@ public class CUIApp implements Constants {
 
                 if (options.skatGene) {
                     if (skat.boolSnowFail) {
+<<<<<<< HEAD
+                        skat.runGeneAssoc(geneVars, subjectList, pedEncodeGytIDMap, uniqueGenome.isIsPhasedGty(), 1, genePVList);
+                    } else {
+                        skat.runGeneAssoc(geneVars, subjectList, pedEncodeGytIDMap, uniqueGenome.isIsPhasedGty(), options.threadNum, genePVList);
+=======
                         skat.runGeneAssoc(geneVars, wahBit, subjectList, pedEncodeGytIDMap, uniqueGenome.isIsPhasedGty(), 1, genePVList);
                     } else {
                         skat.runGeneAssoc(geneVars, wahBit, subjectList, pedEncodeGytIDMap, uniqueGenome.isIsPhasedGty(), options.threadNum, genePVList);
+>>>>>>> origin/master
                     }
                 }
 
                 if (options.mendelGenePatho) {
                     varAnnoter.addPatho(chromosomes[chromID], assPatho27, hmpPatho, intPatho);
                 }
+<<<<<<< HEAD
+                if (options.cosmicAnnotate) {
+                    varAnnoter.cosmicGeneAnnotationVar(chromosomes[chromID], cosmicDBAnnot28, cosmicGeneMut);
+                }
+=======
+>>>>>>> origin/master
 
                 if (!subjectList.isEmpty()) {
                     if (options.isPlinkBedOut) {
@@ -2631,6 +3211,30 @@ public class CUIApp implements Constants {
 
                 if (options.isGeneVarGroupFileOut) {
                     uniqueGenome.export2GeneVarGroupFile(bwGeneVarGroupFile, chromID, geneVars);
+<<<<<<< HEAD
+                }
+                //to release memory, release all lefte variants on this chromosome  and unused feature of variants
+                uniqueGenome.outputVariant2FlatText(finalExportWriter, chromID, needHead, options.needRecordAltFreq, options.refGenomeVersion);//To write the result into a temp file. 
+                System.gc();
+                if (options.isVCFOut) {
+                    //Othervise this will repeat twice
+                    if (origionallySorted[0]) {
+                        uniqueGenome.export2VCFFormatNoSorting(vcfFilteredInFileWriter, chromosomes[chromID], maxEffectiveColVCF, maxThreadID[0]);
+                    } else {
+                        uniqueGenome.export2VCFFormatSorting(vcfFilteredInFileWriter, chromosomes[chromID], maxEffectiveColVCF, options.threadNum, maxThreadID[0]);
+                    }
+                }
+                if (options.isSimpleVCFOut) {
+                    uniqueGenome.export2VCFFormatSimple(simpleVcfFilteredInFileWriter, chromosomes[chromID], subjectList.size(), pedEncodeGytIDMap, hasChrLabel);
+                }
+                if (options.rvtestGene) {
+                    BufferedWriter bwGeneRVTestGroupFile = null;
+                    GZIPOutputStream gzOut = new GZIPOutputStream(new FileOutputStream(options.outputFileName + ".chr" + STAND_CHROM_NAMES[chromID] + ".gene.rvtest.grp.gz"));
+                    bwGeneRVTestGroupFile = new BufferedWriter(new OutputStreamWriter(gzOut));
+                    uniqueGenome.export2GeneVarGroupFileRVTest(bwGeneRVTestGroupFile, chromID, geneVars, hasChrLabel);
+                    bwGeneRVTestGroupFile.close();
+                }
+=======
                 }
                 //to release memory, release all lefte variants on this chromosome  and unused feature of variants
                 uniqueGenome.export2FlatText(finalExportWriter, chromID, needHead, options.needRecordAltFreq);//To write the result into a temp file. 
@@ -2653,6 +3257,7 @@ public class CUIApp implements Constants {
                     uniqueGenome.export2GeneVarGroupFileRVTest(bwGeneRVTestGroupFile, chromID, geneVars, hasChrLabel);
                     bwGeneRVTestGroupFile.close();
                 }
+>>>>>>> origin/master
 
                 if (options.rvtestVar) {
                     BufferedWriter bwGeneRVTestGroupFile = null;
@@ -2660,6 +3265,34 @@ public class CUIApp implements Constants {
                     bwGeneRVTestGroupFile = new BufferedWriter(new OutputStreamWriter(gzOut));
                     uniqueGenome.export2GeneVarGroupFileRVTest(bwGeneRVTestGroupFile, chromID, geneVars, hasChrLabel);
                     bwGeneRVTestGroupFile.close();
+<<<<<<< HEAD
+                }
+                if (options.calcLD) {
+                    varAnnoter.calculateLDVar(chromosomes[chromID], subjectList, pedEncodeGytIDMap, uniqueGenome.isIsPhasedGty(), options.threadNum, options.ldPrunWindowSize, options.ldPrunR2, bwLD);
+                }
+
+                if (options.mergeGtyDb != null && (options.isPlinkPedOut || options.isPlinkBedOut)) {
+                    //a special function to merge public resoruces
+                    String vcfFilePath = GlobalManager.RESOURCE_PATH + "/" + options.mergeGtyDb + ".chr" + chromosomes[chromID].getName() + ".vcf.gz";
+                    File f = new File(vcfFilePath);
+                    if (f.exists()) {
+                        refhapGenome = vsParser.readVariantGtyFilterOnly("1kgmerge", options.threadNum, null, vcfFilePath, options.seqQual, options.minMappingQuality, options.maxStandBias,
+                                options.maxFisherStandBias, options.maxGtyAlleleNum, options.gtyQual, options.minGtySeqDP, options.maxAltAlleleFracRefHom, options.minAltAlleleFractHet,
+                                options.minAltAlleleFractAltHom, options.vcfFilterLabelsIn, options.minOBS, options.sampleMafOver, options.sampleMafLess, options.considerSNV, options.considerIndel,
+                                options.gtySecPL, options.gtyBestGP, options.needProgressionIndicator, true, false, false, false, false, options.forced2Unphased, null, null, null, null, null, null);
+                        int[] refPedEncodeGytIDMap = vsParser.getPedEncodeGytIDMap();
+
+                        refhapGenome.loadVariantFromDisk(chromID, true, origionallySorted, maxThreadID);
+
+                        if (!subjectList.isEmpty() && !refIndivList.isEmpty()) {
+                            if (options.isPlinkBedOut) {
+                                uniqueGenome.exportPlinkBinaryGty(chromosomes[chromID], subjectList, pedEncodeGytIDMap, refhapGenome.getChromosomes()[chromID], true, refIndivList, refPedEncodeGytIDMap, mergedFileStream, mergedBwMap, coutVar);//Write .bim and .bed file
+                            }
+                            //This is too slow. Only support the binary format
+                            if (options.isPlinkPedOut) {
+                                //  uniqueGenome.export2FlatTextPlink(chromosomes[chromID], wahBit, subjectList, pedEncodeGytIDMap, refhapGenome.getChromosomes()[chromID], wahBit1, true, refIndivList, refPedEncodeGytIDMap, mergedBwMap, options.outputFileName+".merged", intsSPV, options.outGZ);//Write .map and .ped file
+                            }
+=======
                 }
 
                 if (options.mergeGtyDb != null && (options.isPlinkPedOut || options.isPlinkBedOut)) {
@@ -2670,14 +3303,22 @@ public class CUIApp implements Constants {
                         }
                         if (options.isPlinkPedOut) {
                             uniqueGenome.export2FlatTextPlink(refhapGenome.getChromosomes()[chromID], wahBit1, subjectList, pedEncodeGytIDMap, bwMap, options.outputFileName, intsSPV, options.outGZ);//Write .map and .ped file
+>>>>>>> origin/master
                         }
+                        refhapGenome.getChromosomes()[chromID].variantList.clear();
+
+                    } else {
+                        LOG.warn("The file," + f.getCanonicalPath() + ", does not exist and cannot be merged!");
                     }
                     wahBit1 = null;
                 }
 
+<<<<<<< HEAD
+=======
                 if (options.calcLD) {
                     varAnnoter.calculateLDVar(chromosomes[chromID], wahBit, subjectList, pedEncodeGytIDMap, uniqueGenome.isIsPhasedGty(), options.threadNum, bwLD);
                 }
+>>>>>>> origin/master
                 finalVarNum += chromosomes[chromID].variantList.size();
                 chromosomes[chromID].getPosIndexMap().clear();
                 needHead = false;
@@ -2687,8 +3328,14 @@ public class CUIApp implements Constants {
                 //set back genotypes 
                 if (!geneVars.isEmpty() && (dbPathwaySet != null && !dbPathwaySet.isEmpty())) {
                     varAnnoter.assignSelectedVar2Genesets(dbPathwaySet, geneVars, genesetVars, (byte) chromID, chromosomeVarAll);
+<<<<<<< HEAD
+                    /*
+                    for (Variant var : chromosomeVarAll) {
+                        if (var.compressedGtyLabel >= 0) {
+=======
                     for (Variant var : chromosomeVarAll) {
                         if (!var.compressedGty) {
+>>>>>>> origin/master
                             continue;
                         }
                         for (long t = var.encodedGtyIndex[0]; t < var.encodedGtyIndex[1]; t++) {
@@ -2701,9 +3348,16 @@ public class CUIApp implements Constants {
                         var.encodedGtyIndex[0] = wahBitGenesetSize - len;
                         var.encodedGtyIndex[1] = wahBitGenesetSize;
                     }
+<<<<<<< HEAD
+                     */
+                }
+                geneVars.clear();
+
+=======
                 }
                 geneVars.clear();
                 wahBit = null;
+>>>>>>> origin/master
                 System.gc();
             }
 
@@ -2717,6 +3371,12 @@ public class CUIApp implements Constants {
             }
             if (options.isSimpleVCFOut) {
                 simpleVcfFilteredInFileWriter.close();
+<<<<<<< HEAD
+                //Note: this VCF tabix function is subject to be fixed
+                //LocalFileFunc.tabixVCFFile(simpleVcfFilteredInFile.getCanonicalPath());
+                //LOG.info("The index file " + simpleVcfFilteredInFile.getCanonicalPath() + ".tbi is created.");
+=======
+>>>>>>> origin/master
             }
 
             File rvTestGroupTestFile = null;
@@ -2729,7 +3389,11 @@ public class CUIApp implements Constants {
                     rvtest = new RVTest(options.inputFileName, options.outputFileName);
                 }
                 rvtest.setCommand(options.rvtestCommand);
+<<<<<<< HEAD
+
+=======
                 simpleIndiviGenesetSumFile = new File(options.outputFileName + ".geneset.indiv.sum");
+>>>>>>> origin/master
                 featureLabels = uniqueGenome.getVariantFeatureLabels();
                 int probIndex = -1;
                 for (int i = 0; i < featureLabels.size(); i++) {
@@ -2738,12 +3402,24 @@ public class CUIApp implements Constants {
                         break;
                     }
                 }
+<<<<<<< HEAD
+                if (!subjectList.isEmpty()) {
+                    simpleIndiviGenesetSumFile = new File(options.outputFileName + ".geneset.indiv.sum");
+                    rvtest.summarizeVarCountsBySubject(genesetVars, subjectList, pedEncodeGytIDMap, uniqueGenome.isIsPhasedGty(), options.phenotypeColID, simpleIndiviGenesetSumFile.getCanonicalPath(), probIndex, false);
+                }
+                if (options.skatGeneset) {
+                    if (skat.boolSnowFail) {
+                        skat.runGenesetAssoc(genesetVars, subjectList, pedEncodeGytIDMap, uniqueGenome.isIsPhasedGty(), 1, genePVList);
+                    } else {
+                        skat.runGenesetAssoc(genesetVars, subjectList, pedEncodeGytIDMap, uniqueGenome.isIsPhasedGty(), options.threadNum, genePVList);
+=======
                 rvtest.summarizeVarCountsBySubject(genesetVars, wahBitGeneset, subjectList, pedEncodeGytIDMap, uniqueGenome.isIsPhasedGty(), options.phenotypeColID, simpleIndiviGenesetSumFile.getCanonicalPath(), probIndex, false);
                 if (options.skatGeneset) {
                     if (skat.boolSnowFail) {
                         skat.runGenesetAssoc(genesetVars, wahBitGeneset, subjectList, pedEncodeGytIDMap, uniqueGenome.isIsPhasedGty(), 1, genePVList);
                     } else {
                         skat.runGenesetAssoc(genesetVars, wahBitGeneset, subjectList, pedEncodeGytIDMap, uniqueGenome.isIsPhasedGty(), options.threadNum, genePVList);
+>>>>>>> origin/master
                     }
                 }
 
@@ -2756,7 +3432,10 @@ public class CUIApp implements Constants {
                     bwGeneRVTestGroupFile.close();
                 }
                 genesetVars.clear();
+<<<<<<< HEAD
+=======
                 wahBitGeneset = null;
+>>>>>>> origin/master
             }
 
 //************************************************************************************************************************************************************************//
@@ -2839,11 +3518,19 @@ public class CUIApp implements Constants {
             if (options.multipleTestingMethod == null || options.multipleTestingMethod.equals("no")) {
                 multiCorrMethodName = "";
             } else if (options.multipleTestingMethod.equals("benfdr")) {
+<<<<<<< HEAD
+                multiCorrMethodName = " by Benjamini-Hochberg FDR";
+            } else if (options.multipleTestingMethod.equals("bonhol")) {
+                multiCorrMethodName = " by Bonferroni-Holm procedure";
+            } else if (options.multipleTestingMethod.equals("bonf")) {
+                multiCorrMethodName = " by Standard Bonferroni";
+=======
                 multiCorrMethodName = "by Benjamini-Hochberg FDR";
             } else if (options.multipleTestingMethod.equals("bonhol")) {
                 multiCorrMethodName = "by Bonferroni-Holm procedure";
             } else if (options.multipleTestingMethod.equals("bonf")) {
                 multiCorrMethodName = "by Standard Bonferroni";
+>>>>>>> origin/master
             }
             // if (options.sampleVarHardFilterCode != null && options.sampleVarHardFilterCode.equals("association") && options.inputFormat.endsWith("--vcf-file")) 
             if (options.toQQPlot && options.varAssoc) {
@@ -2852,7 +3539,7 @@ public class CUIApp implements Constants {
                 nameList.add("Dominant");
                 nameList.add("Recessive");
                 nameList.add("Genotypic");
-                PValuePainter pvPainter = new PValuePainter(800, 600);
+                PValuePainter pvPainter = new PValuePainter(450, 450);
                 File plotFile2 = new File(options.outputFileName + ".var.qq.png");
                 StringBuilder message = new StringBuilder();
 
@@ -2884,8 +3571,11 @@ public class CUIApp implements Constants {
                 String info = "The QQ plot saved in " + plotFile2.getCanonicalPath();
                 LOG.info(info);
                 showPlots(new File[]{plotFile2});
-
             }
+<<<<<<< HEAD
+
+=======
+>>>>>>> origin/master
             if (options.toQQPlot && options.skatGene) {
                 List<String> nameList = new ArrayList<String>();
 //                if (options.skatBinary) {
@@ -2897,7 +3587,7 @@ public class CUIApp implements Constants {
 //                    nameList.add("SKATO");
 //                }
 
-                PValuePainter pvPainter = new PValuePainter(800, 600);
+                PValuePainter pvPainter = new PValuePainter(450, 450);
                 File plotFile2 = new File(options.outputFileName + ".skat.gene.qq.png");
                 StringBuilder message = new StringBuilder();
 
@@ -2957,7 +3647,13 @@ public class CUIApp implements Constants {
 
             if (varaintDBFilterFiles6 != null) {
                 for (int i = 0; i < varaintDBFilterFiles6.length; i++) {
+<<<<<<< HEAD
+                    if (varaintDBFilterFiles6[i].getBr() != null) {
+                        varaintDBFilterFiles6[i].getBr().close();
+                    }
+=======
                     varaintDBFilterFiles6[i].getBr().close();
+>>>>>>> origin/master
                     String info = varaintDBFilterFiles6[i].getLeftNum() + " variant(s) exist in " + varaintDBFilterFiles6[i].getName() + ".";// ", which contains " + varaintDBFilterFiles6[i].getTotalNum() + " effective variants.";
                     LOG.info(info);
                     varaintDBFilterFiles6[i] = null;
@@ -3028,7 +3724,6 @@ public class CUIApp implements Constants {
                     String info = assFBAFIM.getAnnotNum() + " variant(s) with minor allele frequency [" + options.minAlleleFreqInc + ", " + options.maxAlleleFreqInc + "] in the reference datasets above are left!";
                     LOG.info(info);
                 }
-
                 if (options.toMAFPlotRef) {
                     final File plotFile = new File(options.outputFileName + ".maf.ref.png");
                     pvPainter.drawColorfulHistogramPlot(mafRefList, thresholds, null, "MAF in reference DB", plotFile.getCanonicalPath());
@@ -3091,6 +3786,11 @@ public class CUIApp implements Constants {
                 if (!info.isEmpty()) {
                     LOG.info(info);
                 }
+            }
+
+            if (options.ldPruning) {
+                String info = ldPruningASS.getLeftNum() + " variant(s) are left after LD pruning with window size " + options.ldPrunWindowSize + " bp and r-square " + options.ldPrunR2 + ".";
+                LOG.info(info);
             }
 
             if (options.geneVarFilter > 0) {
@@ -3366,6 +4066,40 @@ public class CUIApp implements Constants {
                 } else {
                     rvtest = new RVTest(options.inputFileName, options.outputFileName);
                 }
+<<<<<<< HEAD
+
+                rvtest.setPheno(options.pheItem);
+                rvtest.setCov(options.covItems);
+                rvtest.setCommand(options.rvtestCommand);
+                rvtest.runTabix();
+                // rvtest.runBGzip();              
+                //LocalFileFunc.tabixFile(options.outputFileName + ".flt.vcf.gz");
+                boolean keepRVTRstTmp = false;
+                if (options.rvtestVar) {
+                    rvtest.runGeneAssoc(options.pedFile, options.threadNum, "variant");
+//                    rvtest.collectResultGene(!options.rvtestRemoveSet, keepRVTRstTmp, options.excelOut);
+                    ArrayList<String> titleList = rvtest.collectResultGene(!options.rvtestRemoveSet, keepRVTRstTmp, options.excelOut);
+                    titleList.remove(0);
+                    if (options.toQQPlot) {
+                        File plotFile = rvtest.drwaQQPlot(rvtest.getHmpRSingle(), titleList, options.multipleTestingMethod, options.pValueThreshold, options.outputFileName + ".rvtest.var.qq.png");
+                        showPlots(new File[]{plotFile});
+                    }
+                    rvtest.releaseHmpRSingle();
+                }
+
+                if (options.rvtestGene) {
+                    rvtest.runGeneAssoc(options.pedFile, options.threadNum, "gene");
+                    //System.out.println("RVTest Done");
+                    ArrayList<String> titleList = rvtest.collectResultGene(!options.rvtestRemoveSet, keepRVTRstTmp, options.excelOut);
+                    //  ArrayList<String> titleList = rvtest.collectResultGene(!options.rvtestRemoveSet, true, options.excelOut);
+                    // System.out.println("RVTest Collected");
+                    titleList.remove(0);
+                    if (options.toQQPlot) {
+                        File plotFile = rvtest.drwaQQPlot(rvtest.getHmpRGroup(), titleList, options.multipleTestingMethod, options.pValueThreshold, options.outputFileName + ".rvtest.gene.qq.png");
+                        showPlots(new File[]{plotFile});
+                    }
+                    rvtest.releaseHmpRGroup();
+=======
 
                 rvtest.setPheno(options.pheItem);
                 rvtest.setCov(options.covItems);
@@ -3383,13 +4117,28 @@ public class CUIApp implements Constants {
                 if (options.rvtestGene) {
                     rvtest.runGeneAssoc(options.pedFile, options.threadNum, "gene");
                     rvtest.collectResultGene(!options.rvtestRemoveSet, options.excelOut);
+>>>>>>> origin/master
                 }
 
                 if (options.rvtestGeneset) {
                     rvtest.runGenesetAssoc(options.pedFile, rvTestGroupTestFile);
+<<<<<<< HEAD
+//                    rvtest.collectResultGeneset(!options.rvtestRemoveSet, keepRVTRstTmp, options.excelOut);
+                    ArrayList<String> titleList = rvtest.collectResultGeneset(!options.rvtestRemoveSet, keepRVTRstTmp, options.excelOut);
+                    titleList.remove(0);
+                    if (options.toQQPlot) {
+                        File plotFile = rvtest.drwaQQPlot(rvtest.getHmpRGroup(), titleList, options.multipleTestingMethod, options.pValueThreshold, options.outputFileName + ".rvtest.geneset.qq.png");
+                        showPlots(new File[]{plotFile});
+                    }
+                    rvtest.releaseHmpRGroup();
+                }
+            }
+
+=======
                     rvtest.collectResultGeneset(!options.rvtestRemoveSet, options.excelOut);
                 }
             }
+>>>>>>> origin/master
             if (simpleIndiviGenesetSumFile != null) {
                 String infor = "The summary statistics of variants in specified genesets for each individual are listed in " + simpleIndiviGenesetSumFile.getCanonicalPath();
                 LOG.info(infor);
@@ -3398,15 +4147,63 @@ public class CUIApp implements Constants {
                 String info = assPatho27.getAnnotNum() + " variants are annotated by pathology gene prediction.";
                 LOG.info(info);
             }
+            if (options.cosmicAnnotate) {
+                String info = cosmicDBAnnot28.getAnnotNum() + " variant(s) are annotated by genes in the COSMIC database!";
+                LOG.info(info);
+            }
 
             if (options.isPlinkBedOut) {
+                String info = null;
                 if (bwMapBed != null) {
                     bwMapBed.close();
                 }
                 if (fileBedStream != null) {
+
                     fileBedStream.close();
                     //rafBed.close();
                 }
+<<<<<<< HEAD
+
+                if (options.mergeGtyDb != null) {
+                    if (refhapGenome != null) {
+                        refhapGenome.removeTempFileFromDisk();
+                    }
+                    mergedBwMap.close();
+                    mergedFileStream.close();
+                }
+
+                //force to convert the gz to txt file
+                if (options.outGZ) {
+                    File f1 = new File(options.outputFileName + ".fam.gz");
+                    File f2 = new File(options.outputFileName + ".fam");
+                    LocalFileFunc.gunzipFile(f1.getCanonicalPath(), f2.getCanonicalPath());
+                    f1.delete();
+                    f1 = new File(options.outputFileName + ".bed.gz");
+                    f2 = new File(options.outputFileName + ".bed");
+                    LocalFileFunc.gunzipFile(f1.getCanonicalPath(), f2.getCanonicalPath());
+                    f1.delete();
+                    f1 = new File(options.outputFileName + ".bim.gz");
+                    f2 = new File(options.outputFileName + ".bim");
+                    LocalFileFunc.gunzipFile(f1.getCanonicalPath(), f2.getCanonicalPath());
+                    f1.delete();
+
+                    if (options.mergeGtyDb != null) {
+                        f1 = new File(options.outputFileName + ".merged.fam.gz");
+                        f2 = new File(options.outputFileName + ".merged.fam");
+                        LocalFileFunc.gunzipFile(f1.getCanonicalPath(), f2.getCanonicalPath());
+                        f1.delete();
+                        f1 = new File(options.outputFileName + ".merged.bed.gz");
+                        f2 = new File(options.outputFileName + ".merged.bed");
+                        LocalFileFunc.gunzipFile(f1.getCanonicalPath(), f2.getCanonicalPath());
+                        f1.delete();
+                        f1 = new File(options.outputFileName + ".merged.bim.gz");
+                        f2 = new File(options.outputFileName + ".merged.bim");
+                        LocalFileFunc.gunzipFile(f1.getCanonicalPath(), f2.getCanonicalPath());
+                        f1.delete();
+                    }
+
+                }
+=======
                 String info = null;
                 if (options.outGZ) {
                     /*
@@ -3429,9 +4226,17 @@ public class CUIApp implements Constants {
                 } else {
 
                 }
+>>>>>>> origin/master
                 info = "Genotype of " + savedBinnaryBedVar[0] + " sequence variant(s) and " + subjectList.size() + " individuals are saved \nin "
                         + options.outputFileName + ".fam " + options.outputFileName + ".bim " + options.outputFileName + ".bed " + " with Plink binary genotype format.";
                 LOG.info(info);
+
+                if (options.mergeGtyDb != null) {
+                    info = "Genotype of " + coutVar[0] + " sequence variant(s) and " + intsIndiv[0] + " individuals are saved \nin "
+                            + options.outputFileName + ".merged.fam" + " " + options.outputFileName + ".merged.bim" + " " + options.outputFileName + ".merged.bed" + " " + " with Plink binary genotype format.";
+                    LOG.info(info);
+                }
+
             }
 
             if (options.isGeneVarGroupFileOut) {
@@ -3461,6 +4266,10 @@ public class CUIApp implements Constants {
                 info += f.getCanonicalPath() + ".";
                 LOG.info(info);
             }
+<<<<<<< HEAD
+
+=======
+>>>>>>> origin/master
             if (options.isPlinkPedOut) {
                 bwMapPed.close();
                 //merge   files
@@ -3557,31 +4366,35 @@ public class CUIApp implements Constants {
 
                 LOG.info(info);
             }
-            //to simply the log
-            String gzLable = "";
-            if (options.outGZ) {
-                gzLable = ".gz";
-            }
-            if (options.mergeGtyDb != null && (options.isPlinkPedOut || options.isPlinkBedOut)) {
-                if (!subjectList.isEmpty() && !refIndivList.isEmpty()) {
-                    if (options.isPlinkBedOut) {
-                        String info = "Genotype of " + coutVar[0] + " sequence variant(s) and " + intsIndiv[0] + " individuals are saved \nin "
-                                + options.outputFileName + ".merged.fam" + gzLable + " " + options.outputFileName + ".merged.bim" + gzLable + " " + options.outputFileName + ".merged.bed" + gzLable + " " + " with Plink binary genotype format.";
-                        LOG.info(info);
-                        bwMap.close();
-                        mergedFileChannel.close();
-                        mergedFileStream.close();
-                        rafKed.close();
-                    }
 
+<<<<<<< HEAD
+            if (options.isVCFOut) {
+                /*
+                if (!options.rvtestGene && !options.rvtestGeneset) {
+                    RVTest rvtest = new RVTest(options.outputFileName);
+                    rvtest.runBGzip(vcfFilteredInFile.getCanonicalPath());
+                }
+                 */
+                if (!options.outGZ) {
+                    String newName = LocalFileFunc.gunzipFile(vcfFilteredInFile.getCanonicalPath());
+                    vcfFilteredInFile = new File(newName);
+=======
                     if (options.isPlinkPedOut) {
                         String info = "Genotype of " + intsSPV[0] + " sequence variant(s) and " + intsSPV[1]
                                 + " individuals are saved \nin " + options.outputFileName + ".merged.map" + gzLable + " " + options.outputFileName + ".merged.ped" + gzLable + " with Plink pedigree format.";
                         LOG.info(info);
                     }
+>>>>>>> origin/master
                 }
+                LOG.info(finalVarNum + " variants are saved in " + vcfFilteredInFile.getCanonicalPath() + " with VCF format.");
+                //LocalFileFunc.bgzipFile(vcfFilteredInFile.getCanonicalPath());
+                //Note: this VCF tabix function is subject to be fixed
+                // LocalFileFunc.tabixVCFFile(vcfFilteredInFile.getCanonicalPath());
+                //LOG.info("The index file " + vcfFilteredInFile.getCanonicalPath() + ".tbi is created.");
             }
 
+<<<<<<< HEAD
+=======
             if (options.isVCFOut) {
                 /*
                 if (!options.rvtestGene && !options.rvtestGeneset) {
@@ -3598,6 +4411,7 @@ public class CUIApp implements Constants {
                 LOG.info("Finally, " + finalVarNum + " variants are saved in " + vcfFilteredInFile.getCanonicalPath() + " with VCF format.");
             }
 
+>>>>>>> origin/master
             if (options.isSimpleVCFOut) {
                 /*
                 if (!options.rvtestGene && !options.rvtestGeneset) {
@@ -3610,7 +4424,12 @@ public class CUIApp implements Constants {
                     simpleVcfFilteredInFile = new File(newName);
                 }
                 //LocalFileFunc.bgzipFile(vcfFilteredInFile.getCanonicalPath());
+<<<<<<< HEAD
+                //Note: this VCF tabix function is subject to be fixed
+                //LocalFileFunc.tabixVCFFile(simpleVcfFilteredInFile.getCanonicalPath());
+=======
                 LocalFileFunc.tabixFile(simpleVcfFilteredInFile.getCanonicalPath());
+>>>>>>> origin/master
                 LOG.info("Finally, " + finalVarNum + " variants are saved in " + simpleVcfFilteredInFile.getCanonicalPath() + " with a simplified VCF format.");
             }
 
@@ -3632,6 +4451,8 @@ public class CUIApp implements Constants {
 
             //-----------------------Annotate genes and gene sets on whole genome-------------------------------
             String[] cells = null;
+<<<<<<< HEAD
+=======
 
             Map<String, Map<String, Integer>> cosmicGeneMut = null;
             if (somaticModelFilter4 != null) {
@@ -3641,6 +4462,7 @@ public class CUIApp implements Constants {
                 }
             }
 
+>>>>>>> origin/master
             if (options.geneMutationRateTest) {
                 Map<String, double[]> geneMutationScores = null;
                 List<String> scoreNames = new ArrayList<String>();

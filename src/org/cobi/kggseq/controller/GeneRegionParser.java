@@ -385,7 +385,7 @@ public class GeneRegionParser implements Constants {
              hist(pp$Exon, breaks=100);            
              * 
              */
-            /*
+ /*
              BufferedWriter bw = new BufferedWriter(new FileWriter("geneLen.txt"));
              bw.write("Gene\tExon\tUTR5\tUTR3\tintron\n");
              * 
@@ -445,10 +445,10 @@ public class GeneRegionParser implements Constants {
         return geneSegAvgLen;
     }
 
-    public Map<String, Double> readMergeRefGeneCodingLength(String[] vAFile, int splicing, boolean onlyCoding) throws Exception {
+    public Map<String, Double> readMergeRefGeneCodingLength(String[] vAFile, int splicing, boolean onlyCoding, Map<String, RefGene> mergedGeneCodingRegions) throws Exception {
         Map<String, RefGene> mergedGeneMap = new HashMap<String, RefGene>();
         for (String fileStr : vAFile) {
-            readDBGeneExons(fileStr, mergedGeneMap);
+            readMergeRefGeneCodingRegions(fileStr, mergedGeneMap);
         }
         Map<String, Double> mergedGeneLen = new HashMap<String, Double>();
 
@@ -463,11 +463,15 @@ public class GeneRegionParser implements Constants {
             mergedGeneLen.put(geneLens.getKey(), geneLens.getValue().getTotalMergedLen() / 1000.0);
             //System.out.println(geneLens.getKey() + "\t" + geneLens.getValue().getTotalMergedLen() / 1000.0);
         }
+
+        if (mergedGeneCodingRegions != null) {
+            mergedGeneCodingRegions.putAll(mergedGeneMap);
+        }
         mergedGeneMap.clear();
         return mergedGeneLen;
     }
 
-    public void readDBGeneExons(String vAFile, Map<String, RefGene> refGeneMap) throws Exception {
+    public void readMergeRefGeneCodingRegions(String vAFile, Map<String, RefGene> refGeneMap) throws Exception {
         int indexmRNAName = 1;
         int indexChom = 2;
         int indexStrand = 3;
@@ -651,14 +655,12 @@ public class GeneRegionParser implements Constants {
                             } else {
                                 exon = new RefExon(bounderStarts[i], bounderEnds[i], bounderEnds[i] - bounderStarts[i], bounderStarts[i], cdsEnd, cdsEnd - bounderStarts[i]);
                             }
+                        } else if (cdsStart >= bounderEnds[i]) {
+                            exon = new RefExon(bounderStarts[i], bounderEnds[i], bounderEnds[i] - bounderStarts[i]);
+                        } else if (cdsStart >= bounderStarts[i] && cdsStart <= bounderEnds[i]) {
+                            exon = new RefExon(bounderStarts[i], bounderEnds[i], bounderEnds[i] - bounderStarts[i], cdsStart, bounderEnds[i], bounderEnds[i] - cdsStart);
                         } else {
-                            if (cdsStart >= bounderEnds[i]) {
-                                exon = new RefExon(bounderStarts[i], bounderEnds[i], bounderEnds[i] - bounderStarts[i]);
-                            } else if (cdsStart >= bounderStarts[i] && cdsStart <= bounderEnds[i]) {
-                                exon = new RefExon(bounderStarts[i], bounderEnds[i], bounderEnds[i] - bounderStarts[i], cdsStart, bounderEnds[i], bounderEnds[i] - cdsStart);
-                            } else {
-                                exon = new RefExon(bounderStarts[i], bounderEnds[i], bounderEnds[i] - bounderStarts[i], bounderStarts[i], bounderEnds[i], bounderEnds[i] - bounderStarts[i]);
-                            }
+                            exon = new RefExon(bounderStarts[i], bounderEnds[i], bounderEnds[i] - bounderStarts[i], bounderStarts[i], bounderEnds[i], bounderEnds[i] - bounderStarts[i]);
                         }
                         mran.addExon(exon);
                         if (i > 0) {
@@ -855,7 +857,7 @@ public class GeneRegionParser implements Constants {
         ProteinDomainRetriever pdR = new ProteinDomainRetriever();
         Map<String, String> refSeqUniportIDMap = null;
         Map<String, List<ProteinDomain>> uniportIDDomainMap = null;
-        if (domainFile.exists()) {
+        if (domainFile != null && domainFile.exists()) {
             refSeqUniportIDMap = new HashMap<String, String>();
             uniportIDDomainMap = new HashMap<String, List<ProteinDomain>>();
             pdR.readProteinDomains(idMapFile.getCanonicalPath(), domainFile.getCanonicalPath(), refSeqUniportIDMap, uniportIDDomainMap);
@@ -894,6 +896,9 @@ public class GeneRegionParser implements Constants {
             br = LocalFileFunc.getBufferedReader(vAFile);
 
             while ((currentLine = br.readLine()) != null) {
+                if (currentLine.startsWith("bin")) {
+                    continue;
+                }
                 lineCounter++;
                 StringTokenizer st = new StringTokenizer(currentLine.trim());
                 //initialize varaibles
@@ -927,7 +932,7 @@ public class GeneRegionParser implements Constants {
                         } else if (iCol == indexStrand) {
                             strand = tmpBuffer.charAt(0);
                         } else if (iCol == indexChom) {
-                            currChr = tmpBuffer.toString(); 
+                            currChr = tmpBuffer.toString();
                             currChr = currChr.substring(3);
                         } else if (iCol == indexTxStart) {
                             txStart = Util.parseInt(tmpBuffer.toString());
@@ -1674,7 +1679,7 @@ public class GeneRegionParser implements Constants {
             // parser.readDBGeneExons("resources/hg19/kggseq_hg19_knownGene.txt.gz", refGeneMap);
             //parser.readDBGeneExons("refseqs/ncbi_ref_GRCh37.p5_top_level.ucscformat", refGeneMap);
             //parser.readDBGeneExons("refseqs/refGene.txt", refGeneMap);
-            parser.readDBGeneExons("refseqs/ensembl.ref.GRCh37.p3.toplevel.ucscformat1", refGeneMap);
+            parser.readMergeRefGeneCodingRegions("refseqs/ensembl.ref.GRCh37.p3.toplevel.ucscformat1", refGeneMap);
 
             for (Map.Entry<String, RefGene> geneLens : refGeneMap.entrySet()) {
                 RefGene gene = geneLens.getValue();

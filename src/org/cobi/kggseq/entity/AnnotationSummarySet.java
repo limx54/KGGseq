@@ -21,6 +21,11 @@ public class AnnotationSummarySet {
     int leftNum;
     int totalNum;
 
+    public AnnotationSummarySet(String name, int availableFeatureIndex) {
+        this.name = name;
+        this.availableFeatureIndex = availableFeatureIndex;
+    }
+
     public AnnotationSummarySet(String name, BufferedReader br, StringBuilder lastLine, int annotNum, int leftNum, int totalNum, int availableFeatureIndex) {
         this.name = name;
         this.br = br;

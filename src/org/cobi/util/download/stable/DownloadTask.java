@@ -14,6 +14,7 @@ import java.text.DecimalFormat;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  *
@@ -24,7 +25,8 @@ public class DownloadTask {
     protected String url = "";
     protected int threadNum = 5;
     protected String localPath = "";
-    protected long receivedCount = 0;
+    protected static AtomicLong receivedCount = new AtomicLong(0);
+    //protected long receivedCount = 0;
     protected List<DownloadThread> threads = Collections.synchronizedList(new LinkedList<DownloadThread>());
     protected long lastCount = 0;
     protected long beginTime = 0;
@@ -98,7 +100,7 @@ public class DownloadTask {
 
         @Override
         public void run() {
-            if (receivedCount < totalContentLength && !threads.isEmpty()) {
+            if (receivedCount.get() < totalContentLength && !threads.isEmpty()) {
                 showInfo(availalableCount, totalContentLength);
             } else {
                 showInfo(availalableCount, totalContentLength);
@@ -108,9 +110,9 @@ public class DownloadTask {
 
     protected void showInfo(long availalableCount, long totalContentLength) {
         long currentTime = System.currentTimeMillis();
-        double realTimeSpeed = (receivedCount - lastCount) * 1.0 / ((currentTime - endTime) / 1000.0);
-        double globalSpeed = receivedCount * 1.0 / ((currentTime - beginTime) / 1000.0);
-        lastCount = receivedCount;
+        double realTimeSpeed = (receivedCount.get() - lastCount) * 1.0 / ((currentTime - endTime) / 1000.0);
+        double globalSpeed = receivedCount.get() * 1.0 / ((currentTime - beginTime) / 1000.0);
+        lastCount = receivedCount.get();
         endTime = currentTime;
         fireAutoCallback(new DownloadTaskEvent(receivedCount, availalableCount, totalContentLength, formatSpeed(realTimeSpeed), formatSpeed(globalSpeed), done));
     }

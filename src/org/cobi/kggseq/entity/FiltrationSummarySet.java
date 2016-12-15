@@ -45,7 +45,8 @@ public class FiltrationSummarySet {
     }
 
     public void increaseCount(int index, int count) {
-        counts.setQuick(index, counts.getQuick(index) + count);
+        int t = counts.getQuick(index) + count;
+        counts.setQuick(index, t);
     }
 
     @Override
