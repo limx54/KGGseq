@@ -5,24 +5,15 @@
  */
 package org.cobi.kggseq.controller;
 
-<<<<<<< HEAD
 import cern.colt.list.IntArrayList;
-=======
-import java.io.BufferedReader;
->>>>>>> origin/master
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Callable;
 import org.cobi.kggseq.entity.AnnotationSummarySet;
 import org.cobi.kggseq.entity.Chromosome;
-<<<<<<< HEAD
 import org.cobi.kggseq.entity.FiltrationSummarySet;
 import org.cobi.kggseq.entity.Variant;
 import org.cobi.util.text.BZPartReader;
-=======
-import org.cobi.kggseq.entity.Variant;
-import org.cobi.util.text.BGZFInputStream;
->>>>>>> origin/master
 import org.cobi.util.text.Util;
 import org.cobi.util.thread.Task;
 
@@ -32,23 +23,15 @@ import org.cobi.util.thread.Task;
  */
 public class VarAnnotTask extends Task implements Callable<String> {
 
-<<<<<<< HEAD
     BZPartReader br;
     List<Variant> variantList;
     Chromosome chromosome;
     final AnnotationSummarySet ass;
     final FiltrationSummarySet fss;
-=======
-    BGZFInputStream.BZPartReader br;
-    List<Variant> variantList;
-    Chromosome chromosome;
-    final AnnotationSummarySet ass;
->>>>>>> origin/master
     int indexCHROM = -1;
     int indexPOS;
     int[] predicIndex;
     int[] scoreIndexes;
-<<<<<<< HEAD
     int[] altFreqColIndexes;
 
     int varAssignedScore = 0;
@@ -59,13 +42,6 @@ public class VarAnnotTask extends Task implements Callable<String> {
     }
 
     public VarAnnotTask(BZPartReader br, List<Variant> variantList, int indexCHROM, int indexPOS, int[] predicIndex, int[] scoreIndexes, final FiltrationSummarySet fss, int annotationType) {
-=======
-    int varFeatureNum;
-    int varAssignedScore = 0;
-    int annotationType;
-
-    public VarAnnotTask(BGZFInputStream.BZPartReader br, List<Variant> variantList, int indexCHROM, int indexPOS, int[] predicIndex, int[] scoreIndexes, int annotationType) {
->>>>>>> origin/master
         this.br = br;
         this.variantList = variantList;
         this.indexCHROM = indexCHROM;
@@ -73,7 +49,6 @@ public class VarAnnotTask extends Task implements Callable<String> {
         this.predicIndex = predicIndex;
         this.scoreIndexes = scoreIndexes;
         this.annotationType = annotationType;
-<<<<<<< HEAD
         this.fss = fss;
         ass = null;
     }
@@ -99,12 +74,6 @@ public class VarAnnotTask extends Task implements Callable<String> {
     }
 
     public VarAnnotTask(BZPartReader br, int indexCHROM, int indexPOS, Chromosome chromosome, final AnnotationSummarySet ass, int annotationType) {
-=======
-        ass = null;
-    }
-
-    public VarAnnotTask(BGZFInputStream.BZPartReader br, int indexCHROM, int indexPOS, Chromosome chromosome, final AnnotationSummarySet ass, int annotationType) {
->>>>>>> origin/master
         this.br = br;
         this.variantList = chromosome.variantList;
         this.indexCHROM = indexCHROM;
@@ -112,10 +81,7 @@ public class VarAnnotTask extends Task implements Callable<String> {
         this.chromosome = chromosome;
         this.ass = ass;
         this.annotationType = annotationType;
-<<<<<<< HEAD
         fss = null;
-=======
->>>>>>> origin/master
     }
 
     public void dbNSFPAnnot() throws Exception {
@@ -141,11 +107,7 @@ public class VarAnnotTask extends Task implements Callable<String> {
         byte[] missingLabel = ".".getBytes();
         final byte semicolonByte = (byte) ';';
         int len;
-<<<<<<< HEAD
         int varFeatureNum = fss.getAvailableFeatureIndex();
-=======
-
->>>>>>> origin/master
         int maxColNum = Math.max(indexCHROM, indexPOS);
         for (int i = 0; i < predicIndex.length; i++) {
             if (maxColNum < predicIndex[i]) {
@@ -164,12 +126,8 @@ public class VarAnnotTask extends Task implements Callable<String> {
         int[] cellDelimts = new int[maxColNum + 2];
         int shouldbeLen = maxColNum + 1;
         while (varIndex < varListSize) {
-<<<<<<< HEAD
             // System.out.println(currentLine);    
 
-=======
-            // System.out.println(currentLine);       
->>>>>>> origin/master
             if (needNewRow) {
                 // StringTokenizer st = new
                 // StringTokenizer(currentLine.trim(), "\t");
@@ -186,10 +144,6 @@ public class VarAnnotTask extends Task implements Callable<String> {
                 //indexCHROM==0;
                 if (indexCHROM >= 0) {
                     sByte = Arrays.copyOfRange(currentLine, 0, cellDelimts[indexCHROM + 1]);
-<<<<<<< HEAD
-=======
-                    currChr = new String(sByte);
->>>>>>> origin/master
                 }
 
                 //indexPOS=1;
@@ -302,7 +256,6 @@ public class VarAnnotTask extends Task implements Callable<String> {
                         var.setFeatureValue(varFeatureNum + k, predicResults[k]);
                     }
 
-<<<<<<< HEAD
                 } else {
                     unmatchedNum++;
                 }
@@ -1075,42 +1028,12 @@ public class VarAnnotTask extends Task implements Callable<String> {
     }
 
     public void markByANNOVARefFormatSimpleVar(IntArrayList positions, List<char[]> alleleList, List<double[]> frequnceList) {
-=======
-                } else {
-                    unmatchedNum++;
-                }
-                varIndex1++;
-            } while (varIndex1 < varListSize);
-//The same coordinate but unmatched
-            if (unmatchedNum == 0) {
-                varIndex++;
-                if (varIndex >= varListSize) {
-                    break;
-                }
-                var = variantList.get(varIndex);
-                varPos = var.refStartPosition;
-            }
-            //otherwise only move file's index
-            needNewRow = true;
-        }
-    }
-
-    public void markByANNOVARefFormat() {
->>>>>>> origin/master
         indexCHROM = 0;
         indexPOS = 1;
         int indexREF = 2;
         int indexALT = 3;
         int indexMAF = 4;
 
-<<<<<<< HEAD
-=======
-        if (variantList.isEmpty()) {
-            return;
-        }
-        int feautreNum = ass.getAvailableFeatureIndex();
-
->>>>>>> origin/master
         byte[] currentLine = null;
         try {
             int maxColNum = indexCHROM;
@@ -1126,7 +1049,6 @@ public class VarAnnotTask extends Task implements Callable<String> {
             String ref;
             String alt;
 
-<<<<<<< HEAD
             double maf;
             String[] alts;
             int[] mafIndex;
@@ -1138,56 +1060,24 @@ public class VarAnnotTask extends Task implements Callable<String> {
 
             int existVarNum = 0;
 
-=======
-            float maf;
-            String[] alts;
-            int[] mafIndex;
-            int[] varIndex = null;
-            boolean isDeleion = false;
-            boolean isInsertion = false;
-
-            char[] backSpaces = null;
-            int delNum = 0;
-            int existVarNum = 0;
-            StringBuilder sb = new StringBuilder();
->>>>>>> origin/master
             boolean hitOnce = false;
             int[] cellDelimts = new int[maxColNum + 2];
             int shouldbeLen = maxColNum + 1;
             byte[] sByte;
             byte[] currChr = chromosome.getName().getBytes();
-<<<<<<< HEAD
             int indexTmp = 0;
             int tmpPos = 0;
             while ((currentLine = br.readLine(cellDelimts)) != null) {
                 lineCounter++;
 
-=======
-
-            while ((currentLine = br.readLine(cellDelimts)) != null) {
-                lineCounter++;
-                 /*
-                if ((new String(currentLine)).equals("21	42859036	G	A	9.3E")) {
-                    System.err.println(new String(currentLine));
-                    int sss = 0;
-                }
-                */
->>>>>>> origin/master
                 //this line may be trancated
                 if (cellDelimts[0] < shouldbeLen) {
                     continue;
                 }
-<<<<<<< HEAD
 
                 //StringTokenizer st = new StringTokenizer(currentLine.trim());
                 //initialize varaibles
                 //sByte = Arrays.copyOfRange(currentLine, indexCHROM == 0 ? 0 : cellDelimts[indexCHROM] + 1, cellDelimts[indexCHROM + 1]);
-=======
-                //StringTokenizer st = new StringTokenizer(currentLine.trim());
-                //initialize varaibles
-                sByte = Arrays.copyOfRange(currentLine, indexCHROM == 0 ? 0 : cellDelimts[indexCHROM] + 1, cellDelimts[indexCHROM + 1]);
-
->>>>>>> origin/master
                 //  System.err.println(new String(currentLine));
                 if (!equal(currentLine, indexCHROM == 0 ? 0 : cellDelimts[indexCHROM] + 1, cellDelimts[indexCHROM + 1], currChr)) {
                     continue;
@@ -1204,27 +1094,18 @@ public class VarAnnotTask extends Task implements Callable<String> {
                 sByte = Arrays.copyOfRange(currentLine, cellDelimts[indexALT] + 1, cellDelimts[indexALT + 1]);
                 alt = new String(sByte);
 
-<<<<<<< HEAD
                 alts = alt.split(",");
-=======
-                alts = alt.split(","); 
->>>>>>> origin/master
                 mafIndex = tokenizeDelimiter(currentLine, cellDelimts[indexMAF] + 1, cellDelimts[indexMAF + 1], (byte) ',');
                 if (mafIndex[0] == mafIndex[mafIndex.length - 1]) {
                     continue;
                 }
                 hitOnce = false;
-<<<<<<< HEAD
                 tmpPos = 0;
-=======
-                int tmpPos = 0;
->>>>>>> origin/master
                 //once the variant is in db, it at least has a zero freq
                 for (int s = 0; s < alts.length; s++) {
                     if (alts[s] == null || alts[s].isEmpty()) {
                         continue;
                     }
-<<<<<<< HEAD
                     maf = Double.NaN;
                     if (s < mafIndex.length - 1) {
                         //this missing score is denoted by .
@@ -1235,13 +1116,6 @@ public class VarAnnotTask extends Task implements Callable<String> {
                         }
                         if (currentLine[indexTmp] != '.') {
                             maf = parseDouble(currentLine, s == 0 ? mafIndex[s] : mafIndex[s] + 1, mafIndex[s + 1]);
-=======
-                    maf = Float.NaN;
-                    if (mafIndex != null && s < mafIndex.length - 1) {
-                        //this missing score is denoted by .
-                        if (currentLine[s == 0 ? mafIndex[s] : mafIndex[s] + 1] != '.') {
-                            maf = parseFloat(currentLine, s == 0 ? mafIndex[s] : mafIndex[s] + 1, mafIndex[s + 1]);
->>>>>>> origin/master
                         }
                     }
 
@@ -1250,10 +1124,7 @@ public class VarAnnotTask extends Task implements Callable<String> {
                     isInsertion = false;
 
                     alt = alts[s];
-<<<<<<< HEAD
                     //1 13211293 13211294 TC - comments: rs59770105, a 2-bp deletion
-=======
->>>>>>> origin/master
                     //deletion
                     //format:1	45113	-	0TATGG	0.715732
 ///1	53599	CTA	3	0.890916
@@ -1263,16 +1134,11 @@ public class VarAnnotTask extends Task implements Callable<String> {
 
                     if (alt.charAt(0) == '0') {
                         isInsertion = true;
-<<<<<<< HEAD
                     } else if (alt.charAt(0) == '-' || (alt.charAt(0) - '0' <= 9 && alt.charAt(0) - '0' > 0)) {
-=======
-                    } else if (alt.charAt(0) - '0' <= 9 && alt.charAt(0) - '0' > 0) {
->>>>>>> origin/master
                         isDeleion = true;
                         tmpPos--;
                     }
 
-<<<<<<< HEAD
                     varIndex = positions.binarySearch(tmpPos);
                     if (varIndex < 0) {
                         continue;
@@ -1292,91 +1158,6 @@ public class VarAnnotTask extends Task implements Callable<String> {
                         char[] allels = alleleList.get(index);
                         if (allels[1] == alt.charAt(0) && ref.charAt(0) == allels[0]) {
                             frequnceList.get(index)[0] = maf;
-=======
-                    varIndex = chromosome.lookupVariantIndexes(tmpPos);
-                    if (varIndex == null) {
-                        continue;
-                    }
-
-                    // System.out.println(fileChr);
-                    for (int index : varIndex) {
-                        Variant var = variantList.get(index);
-                        //althoug it is not thread-safe; it should be OK because it is will given the same value by different threads
-                        if (var.hasBeenAcced) {
-                            continue;
-                        }
-                        var.hasBeenAcced = true;
-                        if (isDeleion || isInsertion) {
-                            if (var.isIndel) {
-                                String varRef = var.getRefAllele();
-                                String[] altAlleles = var.getAltAlleles();
-                                //keep variants with score less than minAlleleFreq
-                                for (String varAlt : altAlleles) {
-                                    //insertion in 1KG
-                                    if (isInsertion) {
-                                        if (varAlt.substring(1).equals(alt.substring(1))) {
-                                            //record the maximal allele frequencies
-                                            if (var.altAF == -1 || Float.isNaN(var.altAF) || (maf > var.altAF)) {
-                                                var.altAF = maf;
-                                            }
-                                            hitOnce = true;
-                                            if (Float.isNaN(maf)) {
-                                                var.setFeatureValue(feautreNum, ".");
-                                            } else {
-                                                var.setFeatureValue(feautreNum, String.valueOf(maf));
-                                            }
-                                            break;
-                                        }
-                                    } else if (alt.charAt(0) != '0') {
-                                        //deletion in 1KG
-                                        sb.delete(0, sb.length());
-                                        for (int t = 0; t < varAlt.length(); t++) {
-                                            if (varAlt.charAt(t) == '-') {
-                                                sb.append(varRef.charAt(t));
-                                            }
-                                        }
-
-                                        delNum = Util.parseInt(alt);
-                                        if (sb.toString().equals(ref.substring(ref.length() - delNum))) {
-                                            //record the maximal allele frequencies
-                                            if (var.altAF == -1 || Float.isNaN(var.altAF) || (maf > var.altAF)) {
-                                                // if (Float.isNaN(var.altAF) || (!Float.isNaN(score) && score > var.altAF)) {
-                                                var.altAF = maf;
-                                            }
-                                            hitOnce = true;
-                                            if (Float.isNaN(maf)) {
-                                                var.setFeatureValue(feautreNum, ".");
-                                            } else {
-                                                var.setFeatureValue(feautreNum, String.valueOf(maf));
-                                            }
-                                            break;
-                                        }
-                                    }
-                                }
-                            } else {
-                                continue;
-                            }
-                        } else if (var.isIndel) {
-                            continue;
-                        } else {
-                            String[] altAlleles = var.getAltAlleles();
-                            for (String str : altAlleles) {
-                                if (str.charAt(0) == alt.charAt(0)) {
-                                    //record treadVariantsInFileOnlyFastTokenhe maximal allele frequencies
-                                    if (var.altAF == -1 || Float.isNaN(var.altAF) || (maf > var.altAF)) {
-                                        //if (Float.isNaN(var.altAF) || (!Float.isNaN(score) && score > var.altAF)) {
-                                        var.altAF = maf;
-                                    }
-                                    hitOnce = true;
-                                    if (Float.isNaN(maf)) {
-                                        var.setFeatureValue(feautreNum, ".");
-                                    } else {
-                                        var.setFeatureValue(feautreNum, String.valueOf(maf));
-                                    }
-                                    break;
-                                }
-                            }
->>>>>>> origin/master
                         }
 
                     }
@@ -1385,14 +1166,6 @@ public class VarAnnotTask extends Task implements Callable<String> {
                     existVarNum++;
                 }
             }
-<<<<<<< HEAD
-=======
-            synchronized (ass) {
-                ass.setLeftNum(existVarNum + ass.getLeftNum());
-                ass.setAnnotNum(existVarNum + ass.getAnnotNum());
-                ass.setTotalNum(lineCounter + ass.getTotalNum());
-            }
->>>>>>> origin/master
 
         } catch (Exception ex) {
             if (currentLine != null) {
@@ -1472,12 +1245,6 @@ public class VarAnnotTask extends Task implements Callable<String> {
                     //initialize varaibles
                     if (indexCHROM >= 0) {
                         sByte = Arrays.copyOfRange(currentLine, indexCHROM == 0 ? 0 : cellDelimts[indexCHROM] + 1, cellDelimts[indexCHROM + 1]);
-<<<<<<< HEAD
-=======
-                        if (sByte[0] == (byte) 56) {
-                            int sss = 0;
-                        }
->>>>>>> origin/master
                         if (!equal(currentLine, indexCHROM == 0 ? 0 : cellDelimts[indexCHROM] + 1, cellDelimts[indexCHROM + 1], currChr)) {
                             continue;
                         }
@@ -1486,14 +1253,6 @@ public class VarAnnotTask extends Task implements Callable<String> {
 
                     //indexPOS=1;
                     filePosition = parseInt(currentLine, indexPOS == 0 ? 0 : cellDelimts[indexPOS] + 1, cellDelimts[indexPOS + 1]);
-<<<<<<< HEAD
-=======
-                    if (filePosition == 14816) {
-                        int sss = 0;
-                        String ssss = new String(currentLine);
-                    }
-
->>>>>>> origin/master
                     needNewRow = false;
                 }
 
@@ -1663,7 +1422,6 @@ public class VarAnnotTask extends Task implements Callable<String> {
             dbNSFPAnnot();
         } else if (annotationType == 1) {
             markByANNOVARefFormat();
-<<<<<<< HEAD
         } else if (annotationType == 2) {
             dbNCFPAnnot();
         } else if (annotationType == 3) {
@@ -1671,9 +1429,6 @@ public class VarAnnotTask extends Task implements Callable<String> {
         }
 
         fireTaskComplete();
-=======
-        }
->>>>>>> origin/master
         return "";
     }
 
@@ -1739,7 +1494,6 @@ public class VarAnnotTask extends Task implements Callable<String> {
     }
 
     private float parseFloat(byte[] f, int start, int end) {
-<<<<<<< HEAD
         double ret = 0f;         // return value
         int pos = start;          // read pointer position
         int part = 0;          // the current part (int, float and sci parts of the number)
@@ -1813,9 +1567,6 @@ public class VarAnnotTask extends Task implements Callable<String> {
 
     private float parseFloat(byte[] f, int start, int end, boolean takeLog) {
         double ret = 0f;         // return value
-=======
-        float ret = 0f;         // return value
->>>>>>> origin/master
         int pos = start;          // read pointer position
         int part = 0;          // the current part (int, float and sci parts of the number)
         boolean neg = false;      // true if part is a negative number
@@ -1847,11 +1598,7 @@ public class VarAnnotTask extends Task implements Callable<String> {
         while (pos < end && !(f[pos] > 57 || f[pos] < 48)) {
             part = part * 10 + (f[pos++] - 48);
         }
-<<<<<<< HEAD
         ret = neg ? (double) (part * -1) : (double) part;
-=======
-        ret = neg ? (float) (part * -1) : (float) part;
->>>>>>> origin/master
 
         // float part
         if (pos < end && f[pos] == 46) {
@@ -1867,17 +1614,12 @@ public class VarAnnotTask extends Task implements Callable<String> {
                 }
                 pos++;
             }
-<<<<<<< HEAD
             ret = neg ? ret - (double) part / (double) mul : ret + (double) part / (double) mul;
-=======
-            ret = neg ? ret - (float) part / (float) mul : ret + (float) part / (float) mul;
->>>>>>> origin/master
         }
 
         // scientific part
         if (pos < end && (f[pos] == 101 || f[pos] == 69)) {
             pos++;
-<<<<<<< HEAD
             if (pos < end) {
                 neg = (f[pos] == 45);
                 pos++;
@@ -1965,18 +1707,6 @@ public class VarAnnotTask extends Task implements Callable<String> {
                 } else {
                     ret = ret * Math.pow(10, part);
                 }
-=======
-            neg = (f[pos] == 45);
-            pos++;
-            part = 0;
-            while (pos < end && !(f[pos] > 57 || f[pos] < 48)) {
-                part = part * 10 + (f[pos++] - 48);
-            }
-            if (neg) {
-                ret = ret / (float) Math.pow(10, part);
-            } else {
-                ret = ret * (float) Math.pow(10, part);
->>>>>>> origin/master
             }
         }
         return ret;

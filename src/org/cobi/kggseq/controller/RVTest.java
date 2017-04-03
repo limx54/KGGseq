@@ -5,10 +5,7 @@
  */
 package org.cobi.kggseq.controller;
 
-<<<<<<< HEAD
 import cern.colt.list.DoubleArrayList;
-=======
->>>>>>> origin/master
 import cern.colt.map.OpenLongObjectHashMap;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -18,16 +15,11 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-<<<<<<< HEAD
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-=======
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
->>>>>>> origin/master
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -47,11 +39,8 @@ import org.cobi.kggseq.GlobalManager;
 import static org.cobi.kggseq.GlobalManager.PLUGIN_PATH;
 import org.cobi.kggseq.entity.Individual;
 import org.cobi.kggseq.entity.Variant;
-<<<<<<< HEAD
 import org.cobi.util.plot.PValuePainter;
 import org.cobi.util.stat.MultipleTestingMethod;
-=======
->>>>>>> origin/master
 import org.cobi.util.text.LocalExcelFile;
 import org.cobi.util.thread.Task;
 
@@ -271,10 +260,7 @@ public class RVTest {
         for (int i = 0; i < STAND_CHROM_NAMES.length; i++) {
             String strIn = rvtestOutputNameTmp + (strMarker.equals("geneset") ? ".set" : ".chr" + STAND_CHROM_NAMES[i]) + hmpTemp.get(key)[0];
             File file = new File(strIn);
-<<<<<<< HEAD
             //  System.out.println(file.getCanonicalPath());
-=======
->>>>>>> origin/master
             if (!file.exists()) {
                 continue;
             }
@@ -282,7 +268,6 @@ public class RVTest {
         }
     }
 
-<<<<<<< HEAD
     public File drwaQQPlot(HashMap<String, String[]> hmpTemp, ArrayList<String> altTitle, String multipleTestingMethodLabel, double pValueThreshold, String outpath) throws Exception {
         PValuePainter pvPainter = new PValuePainter(450, 450);
         File plotFile2 = new File(outpath);
@@ -341,8 +326,6 @@ public class RVTest {
         return plotFile2;
     }
 
-=======
->>>>>>> origin/master
     public void outputResult(HashMap<String, String[]> hmpTemp, ArrayList<String> altTitle, String[] affix, boolean excel, int sg) throws IOException, Exception {
         File fleOutput = new File(this.outputFileFolder + affix[0] + (excel ? "xlsx" : "txt"));
         if (!fleOutput.getParentFile().exists()) {
@@ -396,11 +379,7 @@ public class RVTest {
         LOG.info(infor);
     }
 
-<<<<<<< HEAD
     public ArrayList<String> collectResultGene(boolean keepGrp, boolean keepTmp, boolean excel) throws Exception {
-=======
-    public void collectResultGene(boolean boolKeep, boolean excel) throws Exception {
->>>>>>> origin/master
         String[] strItem = strCommand.split(",");
         ArrayList<String> altSingleTitle = new ArrayList<String>();
         altSingleTitle.add("Variant");
@@ -426,7 +405,6 @@ public class RVTest {
             hmpRGroup = new HashMap<String, String[]>();
             for (int i = 1; i < altGroupTitle.size(); i++) {
                 if (hmpM2BT.keySet().contains(altGroupTitle.get(i))) {
-<<<<<<< HEAD
                     collect(hmpRGroup, altGroupTitle.get(i), hmpM2BT, intCount, keepTmp, group, "gene");
                     intCount++;
                 } else if (hmpM2TT.keySet().contains(altGroupTitle.get(i))) {
@@ -434,25 +412,12 @@ public class RVTest {
                     intCount++;
                 } else if (hmpM2KT.keySet().contains(altGroupTitle.get(i))) {
                     collect(hmpRGroup, altGroupTitle.get(i), hmpM2KT, intCount, keepTmp, group, "gene");
-=======
-                    collect(hmpRGroup, altGroupTitle.get(i), hmpM2BT, intCount, boolKeep, group, "gene");
-                    intCount++;
-                } else if (hmpM2TT.keySet().contains(altGroupTitle.get(i))) {
-                    collect(hmpRGroup, altGroupTitle.get(i), hmpM2TT, intCount, boolKeep, group, "gene");
-                    intCount++;
-                } else if (hmpM2KT.keySet().contains(altGroupTitle.get(i))) {
-                    collect(hmpRGroup, altGroupTitle.get(i), hmpM2KT, intCount, boolKeep, group, "gene");
->>>>>>> origin/master
                     intCount++;
                 }
             }
             outputResult(hmpRGroup, altGroupTitle, new String[]{".rvtest.gene.", "Gene"}, excel, group);
-<<<<<<< HEAD
 
 //            hmpRGroup.clear();
-=======
-            hmpRGroup.clear();
->>>>>>> origin/master
         }
 
         if (group <= 0 && single > 0) {
@@ -460,11 +425,7 @@ public class RVTest {
             hmpRSingle = new HashMap<String, String[]>();
             for (int i = 1; i < altSingleTitle.size(); i++) {
                 if (hmpM2ST.keySet().contains(altSingleTitle.get(i))) {
-<<<<<<< HEAD
                     collect(hmpRSingle, altSingleTitle.get(i), hmpM2ST, intCount, keepTmp, single, "var");
-=======
-                    collect(hmpRSingle, altSingleTitle.get(i), hmpM2ST, intCount, boolKeep, single, "var");
->>>>>>> origin/master
                     intCount++;
                 }
             }
@@ -478,11 +439,7 @@ public class RVTest {
                 fleRM.delete();
             }
         }
-<<<<<<< HEAD
         if (!keepGrp) {
-=======
-        if (!boolKeep) {
->>>>>>> origin/master
             for (int i = 0; i < STAND_CHROM_NAMES.length; i++) {
                 File fleRM = new File(outputFileFolder + ".chr" + STAND_CHROM_NAMES[i] + ".gene.rvtest.grp.gz");
                 if (fleRM.exists()) {
@@ -490,7 +447,6 @@ public class RVTest {
                 }
             }
         }
-<<<<<<< HEAD
         if (group <= 0 && single > 0) {
             return altSingleTitle;
         } else {
@@ -499,12 +455,6 @@ public class RVTest {
     }
 
     public ArrayList<String> collectResultGeneset(boolean keepGrp, boolean keepTmp, boolean excel) throws Exception {
-=======
-
-    }
-
-    public void collectResultGeneset(boolean boolKeep, boolean excel) throws Exception {
->>>>>>> origin/master
 
         String[] strItem = strCommand.split(",");
         ArrayList<String> altGroupTitle = new ArrayList<String>();
@@ -526,7 +476,6 @@ public class RVTest {
             hmpRGroup = new HashMap<String, String[]>();
             for (int i = 1; i < altGroupTitle.size(); i++) {
                 if (hmpM2BT.keySet().contains(altGroupTitle.get(i))) {
-<<<<<<< HEAD
                     collect(hmpRGroup, altGroupTitle.get(i), hmpM2BT, intCount, keepTmp, group, "geneset");
                     intCount++;
                 } else if (hmpM2TT.keySet().contains(altGroupTitle.get(i))) {
@@ -534,105 +483,25 @@ public class RVTest {
                     intCount++;
                 } else if (hmpM2KT.keySet().contains(altGroupTitle.get(i))) {
                     collect(hmpRGroup, altGroupTitle.get(i), hmpM2KT, intCount, keepTmp, group, "geneset");
-=======
-                    collect(hmpRGroup, altGroupTitle.get(i), hmpM2BT, intCount, boolKeep, group, "geneset");
-                    intCount++;
-                } else if (hmpM2TT.keySet().contains(altGroupTitle.get(i))) {
-                    collect(hmpRGroup, altGroupTitle.get(i), hmpM2TT, intCount, boolKeep, group, "geneset");
-                    intCount++;
-                } else if (hmpM2KT.keySet().contains(altGroupTitle.get(i))) {
-                    collect(hmpRGroup, altGroupTitle.get(i), hmpM2KT, intCount, boolKeep, group, "geneset");
->>>>>>> origin/master
                     intCount++;
                 }
             }
             outputResult(hmpRGroup, altGroupTitle, new String[]{".rvtest.geneset.", "GeneSet"}, excel, group);
-<<<<<<< HEAD
 
         }
 
-=======
-            hmpRGroup.clear();
-        }
-
-//        hmpRGroup = new HashMap<String, double[]>();
-//        String strIn = rvtestOutputNameTmp + ".set.CMC.assoc";
-//        File file = new File(strIn);
-//        if (file.exists()) {
-//            buildMap(hmpRGroup, boolKeep, file, SetTest.cmc.ordinal(), 6,group,"group");            
-//        } 
-//
-//        strIn = rvtestOutputNameTmp + ".set.Kbac.assoc";
-//        file = new File(strIn);
-//        if (file.exists()) {
-//            buildMap(hmpRGroup, boolKeep, file, SetTest.kbac.ordinal(), 5,group,"group");
-//        }
-//        
-//        strIn = rvtestOutputNameTmp + ".set.VariableThresholdPrice.assoc";
-//        file = new File(strIn);
-//        if (file.exists()) {
-//            buildMap(hmpRGroup, boolKeep, file, SetTest.price.ordinal(), 13,group,"group");
-//        }
-//        strIn = rvtestOutputNameTmp + ".set.Skat.assoc";
-//        file = new File(strIn);
-//        if (file.exists()) {
-//            buildMap(hmpRGroup, boolKeep, file, SetTest.skat.ordinal(), 6,group,"group");
-//        }
-        //output the result. 
-//        File fleOutput = new File(this.outputFileFolder + ".rvtest.geneset." + (excel ? "xlsx" : "txt"));
-//        if (!fleOutput.getParentFile().exists()) {
-//            fleOutput.getParentFile().mkdir();
-//        }
-//        if (!excel) {
-//            BufferedWriter bw = new BufferedWriter(new FileWriter(fleOutput));
-//            bw.write("Set\tCMC\tKbac\tVariableThresholdPrice\tSkat\n");
-//            for (Map.Entry<String, double[]> entry : hmpRGroup.entrySet()) {
-//                String strTemp = entry.getKey();
-//                for (int i = 0; i < N; i++) {
-//                    strTemp += "\t" + (entry.getValue()[i] == -1 ? "." : entry.getValue()[i]);
-//                }
-//                strTemp += "\n";
-//                bw.write(strTemp);
-//            }
-//            bw.close();
-//        } else {
-//            List<String[]> arrays = new ArrayList<String[]>();
-//            String[] titles = new String[]{"Set", "CMC", "Kbac", "VariableThresholdPrice", "Skat"};
-//
-//            for (Map.Entry<String, double[]> entry : hmpRGroup.entrySet()) {
-//                String strTemp = entry.getKey();
-//                String[] cells = new String[5];
-//                cells[0] = strTemp;
-//                for (int i = 0; i < N; i++) {
-//                    cells[i + 1] = (entry.getValue()[i] == -1 ? "." : String.valueOf(entry.getValue()[i]));
-//                }
-//                arrays.add(cells);
-//            }
-//            LocalExcelFile.writeArray2XLSXFile(fleOutput.getCanonicalPath(), titles, arrays);
-//        }
-//        hmpRGroup.clear();
-//        String infor = "The association analysis results of geneset-base association are saved in " + fleOutput.getCanonicalPath();
-//        LOG.info(infor);
->>>>>>> origin/master
         //remove the temporary products. 
         File fleRM = new File(rvtestOutputNameTmp + ".set.log");
         if (fleRM.exists()) {
             fleRM.delete();
         }
-<<<<<<< HEAD
         if (!keepGrp) {
-=======
-        if (!boolKeep) {
->>>>>>> origin/master
             fleRM = new File(outputFileFolder + ".geneset.rvtest.grp.gz");
             if (fleRM.exists()) {
                 fleRM.delete();
             }
         }
-<<<<<<< HEAD
         return altGroupTitle;
-=======
->>>>>>> origin/master
     }
 
     public void buildMap(HashMap<String, String[]> hmpRV, boolean boolKeep, File fleInput, int intP1, String strP2, int sg, String strMarker) throws FileNotFoundException, IOException {
@@ -689,7 +558,6 @@ public class RVTest {
         if (!boolKeep) {
             fleInput.delete();
         }
-<<<<<<< HEAD
 
     }
 
@@ -699,9 +567,6 @@ public class RVTest {
 
     public void releaseHmpRSingle() {
         this.hmpRSingle.clear();
-=======
-        return;
->>>>>>> origin/master
     }
 
     public class CallRVTestTask extends Task implements Callable<String>, Constants {
@@ -718,7 +583,6 @@ public class RVTest {
 
         @Override
         public String call() throws Exception {
-<<<<<<< HEAD
 
             File f1 = new File(phenoFilePath);
             phenoFilePath = f1.getCanonicalPath();
@@ -826,94 +690,6 @@ public class RVTest {
 
             return "";
         }
-=======
-            try {
-                File f1 = new File(phenoFilePath);
-                phenoFilePath = f1.getCanonicalPath();
-//                String[] params = new String[15];
-                String[] params;
-                if (strMarker.contains("variant")) {
-                    params = new String[8];
-                    params[0] = rvtestFolder;
-                    params[1] = " --inVcf";
-                    params[2] = inputFileFolder;
-                    params[3] = "--pheno";
-                    params[4] = phenoFilePath;
-                    params[5] = "--out";
-                    params[6] = rvtestOutputNameTmp + ".chr" + chrName;
-                    params[7] = getCmd(strMarker);
-                } else {
-                    params = new String[10];
-                    params[0] = rvtestFolder;
-                    params[1] = " --inVcf";
-                    params[2] = inputFileFolder;
-                    params[3] = "--pheno";
-                    params[4] = phenoFilePath;
-                    params[5] = "--setFile";
-                    params[6] = outputFileFolder + ".chr" + chrName + ".gene.rvtest.grp.gz";
-                    params[7] = "--out";
-                    params[8] = rvtestOutputNameTmp + ".chr" + chrName;
-                    //                params[9] = "--burden";
-                    //                params[10] = "cmc";
-                    //                params[11] = "--vt";
-                    //                params[12] = "price";
-                    //                params[13] = "--kernel";
-                    //                params[14] = "skat[nPerm=1000:alpha=0.001:beta1=1:beta2=20],kbac";
-
-                    params[9] = getCmd(strMarker);
-                }
-
-                StringBuilder comInfor = new StringBuilder();
-                for (String param : params) {
-                    comInfor.append(param);
-                    comInfor.append(" ");
-                }
-                if (strPhe != null) {
-                    comInfor.append(strPhe);
-                    comInfor.append(" ");
-                }
-                if (strCov != null) {
-                    comInfor.append(strCov);
-                }
-                //example command
-                //plugin/rvtests/executable/rvtest --inVcf test1.flt.vcf.gz --pheno assoc.ped --out output --setFile test1.gene.rvtest.grp.gz --burden cmc --vt price --kernel skat[nPerm=100:alpha=0.001:beta1=1:beta2=20],kbac
-                LOG.info("Running RVTests:\n" + comInfor.toString());
-                Process pr = Runtime.getRuntime().exec(comInfor.toString());
-
-                String line;
-                StringBuilder errorMsg = new StringBuilder();
-                try {
-                    BufferedReader inputOut = new BufferedReader(new InputStreamReader(pr.getInputStream()));
-                    while (((line = inputOut.readLine()) != null)) {
-                        //  System.out.println(line);
-                    }
-
-                    int exitVal;
-                    try (BufferedReader inputError = new BufferedReader(new InputStreamReader(pr.getErrorStream()))) {
-                        while (((line = inputError.readLine()) != null)) {
-                            errorMsg.append(line);
-                            errorMsg.append("\n");
-                        }
-                        exitVal = pr.waitFor();
-                        pr.destroy();
-                    }
-
-                    if (exitVal != 0) {
-                        LOG.info("Rvtest failed to run by the command: " + comInfor.toString() + "\n" + errorMsg);
-                    }
-                } catch (Exception ex) {
-                    LOG.error(ex + "\nRvtest failed to run!");
-                }
-
-            } catch (IOException ex) {
-                LOG.error(ex);
-            } catch (Exception ex) {
-                LOG.error(ex);
-            }
-            return "";
-        }
-
->>>>>>> origin/master
     }
 
     public void runGeneAssoc(String phenoFilePath, int maxThreadNum, String strMarker) throws Exception {
@@ -921,44 +697,22 @@ public class RVTest {
         final CompletionService<String> serv = new ExecutorCompletionService<String>(exec);
         int runningThread = 0;
         if (strMarker.contains("gene")) {
-<<<<<<< HEAD
             for (String STAND_CHROM_NAMES1 : STAND_CHROM_NAMES) {
                 File f = new File(outputFileFolder + ".chr" + STAND_CHROM_NAMES1 + ".gene.rvtest.grp.gz");
                 if (!f.exists()) {
                     continue;
                 }
                 CallRVTestTask task = new CallRVTestTask(phenoFilePath, STAND_CHROM_NAMES1, strMarker);
-=======
-            for (int i = 0; i < STAND_CHROM_NAMES.length; i++) {
-                File f = new File(outputFileFolder + ".chr" + STAND_CHROM_NAMES[i] + ".gene.rvtest.grp.gz");
-
-                if (!f.exists()) {
-                    continue;
-                }
-
-                CallRVTestTask task = new CallRVTestTask(phenoFilePath, STAND_CHROM_NAMES[i], strMarker);
->>>>>>> origin/master
                 serv.submit(task);
                 runningThread++;
             }
         } else {
-<<<<<<< HEAD
             for (String STAND_CHROM_NAMES1 : STAND_CHROM_NAMES) {
                 File f = new File(outputFileFolder + ".chr" + STAND_CHROM_NAMES1 + ".var.rvtest.grp.gz");
                 if (!f.exists()) {
                     continue;
                 }
                 CallRVTestTask task = new CallRVTestTask(phenoFilePath, STAND_CHROM_NAMES1, strMarker);
-=======
-            for (int i = 0; i < STAND_CHROM_NAMES.length; i++) {
-                File f = new File(outputFileFolder + ".chr" + STAND_CHROM_NAMES[i] + ".var.rvtest.grp.gz");
-
-                if (!f.exists()) {
-                    continue;
-                }
-
-                CallRVTestTask task = new CallRVTestTask(phenoFilePath, STAND_CHROM_NAMES[i], strMarker);
->>>>>>> origin/master
                 serv.submit(task);
                 runningThread++;
             }
@@ -1059,7 +813,6 @@ public class RVTest {
         //System.out.println(comInfor.toString());
         LOG.info("Running RVTests:\n" + comInfor.toString());
         Process pr = Runtime.getRuntime().exec(comInfor.toString());
-<<<<<<< HEAD
         /*
         try {
          
@@ -1084,19 +837,12 @@ public class RVTest {
             t.printStackTrace();
         }
          */
-=======
-
->>>>>>> origin/master
         String line;
         StringBuilder errorMsg = new StringBuilder();
         try {
             BufferedReader inputOut = new BufferedReader(new InputStreamReader(pr.getInputStream()));
             while (((line = inputOut.readLine()) != null)) {
-<<<<<<< HEAD
                 // System.out.println(line);
-=======
-                //  System.out.println(line);
->>>>>>> origin/master
             }
 
             int exitVal;
@@ -1105,16 +851,9 @@ public class RVTest {
                     errorMsg.append(line);
                     errorMsg.append("\n");
                 }
-<<<<<<< HEAD
             }
             exitVal = pr.waitFor();
             pr.destroy();
-=======
-                exitVal = pr.waitFor();
-                pr.destroy();
-            }
-
->>>>>>> origin/master
             if (exitVal != 0) {
                 LOG.info("Rvtest failed to run by the command: " + comInfor.toString() + "\n" + errorMsg);
             }
@@ -1124,11 +863,7 @@ public class RVTest {
         //collect data
     }
 
-<<<<<<< HEAD
     public void summarizeVarCountsBySubject(Map<String, List<Variant>> geneVars,  List<Individual> subjectList, int[] pedEncodeGytIDMap, boolean isPhasedGty,
-=======
-    public void summarizeVarCountsBySubject(Map<String, List<Variant>> geneVars, OpenLongObjectHashMap wahBit, List<Individual> subjectList, int[] pedEncodeGytIDMap, boolean isPhasedGty,
->>>>>>> origin/master
             Map<String, Integer> phenotypeColID, String exportPath, int scoreIndex, boolean outGZ) throws Exception {
         BufferedWriter bwPed = null;
         if (geneVars == null) {
@@ -1160,7 +895,6 @@ public class RVTest {
         }
         bwPed.write("\n");
         boolean[] bits = new boolean[32];
-<<<<<<< HEAD
         int startIndex;
 
         /*
@@ -1196,9 +930,6 @@ public class RVTest {
             }
         }
          */
-=======
-        long startIndex;
->>>>>>> origin/master
         for (Individual indiv : subjectList) {
             if (indiv == null) {
                 continue;
@@ -1229,7 +960,6 @@ public class RVTest {
                     alleleNum = var.getAltAlleles().length + 1;
                     if (isPhasedGty) {
                         base = GlobalManager.phasedAlleleBitMap.get(alleleNum);
-<<<<<<< HEAD
                         if (var.compressedGtyLabel > 0) {
                             startIndex = gtyID;
                             for (int i = 0; i < base; i++) {
@@ -1275,28 +1005,6 @@ public class RVTest {
                         } else if (var.compressedGtyLabel == 0) {
                             Arrays.fill(bits, 0, base, false);
                             gtys = BinaryGtyProcessor.getUnphasedGtyBool(bits, alleleNum, base, gtyID);
-=======
-                        if (var.compressedGty) {
-                            startIndex = var.encodedGtyIndex[0] + gtyID;
-                            for (int i = 0; i < base; i++) {
-                                bits[i] = wahBit.containsKey(startIndex);
-                                startIndex += pedEncodeGytIDMap.length;
-                            }
-                            gtys = BinaryGtyProcessor.getPhasedGtyBool(bits, alleleNum, base, gtyID);
-                        } else {
-                            gtys = BinaryGtyProcessor.getPhasedGtyAt(var.encodedGty, alleleNum, base, gtyID, pedEncodeGytIDMap.length);
-                        }
-
-                    } else {
-                        base = GlobalManager.unphasedAlleleBitMap.get(alleleNum);
-                        if (var.compressedGty) {
-                            startIndex = var.encodedGtyIndex[0] + gtyID;
-                            for (int i = 0; i < base; i++) {
-                                bits[i] = wahBit.containsKey(startIndex);
-                                startIndex += pedEncodeGytIDMap.length;
-                            }
-                            gtys = BinaryGtyProcessor.getUnphasedGtyBool(bits, alleleNum, base, gtyID);
->>>>>>> origin/master
                         } else {
                             gtys = BinaryGtyProcessor.getUnphasedGtyAt(var.encodedGty, alleleNum, base, gtyID, pedEncodeGytIDMap.length);
                         }
@@ -1319,7 +1027,6 @@ public class RVTest {
         }
         bwPed.close();
     }
-<<<<<<< HEAD
 
     class StreamGobbler extends Thread {
 
@@ -1370,6 +1077,4 @@ public class RVTest {
         return hmpRSingle;
     }
 
-=======
->>>>>>> origin/master
 }

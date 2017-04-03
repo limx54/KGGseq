@@ -342,10 +342,6 @@ public class Util {
         int tempLength = (string.length() / 2) + 1;
 
         // System.out.println(string);
-<<<<<<< HEAD
-=======
-    
->>>>>>> origin/master
         if (temp == null || temp.length < tempLength) {
             temp = new String[tempLength];
             tempArray.set(temp);
@@ -401,22 +397,14 @@ public class Util {
         }
 
         while (j >= 0 && i < strLen) {
-<<<<<<< HEAD
 
-=======
-            
->>>>>>> origin/master
             if (tempInt[wordCount] == 0) {
                 tempInt[wordCount] = j;
             } else {
                 //tempInt[wordCount] = (tempInt[wordCount] + j + 1) / 2;
                 tempInt[wordCount] = j;
             }
-<<<<<<< HEAD
 
-=======
-            
->>>>>>> origin/master
             temp[wordCount++] = string.substring(i, j);
 
             i = j + 1;

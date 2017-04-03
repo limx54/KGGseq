@@ -65,10 +65,7 @@ public class Phenolyzer {
         if (!f.getParentFile().exists()) {
             f.getParentFile().mkdir();
         }
-<<<<<<< HEAD
         fleOutput=f.getParentFile().getName()+"/"+f.getName();
-=======
->>>>>>> origin/master
         String[] params = new String[12];
         params[0] = strPerlPath;
         params[1] = strPhenolyzerPath;
@@ -79,11 +76,7 @@ public class Phenolyzer {
         params[6] = "-out";
         params[7] = fleOutput;
         params[8] = "-addon";
-<<<<<<< HEAD
         params[9] = "DB_DISGENET_GENE_DISEASE_SCORE,DB_GAD_GENE_DISEASE_SCORE";//",DB_GENECARDS_GENE_DISEASE_SCORE" was removed temporarily, because it couldn't be found in lib. 
-=======
-        params[9] = "DB_DISGENET_GENE_DISEASE_SCORE,DB_GAD_GENE_DISEASE_SCORE,DB_GENECARDS_GENE_DISEASE_SCORE";
->>>>>>> origin/master
         params[10] = "-addon_weight";
         params[11] = "0.25";
 

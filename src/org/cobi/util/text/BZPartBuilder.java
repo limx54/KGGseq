@@ -40,6 +40,7 @@ public class BZPartBuilder extends Task implements Callable<String> {
     int intContent = 0;
     boolean loadBuf = true;
     boolean boolFlag = false;
+    int GC_CLEAN=100000;
 
     public BZPartBuilder(File input, int spiderID, long longStart, long longEnd, int intChrom, int intStart, boolean hasHead, String prefixName) throws FileNotFoundException, IOException {
         this.spiderID = spiderID;
@@ -66,6 +67,7 @@ public class BZPartBuilder extends Task implements Callable<String> {
             int intA, intLen;
             BufferedWriter bw = new BufferedWriter(new FileWriter(prefixName + "." + spiderID));
 //                System.out.println("CP2."+spiderID+" Start1 ----->"+new Date());
+            int intClean=0;
             do {
                 longCurr += longNext;
                 currentLine = bzpr.getStartLine();
@@ -104,6 +106,11 @@ public class BZPartBuilder extends Task implements Callable<String> {
 //                    System.out.println("CP2."+spiderID+" Start5 ----->"+new Date());
                 if (longNext == -1 || longRemainSize <= 0) {
                     break;
+                }
+//                System.gc();
+                intClean++;
+                if(intClean%GC_CLEAN==0){
+                    System.gc();
                 }
 //         System.out.println(longRemainSize);
             } while (bzpr.jumpTo(longNext, intSep));

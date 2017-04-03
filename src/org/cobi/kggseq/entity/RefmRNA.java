@@ -262,18 +262,9 @@ public class RefmRNA extends SeqSegment {
                         effectiveSites.add(delSites[i]);
                         effectiveBase.append(delSeq.charAt(i));
                     }
-<<<<<<< HEAD
                 } else if (delSites[i] > codingStartRelativeSiteInSequence) {
                     effectiveSites.add(delSites[i]);
                     effectiveBase.append(delSeq.charAt(i));
-=======
-                } else {
-
-                    if (delSites[i] > codingStartRelativeSiteInSequence) {
-                        effectiveSites.add(delSites[i]);
-                        effectiveBase.append(delSeq.charAt(i));
-                    }
->>>>>>> origin/master
                 }
             }
             if (effectiveSites.isEmpty()) {
@@ -287,13 +278,8 @@ public class RefmRNA extends SeqSegment {
                 delSeq = effectiveBase.toString();
             }
         }
-<<<<<<< HEAD
 
         //  insSites=null;//**************************************************
-=======
-        
-     //  insSites=null;//**************************************************
->>>>>>> origin/master
         if (insSites != null) {
             IntArrayList effectiveSites = new IntArrayList();
             StringBuilder effectiveBase = new StringBuilder();
@@ -304,18 +290,9 @@ public class RefmRNA extends SeqSegment {
                         effectiveSites.add(insSites[i]);
                         effectiveBase.append(insSeq.charAt(i));
                     }
-<<<<<<< HEAD
                 } else if (insSites[i] > codingStartRelativeSiteInSequence) {
                     effectiveSites.add(insSites[i]);
                     effectiveBase.append(insSeq.charAt(i));
-=======
-                } else {
-
-                    if (insSites[i] > codingStartRelativeSiteInSequence) {
-                        effectiveSites.add(insSites[i]);
-                        effectiveBase.append(insSeq.charAt(i));
-                    }
->>>>>>> origin/master
                 }
             }
             if (effectiveSites.isEmpty()) {
@@ -350,14 +327,6 @@ public class RefmRNA extends SeqSegment {
         }
         int exonicFeatureID = GlobalManager.VarFeatureIDMap.get("exonic");
 
-<<<<<<< HEAD
-=======
-        /*
-         if (oldStartPos == 97726747) {
-         int ssss = 0;
-         }
-         */
->>>>>>> origin/master
         if (isForwardStrandInput) {
             if (strand == '-') {
                 //assum the input allele are all in forward strand
@@ -538,10 +507,7 @@ public class RefmRNA extends SeqSegment {
                     int exonID = Util.parseInt(gf.name.substring(0, gf.name.indexOf(':')));
                     int relativeCodingStartPos = Util.parseInt(gf.name.substring(gf.name.indexOf(':') + 1));
                     errorCode[0] = 0;
-<<<<<<< HEAD
                     //System.out.println(relativeCodingStartPos);
-=======
->>>>>>> origin/master
                     GeneFeature gf1 = calculateAminoAcidChange(relativeCodingStartPos, ref.charAt(startAllele), allele.charAt(startAllele), startPos, gf.pos2CondingEnd, geneSym, errorCode);
                     switch (errorCode[0]) {
                         case 1:
@@ -553,11 +519,7 @@ public class RefmRNA extends SeqSegment {
                         case 3:
                             LOG.warn("The reference allele " + ref + " of chr" + chr + ":" + oldStartPos + " in the sample data and database are not identical on " + refID + " of " + geneSym);
                             break;
-<<<<<<< HEAD
                         // LOG.warn("The variant chr" + chr + ":" + oldStartPos + " is mapped against problematic codon on " + refID + " of " + geneSym);
-=======
-                    // LOG.warn("The variant chr" + chr + ":" + oldStartPos + " is mapped against problematic codon on " + refID + " of " + geneSym);
->>>>>>> origin/master
                         case 4:
                             break;
                         default:
@@ -1228,7 +1190,6 @@ public class RefmRNA extends SeqSegment {
             char refP = '?';
             char altP = '?';
 
-<<<<<<< HEAD
             if (GlobalManager.codonTable.containsKey(codon)) {
                 refP = GlobalManager.codonTable.get(codon);
                 if (refP == '*') {
@@ -1411,20 +1372,6 @@ public class RefmRNA extends SeqSegment {
                     }
                 }
             }
-=======
-            if (GlobalManager.codonTable.containsKey(codon)) {
-                refP = GlobalManager.codonTable.get(codon);
-                if (refP == '*') {
-                    //an impossible stoploss
-                    if (pos2CondingEnd > 3) {                      
-                        errorCode[0] = 4;
-                        //Warning. not sure this is opproperate or not
-                        info.append(":exonic");
-                        return new GeneFeature(GlobalManager.VarFeatureIDMap.get("exonic"), info.toString());
-                    }
-                }
-            }
->>>>>>> origin/master
             info.append(':');
             info.append("p.");
             info.append(refP);

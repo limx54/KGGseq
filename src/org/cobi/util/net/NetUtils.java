@@ -14,10 +14,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-<<<<<<< HEAD
 import java.nio.channels.FileChannel;
-=======
->>>>>>> origin/master
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -31,10 +28,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
-<<<<<<< HEAD
 import org.apache.http.client.config.RequestConfig;
-=======
->>>>>>> origin/master
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -206,11 +200,7 @@ public class NetUtils implements Constants {
             exec.shutdown();
             LOG.info("The library of has been updated! Please re-initiate this application!");
             updateLocal();
-<<<<<<< HEAD
         } else if (!autoUpdate && !updatedLocalFiles.isEmpty()) {
-=======
-        } else if (!autoUpdate) {            
->>>>>>> origin/master
             LOG.info("A new version of KGGSeq is available! Please visit http://grass.cgs.hku.hk/limx/kggseq/download.php to see the updates\n and enable library updated automatically by '--lib-update'. To disable library checking, add '--no-lib-check'.");
         }
         return hasUpdated;
@@ -240,7 +230,6 @@ public class NetUtils implements Constants {
             }
 
             if (needDownload) {
-<<<<<<< HEAD
                 CloseableHttpClient httpclient = HttpClients.custom()
                         .setDefaultRequestConfig(RequestConfig.custom()
                                 // Waiting for a connection from connection manager
@@ -258,12 +247,6 @@ public class NetUtils implements Constants {
                 HttpGet httpget = new HttpGet(strURL);
                 HttpResponse response = httpclient.execute(httpget);
                 //System.out.println(response.getStatusLine());
-=======
-                CloseableHttpClient httpclient = HttpClients.createDefault();
-                HttpGet httpget = new HttpGet(strURL);
-                HttpResponse response = httpclient.execute(httpget);
-                System.out.println(response.getStatusLine());
->>>>>>> origin/master
                 HttpEntity entity = response.getEntity();
 
                 if (entity != null) {
@@ -366,7 +349,6 @@ public class NetUtils implements Constants {
             }
 
             if (needDownload) {
-<<<<<<< HEAD
                 CloseableHttpClient httpclient = HttpClients.custom()
                         .setDefaultRequestConfig(RequestConfig.custom()
                                 // Waiting for a connection from connection manager
@@ -385,12 +367,6 @@ public class NetUtils implements Constants {
                 HttpGet httpget = new HttpGet(strURL);
                 HttpResponse response = httpclient.execute(httpget);
                 // System.out.println(response.getStatusLine());
-=======
-                CloseableHttpClient httpclient = HttpClients.createDefault();
-                HttpGet httpget = new HttpGet(strURL);
-                HttpResponse response = httpclient.execute(httpget);
-                System.out.println(response.getStatusLine());
->>>>>>> origin/master
                 HttpEntity entity = response.getEntity();
 
                 if (entity != null) {
@@ -467,11 +443,7 @@ public class NetUtils implements Constants {
             java.util.logging.Logger.getLogger(Phenolyzer.class.getName()).log(Level.SEVERE, null, ex);
         }
         if (needDownload) {
-<<<<<<< HEAD
             String infor = "Please go to the folder by typing 'cd " + params[1] + "' and complile the cpp codes by typing 'make all'";
-=======
-            String infor = "Please go to the folder by typing 'cd " + params[1] + "' and complile the cpp codes by typing 'make'";
->>>>>>> origin/master
             LOG.info(infor);
         }
         return needDownload;
@@ -727,7 +699,6 @@ public class NetUtils implements Constants {
                     ftp.closeFTP();
                 }
                  */
-<<<<<<< HEAD
             }
             if (options.dddPhenotypes) {
                 boolean needDownload = false;
@@ -752,34 +723,6 @@ public class NetUtils implements Constants {
 
                 }
             }
-=======
-            }
-            if (options.dddPhenotypes) {
-                boolean needDownload = false;
-                File rfFile = new File(GlobalManager.RESOURCE_PATH + "/ddg2p/ddg2p.zip");
-                if (!rfFile.exists()) {
-                    needDownload = true;
-                } else {
-                    //one month later
-                    long time = rfFile.lastModified() / 1000 + 30 * 24 * 60 * 60;
-                    Date fileData = new Date(time * 1000);
-                    Date today = new Date();
-                    //if too small or too early
-                    if (rfFile.length() < 0.2 * 1024 * 1024 || today.after(fileData)) {
-                        //an incomplete file
-                        rfFile.delete();
-                        needDownload = true;
-                    }
-                }
-
-                if (needDownload) {
-                    HttpClient4API.simpleRetriever("https://decipher.sanger.ac.uk/files/ddd/ddg2p.zip", rfFile.getCanonicalPath());
-                    Zipper ziper = new Zipper();
-                    ziper.extractZip(rfFile.getCanonicalPath(), rfFile.getParentFile().getCanonicalPath() + File.separator);
-                }
-
-            }
->>>>>>> origin/master
 
             if (options.flankingSequence > 0) {
                 for (int i = 0; i < STAND_CHROM_NAMES.length; i++) {
@@ -824,12 +767,8 @@ public class NetUtils implements Constants {
             }
 
             //downloading does not support multiple thread 
-<<<<<<< HEAD
             //String url = "http://www.genenames.org/cgi-bin/hgnc_downloads?col=gd_hgnc_id&col=gd_app_sym&col=gd_app_name&col=gd_status&col=gd_prev_sym&col=gd_aliases&col=gd_pub_chrom_map&col=gd_pub_acc_ids&col=gd_pub_refseq_ids&col=gd_pub_eg_id&status=Approved&status_opt=2&where=&order_by=gd_hgnc_id&format=text&limit=&hgnc_dbtag=on&submit=submit";
             String url = "http://www.genenames.org/cgi-bin/download?col=gd_hgnc_id&col=gd_app_sym&col=gd_app_name&col=gd_status&col=gd_prev_sym&col=gd_aliases&col=gd_pub_chrom_map&col=gd_pub_acc_ids&col=gd_pub_refseq_ids&col=gd_pub_eg_id&status=Approved&status_opt=2&where=&order_by=gd_hgnc_id&format=text&limit=&hgnc_dbtag=on&submit=submit";
-=======
-            String url = "http://www.genenames.org/cgi-bin/hgnc_downloads?col=gd_hgnc_id&col=gd_app_sym&col=gd_app_name&col=gd_status&col=gd_prev_sym&col=gd_aliases&col=gd_pub_chrom_map&col=gd_pub_acc_ids&col=gd_pub_refseq_ids&col=gd_pub_eg_id&status=Approved&status_opt=2&where=&order_by=gd_hgnc_id&format=text&limit=&hgnc_dbtag=on&submit=submit";
->>>>>>> origin/master
 
             if (toDownloadHGNC) {
                 resourceFile = new File(GlobalManager.RESOURCE_PATH + "/" + hgncFileName);
@@ -1271,7 +1210,6 @@ public class NetUtils implements Constants {
                     ftp.closeFTP();
                 }
                  */
-<<<<<<< HEAD
             }
 
             if (options.dddPhenotypes) {
@@ -1291,37 +1229,6 @@ public class NetUtils implements Constants {
                         needDownload = true;
                     }
                 }
-=======
-            }
-
-            if (options.dddPhenotypes) {
-                boolean needDownload = false;
-                File rfFile = new File(GlobalManager.RESOURCE_PATH + "/ddg2p/ddg2p.zip");
-                if (!rfFile.exists()) {
-                    needDownload = true;
-                } else {
-                    //one month later
-                    long time = rfFile.lastModified() / 1000 + 30 * 24 * 60 * 60;
-                    Date fileData = new Date(time * 1000);
-                    Date today = new Date();
-                    //if too small or too early
-                    if (rfFile.length() < 0.1 * 1024 * 1024 || today.after(fileData)) {
-                        //an incomplete file
-                        rfFile.delete();
-                        needDownload = true;
-                    }
-                }
-
-                if (needDownload) {
-                    HttpClient4API.simpleRetrieverHttps("https://decipher.sanger.ac.uk/files/ddd/ddg2p.zip", rfFile.getCanonicalPath());
-                    Zipper ziper = new Zipper();
-                    ziper.extractZip(rfFile.getCanonicalPath(), rfFile.getParentFile().getCanonicalPath() + File.separator);
-                }
-            }
-
-            //downloading does not support multiple thread 
-            String url = "http://www.genenames.org/cgi-bin/hgnc_downloads?col=gd_hgnc_id&col=gd_app_sym&col=gd_app_name&col=gd_status&col=gd_prev_sym&col=gd_aliases&col=gd_pub_chrom_map&col=gd_pub_acc_ids&col=gd_pub_refseq_ids&col=gd_pub_eg_id&status=Approved&status_opt=2&where=&order_by=gd_hgnc_id&format=text&limit=&hgnc_dbtag=on&submit=submit";
->>>>>>> origin/master
 
                 if (needDownload) {
                     HttpClient4API.simpleRetriever("http://www.ebi.ac.uk/gene2phenotype/downloads/DDG2P.csv.gz", rfFile.getCanonicalPath());
@@ -1383,11 +1290,7 @@ public class NetUtils implements Constants {
                     }
                 }
                 // System.out.println(dbLabelName);
-<<<<<<< HEAD
                 if (downloadCount == 0) {
-=======
-                if (i == 0) {
->>>>>>> origin/master
                     LOG.info("Downloading resources ...");
                 }
 

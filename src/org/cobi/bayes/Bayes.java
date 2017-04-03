@@ -9,10 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import org.apache.log4j.Logger;
-<<<<<<< HEAD
 import org.cobi.kggseq.Constants;
-=======
->>>>>>> origin/master
 
 import org.cobi.util.file.LocalFileFunc;
 
@@ -41,7 +38,6 @@ GWAS3D	2.80186
 SuRFR	9.44965        
          */
 
-<<<<<<< HEAD
         double[] annotationScoreDouble = new double[]{0.153309, 0.205698, 0.33259, -0.0784622, 0.291601, 0.00403947, 1, -0.540851872, 2.80186, 9.44965};
 
         Bayes bayesScoreGenerator = new Bayes("resources", "hg19");
@@ -52,12 +48,6 @@ SuRFR	9.44965
             causalscore = bayesScoreGenerator.getCausalscore(annotationScoreDouble[i], i);
             neutralscore = bayesScoreGenerator.getNeutralscore(annotationScoreDouble[i], i);
             System.out.println(causalscore + "\t" + neutralscore + "\t" + (causalscore / neutralscore) + "\t" + (causalscore / (causalscore + neutralscore)));
-=======
-        double[] annotationScoreDouble = new double[]{-0.111646, 0.1806, 0.381241, 0.81, 0.6, 0.37, 17.519};
-        double[] annotationScore = new double[annotationScoreDouble.length];
-        for (int i = 0; i < annotationScore.length; i++) {
-            annotationScore[i] = (Double) annotationScoreDouble[i];
->>>>>>> origin/master
         }
         // double cell_p = bayesScoreGenerator.getCellSpecificScore("6", 127663116);
         //System.out.println(bayesScoreGenerator.getBayesScore(annotationScore, cell_p));
@@ -79,10 +69,7 @@ SuRFR	9.44965
     public ArrayList<double[]> causalScores = new ArrayList<double[]>();
     public ArrayList<double[]> neutralScores = new ArrayList<double[]>();
     public ArrayList<HashMap<String, ArrayList<double[]>>> cellTypeScores;
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/master
     public StringBuffer sb;
     public String refGenomeVersion;
 
@@ -184,7 +171,6 @@ SuRFR	9.44965
         }
     }
 
-<<<<<<< HEAD
     public double getCausalscore(double s, int index) {
         double causalscore = causalScores.get(2 * index + 1)[getBinarySearch(causalScores.get(2 * index), s, 0, causalScores.get(2 * index).length - 1)];
         return causalscore;
@@ -196,9 +182,6 @@ SuRFR	9.44965
     }
 
     public double[] getBayesScoreCompsit(float[] annotationScore, int[] effecIndex, double[] baye1NonCodingPredic, double[] baye2NonCodingPredic) {
-=======
-    public String getBayesScore(double[] annotationScore, double cell_p) {
->>>>>>> origin/master
         double composite_p = 1;
         double bfFactor = 1;
         double[] result = new double[2];
@@ -220,17 +203,10 @@ SuRFR	9.44965
                 bfFactor *= baye1NonCodingPredic[index];
                 composite_p *= baye2NonCodingPredic[index];
             } else {
-<<<<<<< HEAD
                 causalscore = causalScores.get(2 * index + 1)[getBinarySearch(causalScores.get(2 * index), annotationScore[index], 0, causalScores.get(2 * index).length - 1)];
                 neutralscore = neutralScores.get(2 * index + 1)[getBinarySearch(neutralScores.get(2 * index), annotationScore[index], 0, neutralScores.get(2 * index).length - 1)];
                 bfFactor *= (causalscore / neutralscore);
                 composite_p *= (causalscore / (causalscore + neutralscore));
-=======
-                causalscore = causalScores.get(2 * i + 1)[getBinarySearch(causalScores.get(2 * i), annotationScore[i], 0, causalScores.get(2 * i).length - 1)];
-                neutralscore = neutralScores.get(2 * i + 1)[getBinarySearch(neutralScores.get(2 * i), annotationScore[i], 0, neutralScores.get(2 * i).length - 1)];
-//				sb.append(annotationScore[t] + "\t" + causalscore + "|" + neutralscore + "\t");
-                sb.append(annotationScore[i] + "\t");
->>>>>>> origin/master
             }
             // System.out.println(i+" "+(causalscore / neutralscore)+" "+(causalscore / (causalscore + neutralscore)));
         }
@@ -306,20 +282,12 @@ SuRFR	9.44965
 
     }
 
-<<<<<<< HEAD
     public ArrayList<double[]> getDistributionProbability(String filePath) {
         ArrayList<double[]> scores = new ArrayList<double[]>();
         DoubleArrayList thisScore = new DoubleArrayList();
         DoubleArrayList thisProbability = new DoubleArrayList();
         File resourceFile = null;
         for (int i = 0; i < ReguPredicNames.length; i++) {
-=======
-    public ArrayList<double[]> getDistributionProbability(String FilePath) {
-        ArrayList<double[]> scores = new ArrayList<double[]>();
-        DoubleArrayList thisScore = new DoubleArrayList();
-        DoubleArrayList thisProbability = new DoubleArrayList();
-        for (int i = 0; i < featureNum.length; i++) {
->>>>>>> origin/master
             thisScore.clear();
             thisProbability.clear();
             try {

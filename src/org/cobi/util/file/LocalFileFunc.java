@@ -85,13 +85,8 @@ public class LocalFileFunc {
             String[] STAND_CHROM_NAMES = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13",
                 "14", "15", "16", "17", "18", "19", "20", "21", "22", "X", "Y", "M"};
             // String path = "E:\\home\\mxli\\MyJava\\kggseq3\\resources\\hg19\\hg19_mdbNSFP3.0.chr";
-<<<<<<< HEAD
             String path = "E:\\home\\mxli\\MyJava\\kggseq3\\resources\\hg19\\hg19_snp141.txt.gz";
             //path = args[0];
-=======
-            String path = "E:\\home\\mxli\\MyJava\\kggseq3\\als\\";
-            path = args[0];
->>>>>>> origin/master
             File folder = new File(path);
             if (!folder.isDirectory()) {
                 System.err.println(path + " is not a director!");
@@ -148,7 +143,6 @@ public class LocalFileFunc {
                 String tarredImageName = orgName + ".tmp";
                 File outFile = new File(tarredImageName);
                 File inFile = new File(orgName);
-<<<<<<< HEAD
 
                 System.out.println("Compressing " + orgName);
                 try {
@@ -167,26 +161,6 @@ public class LocalFileFunc {
                     ex.printStackTrace();
                 }
 
-=======
-                int len = 0;
-                System.out.println("Compressing " + orgName);
-                try (GZIPInputStream in = new GZIPInputStream(new FileInputStream(inFile))) {
-                    BlockCompressedOutputStream bcos = new BlockCompressedOutputStream(outFile);
-                    try (ReadableByteChannel inChannel = Channels.newChannel(in)) {
-                        ByteBuffer buffer = ByteBuffer.allocate(65536);
-                        while ((len = inChannel.read(buffer)) != -1) {
-                            buffer.flip();
-                            if (len < 65536) {
-                                bcos.write(Arrays.copyOfRange(buffer.array(), 0, len));
-                            } else {
-                                bcos.write(buffer.array());
-                            }
-                            buffer.clear();
-                        }
-                        bcos.close();
-                    }
-                }
->>>>>>> origin/master
                 inFile.delete();
                 outFile.renameTo(inFile);
 
@@ -245,14 +219,9 @@ public class LocalFileFunc {
             System.err.println(ex.toString());
         }
     }
-<<<<<<< HEAD
 //reference  https://github.com/shenkers/CrossBrowse/blob/f75f6fcb23e2fa4d7b5ae42f9e33cd0b99b2046c/src/test/java/htsjdk/samtools/tabix/IndexingFeatureWriterNGTest.java
    //Note this function is not correct
     static public void tabixVCFFile(String decryptedImageName) {
-=======
-
-    static public void tabixFile(String decryptedImageName) {
->>>>>>> origin/master
         File inFile = new File(decryptedImageName);
         TabixIndexCreator creator;
         int i;
@@ -261,20 +230,12 @@ public class LocalFileFunc {
                 creator = new TabixIndexCreator(new TabixFormat().VCF);
                 i = 0;
                 for (VariantContext context : vcfReader) {
-<<<<<<< HEAD
                     creator.addFeature(context,i);
                     i++;
                 }
                  creator.finalizeIndex(i).writeBasedOnFeatureFile(inFile);
             }
            
-=======
-                    creator.addFeature(context, i);
-                    i++;
-                }
-            }
-            creator.finalizeIndex(i).writeBasedOnFeatureFile(inFile);
->>>>>>> origin/master
         } catch (Exception ex) {
             ex.printStackTrace();
         }

@@ -28,15 +28,10 @@ public class LDCalcTask extends Task implements Callable<String> {
     int[] sum12;
     int totalVarNum;
     double[] rArray;
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/master
     int unitNum;
     boolean isSmallRectangle = true;
     boolean[] hasMissingGty;
     double adjIndivSize;
-<<<<<<< HEAD
     int[] positions;
     int maxCalcDistance;
 
@@ -44,8 +39,6 @@ public class LDCalcTask extends Task implements Callable<String> {
         this.positions = positions;
         this.maxCalcDistance = maxCalcDistance;
     }
-=======
->>>>>>> origin/master
 
     public boolean isIsSmallRectangle() {
         return isSmallRectangle;
@@ -80,11 +73,7 @@ public class LDCalcTask extends Task implements Callable<String> {
 
     }
 
-<<<<<<< HEAD
     public void fillSmallRectangleFull() {
-=======
-    public void fillSmallRectangle() {
->>>>>>> origin/master
         double r = 0;
         int x;
         double douSize = totalPedSubjectNum * 2;
@@ -143,7 +132,6 @@ public class LDCalcTask extends Task implements Callable<String> {
                             tmpD1 = (countAB / douSize - mean1[i] * mean1[j]);
                             tmpD2 = mean1[i] * (1 - mean1[i]) * mean1[j] * (1 - mean1[j]);
                             r = tmpD1 / Math.sqrt(tmpD2);
-<<<<<<< HEAD
                         }
                         //correction
                         // r = (douSize * r - 1) / (douSize - 3);
@@ -407,11 +395,6 @@ public class LDCalcTask extends Task implements Callable<String> {
                             tmpD2 = mean1[i] * (1 - mean1[i]) * mean1[j] * (1 - mean1[j]);
                             r = tmpD1 / Math.sqrt(tmpD2);
 
-=======
-                            if (Double.isNaN(r)) {
-                                int ssss = 0;
-                            }
->>>>>>> origin/master
                         }
                         //correction
                         // r = (douSize * r - 1) / (douSize - 3);
@@ -424,12 +407,9 @@ public class LDCalcTask extends Task implements Callable<String> {
             } else {
                 for (int i = startRowIndex; i < endRowIndex; i++) {
                     for (int j = startColIndex; j < endColIndex; j++) {
-<<<<<<< HEAD
                         if (positions[j] - positions[i] > maxCalcDistance) {
                             break;
                         }
-=======
->>>>>>> origin/master
                         countAB = 0;
                         //refecen http://blog.csdn.net/hitwhylz/article/details/10122617
                         for (int k = 0; k < unitNum; k++) {
@@ -486,13 +466,10 @@ public class LDCalcTask extends Task implements Callable<String> {
         } else if (startRowIndex == startColIndex) {
             for (int i = startRowIndex; i < endRowIndex; i++) {
                 for (int j = i + 1; j < endColIndex; j++) {
-<<<<<<< HEAD
                     if (positions[j] - positions[i] > maxCalcDistance) {
                         break;
                     }
 
-=======
->>>>>>> origin/master
                     countAB = 0;
                     for (int k = 0; k < unitNum; k++) {
                         x = bits1[i][k] & bits1[j][k];
@@ -550,13 +527,8 @@ public class LDCalcTask extends Task implements Callable<String> {
                     // r = (douSize * r - 1) / (douSize - 3);
                     //johny's correction                
                     // r = 1 - (adjIndivSize - 3.0) / (adjIndivSize - 2.0) * (1.0 - r) * (1 + 2.0 * (1 - r) / (adjIndivSize - 3.3));
-<<<<<<< HEAD
                     rArray[(i - startRowIndex) * totalVarNum + j - startColIndex] = r;
 
-=======
-                     rArray[(i - startRowIndex) * totalVarNum + j - startColIndex] = r;
-                   
->>>>>>> origin/master
                     //   System.out.print((i - startRowIndex) + "," + (j - startColIndex) + ":" + r + " ");
                 }
                 //  System.out.println();
@@ -565,12 +537,9 @@ public class LDCalcTask extends Task implements Callable<String> {
         } else {
             for (int i = startRowIndex; i < endRowIndex; i++) {
                 for (int j = startColIndex; j < endColIndex; j++) {
-<<<<<<< HEAD
                     if (positions[j] - positions[i] > maxCalcDistance) {
                         break;
                     }
-=======
->>>>>>> origin/master
                     countAB = 0;
                     for (int k = 0; k < unitNum; k++) {
                         x = bits1[i][k] & bits1[j][k];
@@ -626,13 +595,8 @@ public class LDCalcTask extends Task implements Callable<String> {
                     // r = (douSize * r - 1) / (douSize - 3);
                     //johny's correction                
                     // r = 1 - (adjIndivSize - 3.0) / (adjIndivSize - 2.0) * (1.0 - r) * (1 + 2.0 * (1 - r) / (adjIndivSize - 3.3));
-<<<<<<< HEAD
                     rArray[(i - startRowIndex) * totalVarNum + j - startColIndex] = r;
 
-=======
-                      rArray[(i - startRowIndex) * totalVarNum + j - startColIndex] = r;
-                   
->>>>>>> origin/master
                 }
             }
         }
@@ -641,15 +605,11 @@ public class LDCalcTask extends Task implements Callable<String> {
     @Override
     public String call() throws Exception {
         long startTime = System.currentTimeMillis();
-<<<<<<< HEAD
         if (positions == null) {
             fillSmallRectangleFull();
         } else {
             fillSmallRectangleRestrict();
         }
-=======
-        fillSmallRectangle();
->>>>>>> origin/master
         fireTaskComplete();
         String info = "  LD vas estimated on block [" + startRowIndex + " , " + startRowIndex + "). Elapsed time: " + (System.currentTimeMillis() - startTime) / 1000 + " seconds.";
         //  System.out.println(info);

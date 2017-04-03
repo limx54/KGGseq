@@ -4,10 +4,7 @@
  */
 package org.cobi.kggseq.entity;
 
-<<<<<<< HEAD
 import cern.colt.list.IntArrayList;
-=======
->>>>>>> origin/master
 import cern.colt.map.OpenLongObjectHashMap;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
@@ -48,10 +45,7 @@ import org.cobi.kggseq.GlobalManager;
 import org.cobi.kggseq.controller.BinaryGtyProcessor;
 import org.cobi.util.file.LocalFileFunc;
 import org.cobi.util.text.BGZFInputStream;
-<<<<<<< HEAD
 import org.cobi.util.text.BZPartReader;
-=======
->>>>>>> origin/master
 
 import org.cobi.util.text.LocalExcelFile;
 import org.cobi.util.text.LocalFile;
@@ -184,7 +178,6 @@ public class Genome implements Constants {
 
     public List<String> getVariantScore1Labels() {
         return variantScore1Labels;
-<<<<<<< HEAD
     }
 
     public List<String> getVariantScore2Labels() {
@@ -195,18 +188,6 @@ public class Genome implements Constants {
         variantScore1Labels.add(score);
     }
 
-=======
-    }
-
-    public List<String> getVariantScore2Labels() {
-        return variantScore1Labels;
-    }
-
-    public void addVariantScore1Label(String score) {
-        variantScore1Labels.add(score);
-    }
-
->>>>>>> origin/master
     public void addVariantScore2Label(String score) {
         variantScore2Labels.add(score);
     }
@@ -363,11 +344,7 @@ public class Genome implements Constants {
                 if (!hasOrdered) {
                     Collections.sort(tmpList, new VariantPositionComparator());
                 }
-<<<<<<< HEAD
 
-=======
-         
->>>>>>> origin/master
                 if (needGty) {
                     /*
                     int[][] posIndexArray = new int[size][2];
@@ -381,34 +358,22 @@ public class Genome implements Constants {
                      */
                     //This is rather fast than Set<Integer>
                     OpenLongObjectHashMap wahBit = new OpenLongObjectHashMap();
-<<<<<<< HEAD
                     IntArrayList nonZeroIndexes = new IntArrayList();
                     int base = 8;
                     byte v;
                     final boolean[] ret = new boolean[base];
                     int availablePos = 0;
-=======
-                    int base = 8;
-                    byte v;
-                    final boolean[] ret = new boolean[base];
-                    long availablePos = 0;
->>>>>>> origin/master
                     int len = 0, t, j, i;
                     int refCount = 0;
                     int compressedNum = 0;
                     int altCount;
                     for (i = 0; i < size; i++) {
                         var = tmpList.get(i);
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/master
                         altCount = 2 * var.getAffectedAltHomGtyNum() + var.getAffectedHetGtyNum() + 2 * var.getUnaffectedAltHomGtyNum() + var.getUnaffectedHetGtyNum();
                         refCount = 2 * var.getAffectedRefHomGtyNum() + var.getAffectedHetGtyNum() + 2 * var.getUnaffectedRefHomGtyNum() + var.getUnaffectedHetGtyNum();
                         altCount += (2 * var.getMissingtyNum());
 
                         // 1%
-<<<<<<< HEAD
                         if (altCount * 32 > refCount) {
                             continue;
                         }
@@ -417,15 +382,6 @@ public class Genome implements Constants {
                         compressedNum = 0;
                         nonZeroIndexes.clear();
                         availablePos = 0;
-=======
-                        if (altCount * 99 > refCount) {
-                            continue;
-                        }
-
-                        var.compressedGty = true;
-                        len = var.encodedGty.length;
-
->>>>>>> origin/master
                         for (j = 0; j < len; j++) {
                             // bbuffer.putInt(var.encodedGty[j]);
                             v = var.encodedGty[j];
@@ -437,13 +393,9 @@ public class Genome implements Constants {
                                 for (t = 0; t < base; t++) {
                                     if (ret[t]) {
                                         // System.out.print(1);
-<<<<<<< HEAD
                                         //wahBit.put(availablePos + t, 0);
                                         compressedNum++;
                                         nonZeroIndexes.add(availablePos + t);
-=======
-                                        wahBit.put(availablePos + t, 0);
->>>>>>> origin/master
                                     } else {
                                         //  System.out.print(0);
                                     }
@@ -453,7 +405,6 @@ public class Genome implements Constants {
                             availablePos += base;
                         }
                         var.encodedGty = null;
-<<<<<<< HEAD
                         var.compressedGtyLabel = compressedNum;
                         var.compressedGty = new int[compressedNum];
                         for (t = 0; t < compressedNum; t++) {
@@ -464,18 +415,6 @@ public class Genome implements Constants {
                     //  System.out.println("Compressed " + compressedNum + " out of " + size);
                     // posIndexArray = null;
                     System.gc();
-=======
-                        var.encodedGtyIndex = new long[2];
-                        var.encodedGtyIndex[0] = availablePos - len * base;
-                        var.encodedGtyIndex[1] = availablePos;
-                        compressedNum++;
-                    }
-
-                    // System.out.println("Compressed " + compressedNum + " out of " + size);
-                    // posIndexArray = null;
-                    System.gc();
-                    return wahBit;
->>>>>>> origin/master
                 }
 
             }
@@ -498,11 +437,7 @@ public class Genome implements Constants {
                 if (varList.isEmpty()) {
                     continue;
                 }
-<<<<<<< HEAD
 
-=======
-                
->>>>>>> origin/master
                 int fileIndex = -1;
                 String chrNameP = "Chromosome." + chromeName;
                 chrNameP = threadID + "." + chrNameP;
@@ -1282,7 +1217,6 @@ public class Genome implements Constants {
 
             if (var.scores1 != null) {
                 for (double sc : var.scores1) {
-<<<<<<< HEAD
                     if (Double.isNaN(sc)) {
                         cellValueList.add(".");
                     } else {
@@ -1297,8 +1231,6 @@ public class Genome implements Constants {
 
             if (var.scores2 != null) {
                 for (double sc : var.scores2) {
-=======
->>>>>>> origin/master
                     if (Double.isNaN(sc)) {
                         cellValueList.add(".");
                     } else {
@@ -1306,23 +1238,6 @@ public class Genome implements Constants {
                     }
                 }
             } else {
-<<<<<<< HEAD
-=======
-                for (int i = 0; i < score1Num; i++) {
-                    cellValueList.add(".");
-                }
-            }
-
-            if (var.scores2 != null) {
-                for (double sc : var.scores2) {
-                    if (Double.isNaN(sc)) {
-                        cellValueList.add(".");
-                    } else {
-                        cellValueList.add(String.valueOf(sc));
-                    }
-                }
-            } else {
->>>>>>> origin/master
                 for (int i = 0; i < score2Num; i++) {
                     cellValueList.add(".");
                 }
@@ -1638,7 +1553,6 @@ public class Genome implements Constants {
         return contens;
     }
 
-<<<<<<< HEAD
     public void export2ExelFile(String exportPath, int chromID, boolean needHead, boolean altAf, String buildVer) throws Exception {
         List<String[]> contens = null;
         if (geneNum > 0 && varNum > 0) {
@@ -1647,16 +1561,6 @@ public class Genome implements Constants {
             // LocalExcelFile.writeArray2ExcelFile(exportPath, contens, true, 1);
         } else if (varNum > 0) {
             contens = makeVariantTableList(chromID, needHead, altAf, buildVer);
-=======
-    public void export2ExelFile(String exportPath, int chromID, boolean needHead, boolean altAf) throws Exception {
-        List<String[]> contens = null;
-        if (geneNum > 0 && varNum > 0) {
-            contens = makeVariantTableList(chromID, needHead, altAf);
-            LocalExcelFile.writeArray2XLSXFile(exportPath, contens, needHead, -1, 1);
-            // LocalExcelFile.writeArray2ExcelFile(exportPath, contens, true, 1);
-        } else if (varNum > 0) {
-            contens = makeVariantTableList(chromID, needHead, altAf);
->>>>>>> origin/master
             LocalExcelFile.appendArray2XLSXFile(exportPath, contens, needHead, 4);
             // LocalExcelFile.writeArray2ExcelFile(exportPath, contens, true, 1);
         } else if (geneNum > 0) {
@@ -2240,11 +2144,7 @@ public class Genome implements Constants {
 
                     bf.adjustPos();
                     bf.creatSpider();
-<<<<<<< HEAD
                     BZPartReader bzSpider = bf.spider[0];
-=======
-                    BGZFInputStream.BZPartReader bzSpider = bf.spider[0];
->>>>>>> origin/master
 
                     while ((currentLine = bzSpider.readLine(cellDelimts)) != null) {
                         // System.out.println(new String(currentLine));
@@ -2320,7 +2220,6 @@ public class Genome implements Constants {
                                     if (sb.substring(1).equals(alt)) {
                                         bw.write(currentLine);
                                         bw.write("\n".getBytes());
-<<<<<<< HEAD
                                     }
                                 }
                             }
@@ -2744,113 +2643,11 @@ public class Genome implements Constants {
                                         indexList2.get(p)[1] += availableSize;
                                         tmpPosIndexList.add(indexList2.get(p));
                                     }
-=======
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    bzSpider.closeInputStream();
-                    sectionID++;
-                }
-                threadID++;
-            }
-
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-
-    }
-
-    public void export2VCFFormatSimple(BlockCompressedOutputStream bw, Chromosome chromosome, OpenLongObjectHashMap wahBit, int indivSize, int[] pedEncodeGytIDMap, boolean hasChrLabel) {
-        int signNum = 0;
-        if (chromosome == null) {
-            return;
-        }
-
-        List<Variant> varList = chromosome.variantList;
-        if (varList.isEmpty()) {
-            return;
-        }
-        String chrNameP = chromosome.getName();
-        if (hasChrLabel) {
-            chrNameP = "chr" + chrNameP;
-        }
-        int len, index;
-
-        String[] alleles;
-        try {
-            if (chromosome == null) {
-                return;
-            }
-            //temperally store the genotype information 
-            boolean[] bits = new boolean[32];
-
-            /*
-         	Reference homozygous	Heterozygous 	Alternative homozygous missing
-         VCF genotype		0/0	0/1	1/1 ./.
-         Bits	        00  	01	10	11
-         Order	0	1	2	3        
-             */
-            int alleleNum;
-            int subID;
-            long startIndex;
-            int base;
-            int[] gtys;
-            StringBuilder gtyss = new StringBuilder();
-            for (Variant var : chromosome.variantList) {
-
-                gtyss.append(chrNameP);
-                gtyss.append('\t');
-                gtyss.append(var.refStartPosition);
-                gtyss.append('\t');
-                gtyss.append(var.label);
-                gtyss.append('\t');
-                gtyss.append(var.getRefAllele());
-                gtyss.append('\t');
-                alleles = var.getAltAlleles();
-                if (var.isIndel) {
-                    for (String altAllele : alleles) {
-                        len = altAllele.length();
-                        signNum = 0;
-                        if (altAllele.charAt(0) == '+') {
-                            for (int t = 0; t < len; t++) {
-                                if (altAllele.charAt(t) == '+') {
-                                    signNum++;
-                                } else {
-                                    break;
-                                }
-                            }
-                            gtyss.append(var.getRefAllele());
-                            gtyss.append(altAllele.substring(signNum));
-                        } else if (altAllele.charAt(len - 1) == '+') {
-                            index = altAllele.indexOf('+');
-                            if (index >= 0) {
-                                gtyss.append(altAllele.substring(0, index));
-                            }
-                            gtyss.append(var.getRefAllele());
-                        } else if (altAllele.charAt(len - 1) == '-') {
-                            for (int t = 0; t < len; t++) {
-                                if (altAllele.charAt(t) != '-') {
-                                    signNum++;
-                                } else {
-                                    break;
-                                }
-                            }
-                            gtyss.append(altAllele.substring(0, signNum));
-                        } else if (altAllele.charAt(0) == '-') {
-                            for (int t = 0; t < len; t++) {
-                                if (altAllele.charAt(t) == '-') {
-                                    signNum++;
-                                } else {
-                                    break;
->>>>>>> origin/master
                                 }
                                 allPosIndexList.clear();
                                 allPosIndexList.addAll(tmpPosIndexList);
                                 tmpPosIndexList.clear();
                             }
-<<<<<<< HEAD
 
                         }
                     };
@@ -3075,77 +2872,11 @@ public class Genome implements Constants {
                         for (String val : var.featureValues) {
                             cells[avaibleColNum] = (val);
                             avaibleColNum++;
-=======
-                            gtyss.append(var.getRefAllele().substring(0, signNum));
-                        } else {
-                            gtyss.append(altAllele);
->>>>>>> origin/master
                         }
-                        gtyss.append(',');
                     }
-<<<<<<< HEAD
                     contens.add(cells);
                 }
 
-=======
-                } else {
-                    gtyss.append(alleles[0]);
-                    for (int j = 1; j < alleles.length; j++) {
-                        gtyss.append(",");
-                        gtyss.append(alleles[j]);
-                    }
-                    gtyss.append(',');
-                }
-                gtyss.setCharAt(gtyss.length() - 1, '\t');
-                gtyss.append(".\t.\t.\tGT\t");
-                alleleNum = var.getAltAlleles().length + 1;
-
-                for (int indivI = 0; indivI < indivSize; indivI++) {
-                    subID = pedEncodeGytIDMap[indivI];
-                    if (subID >= 0) {
-                        if (isPhasedGty) {
-                            /*
-                        Reference homozygous	Heterozygous 	Heterozygous 	Alternative homozygous   missing	
-                         VCF genotype	0|0	0|1	1|0	1|1   .|.	
-                         Bits      	000  	001	010	011	100
-                         Order	0	1	2	3	4        
-                             */
-                            base = GlobalManager.phasedAlleleBitMap.get(alleleNum);
-                            if (var.compressedGty) {
-                                startIndex = var.encodedGtyIndex[0] + subID;
-                                for (int i = 0; i < base; i++) {
-                                    bits[i] = wahBit.containsKey(startIndex);
-                                    startIndex += pedEncodeGytIDMap.length;
-                                }
-                                gtys = BinaryGtyProcessor.getPhasedGtyBool(bits, alleleNum, base, subID);
-                            } else {
-                                gtys = BinaryGtyProcessor.getPhasedGtyAt(var.encodedGty, alleleNum, base, subID, pedEncodeGytIDMap.length);
-                            }
-                            gtyss.append(gtys[0]).append('|').append(gtys[1]);
-                        } else {
-                            base = GlobalManager.unphasedAlleleBitMap.get(alleleNum);
-                            if (var.compressedGty) {
-                                startIndex = var.encodedGtyIndex[0] + subID;
-                                for (int i = 0; i < base; i++) {
-                                    bits[i] = wahBit.containsKey(startIndex);
-                                    startIndex += pedEncodeGytIDMap.length;
-                                }
-                                gtys = BinaryGtyProcessor.getUnphasedGtyBool(bits, alleleNum, base, subID);
-                            } else {
-                                gtys = BinaryGtyProcessor.getUnphasedGtyAt(var.encodedGty, alleleNum, base, subID, pedEncodeGytIDMap.length);
-                            }
-                            gtyss.append(gtys[0]).append('/').append(gtys[1]);
-                        }
-
-                    } else {
-                        gtyss.append("./.");
-                    }
-                    gtyss.append('\t');
-                }
-                gtyss.setCharAt(gtyss.length() - 1, '\n');
-                bw.write(gtyss.toString().getBytes());
-                gtyss.delete(0, gtyss.length());
->>>>>>> origin/master
             }
         }
 
@@ -3165,12 +2896,6 @@ public class Genome implements Constants {
         } else if (geneNum > 0) {
             contens = makemRNATableList();
 
-<<<<<<< HEAD
-=======
-        } catch (Exception ex) {
-            ex.printStackTrace();
-
->>>>>>> origin/master
         }
     }
 
@@ -3191,493 +2916,7 @@ public class Genome implements Constants {
         }
     }
 
-<<<<<<< HEAD
     public void export2FlatText(BufferedWriter bw, int chromID, boolean needHead, boolean altAf, String buildVer) throws Exception {
-=======
-    class VCFParseCompare extends Task implements Callable<String> {
-
-        File vcfFile;
-        Chromosome chromosome;
-        int maxEffectiveColVCF;
-        boolean toCompress;
-
-        public VCFParseCompare(File vcfFile, Chromosome chromosome, int maxEffectiveColVCF, boolean toCompress) {
-            this.vcfFile = vcfFile;
-            this.chromosome = chromosome;
-            this.maxEffectiveColVCF = maxEffectiveColVCF;
-            this.toCompress = toCompress;
-        }
-
-        List<byte[]> vcfDataList = new ArrayList<byte[]>();
-        List<int[]> posIndexList = new ArrayList<int[]>();
-
-        @Override
-        public String call() throws Exception {
-            BGZFInputStream bf = new BGZFInputStream(vcfFile.getCanonicalPath(), 1, true);
-            //  bf = new BZIP2InputStream(dataFile.getCanonicalPath(), maxThreadNum);
-            bf.adjustPos();
-            bf.creatSpider();
-            BGZFInputStream.BZPartReader bzSpider = bf.spider[0];
-            byte[] currentLine = null;
-            int makerPostion;
-            int len, index;
-            int[] cellDelimts = new int[maxEffectiveColVCF + 2];
-            int indexPOS = 1, indexREF = 3, indexALT = 4;
-            byte[] sByte;
-            String ref, alt;
-            Variant var = null;
-            String[] alleles;
-            StringBuilder sb = new StringBuilder();
-            int signNum = 0;
-            int count = 0;
-
-            Deflater deflater = new Deflater();
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            deflater.setLevel(Deflater.BEST_COMPRESSION);
-            byte[] buffer = new byte[1024];
-
-            while ((currentLine = bzSpider.readLine(cellDelimts)) != null) {
-                // System.out.println( new String(currentLine)); 
-                makerPostion = Util.parseInt(currentLine, cellDelimts[indexPOS] + 1, cellDelimts[indexPOS + 1]);
-                int[] indexes = chromosome.lookupVariantIndexes(makerPostion);
-                if (indexes != null) {
-                    //indexREF=3
-                    sByte = Arrays.copyOfRange(currentLine, cellDelimts[indexREF] + 1, cellDelimts[indexREF + 1]);
-                    ref = new String(sByte);
-                    //alt = currentLine.substring(cellDelimts[3] + 1, cellDelimts[4]);
-                    //indexALT=4
-                    //for reference data, sometimes we do not have alternative alleles
-                    sByte = Arrays.copyOfRange(currentLine, cellDelimts[indexALT] + 1, cellDelimts[indexALT + 1]);
-                    alt = new String(sByte);
-
-                    for (int i = 0; i < indexes.length; i++) {
-                        var = chromosome.variantList.get(indexes[i]);
-                        if (var.getRefAllele().equals(ref)) {
-                            sb.delete(0, sb.length());
-                            alleles = var.getAltAlleles();
-                            if (var.isIndel) {
-                                for (String altAllele : alleles) {
-                                    sb.append(',');
-                                    len = altAllele.length();
-                                    signNum = 0;
-                                    if (altAllele.charAt(0) == '+') {
-                                        for (int t = 0; t < len; t++) {
-                                            if (altAllele.charAt(t) == '+') {
-                                                signNum++;
-                                            } else {
-                                                break;
-                                            }
-                                        }
-                                        sb.append(var.getRefAllele());
-                                        sb.append(altAllele.substring(signNum));
-                                    } else if (altAllele.charAt(len - 1) == '+') {
-                                        index = altAllele.indexOf('+');
-                                        if (index >= 0) {
-                                            sb.append(altAllele.substring(0, index));
-                                        }
-                                        sb.append(var.getRefAllele());
-                                    } else if (altAllele.charAt(len - 1) == '-') {
-                                        for (int t = 0; t < len; t++) {
-                                            if (altAllele.charAt(t) != '-') {
-                                                signNum++;
-                                            } else {
-                                                break;
-                                            }
-                                        }
-                                        sb.append(altAllele.substring(0, signNum));
-                                    } else if (altAllele.charAt(0) == '-') {
-                                        for (int t = 0; t < len; t++) {
-                                            if (altAllele.charAt(t) == '-') {
-                                                signNum++;
-                                            } else {
-                                                break;
-                                            }
-                                        }
-                                        sb.append(var.getRefAllele().substring(0, signNum));
-                                    } else {
-                                        sb.append(altAllele);
-                                    }
-                                }
-                            } else {
-                                sb.append(",");
-                                sb.append(alleles[0]);
-                                for (int j = 1; j < alleles.length; j++) {
-                                    sb.append(",");
-                                    sb.append(alleles[j]);
-                                }
-                            }
-                            if (sb.substring(1).equals(alt)) {
-                                posIndexList.add(new int[]{var.refStartPosition, count});
-                                count++;
-                                if (toCompress) {
-                                    deflater.setInput(currentLine);
-                                    deflater.finish();
-                                    while (!deflater.finished()) {
-                                        int count1 = deflater.deflate(buffer); // returns the generated code... index  
-                                        outputStream.write(buffer, 0, count1);
-                                    }
-                                    vcfDataList.add(outputStream.toByteArray());
-                                    outputStream.reset();
-                                    deflater.reset();
-                                } else {
-                                    vcfDataList.add(currentLine);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            bzSpider.closeInputStream();
-            outputStream.close();
-            Collections.sort(posIndexList, new IntListComparator(0));
-            fireTaskComplete();
-            posIndexList.clear();
-            vcfDataList.clear();
-            return "Finished!";
-        }
-
-    }
-
-    public void export2VCFFormatSorting(BlockCompressedOutputStream bw, Chromosome chromosome, int maxEffectiveColVCF, int maxThreadNum, int maxTheadID) {
-        if (chromosome == null) {
-            return;
-        }
-
-        List<Variant> varList = chromosome.variantList;
-        if (varList.isEmpty()) {
-            return;
-        }
-        String chrNameP = "Chromosome." + chromosome.getName();
-
-        byte[] currentLine = null;
-
-        ExecutorService exec = Executors.newFixedThreadPool(maxThreadNum);
-        final CompletionService<String> serv = new ExecutorCompletionService<String>(exec);
-        final List<byte[]> allVcfDataList = new ArrayList<byte[]>();
-        final List<int[]> allPosIndexList = new ArrayList<int[]>();
-        boolean compress = true;
-        try {
-            int runningThread = 0;
-
-            int threadID = 0;
-            int sectionID = 0;
-
-            while (threadID <= maxTheadID) {
-                sectionID = 0;
-                while (true) {
-                    File file = new File(storagePath + "/" + threadID + "." + chrNameP + ".vcf.gz." + sectionID);
-                    if (!file.exists()) {
-                        break;
-                    }
-
-                    VCFParseCompare parsTaskArray = new VCFParseCompare(file, chromosome, maxEffectiveColVCF, compress) {
-                        @Override
-                        public void fireTaskComplete() throws Exception {
-                            synchronized (allVcfDataList) {
-                                int availableSize = allVcfDataList.size();
-                                allVcfDataList.addAll(this.vcfDataList);
-                                List<int[]> tmpPosIndexList = new ArrayList<int[]>(allVcfDataList.size());
-                                List<int[]> indexList2 = this.posIndexList;
-                                int i, j, m, n;
-                                i = 0;
-                                j = 0;
-                                m = allPosIndexList.size();
-                                n = indexList2.size();
-                                while (i < m && j < n) {
-                                    if (allPosIndexList.get(i)[0] <= indexList2.get(j)[0]) {
-                                        tmpPosIndexList.add(allPosIndexList.get(i));
-                                        i++;
-                                    } else {
-                                        indexList2.get(j)[1] += availableSize;
-                                        tmpPosIndexList.add(indexList2.get(j));
-                                        j++;
-                                    }
-                                }
-                                if (i < m) {
-                                    for (int p = i; p < m; p++) {
-                                        tmpPosIndexList.add(allPosIndexList.get(p));
-                                    }
-                                } else {
-                                    for (int p = j; p < n; p++) {
-                                        indexList2.get(p)[1] += availableSize;
-                                        tmpPosIndexList.add(indexList2.get(p));
-                                    }
-                                }
-                                allPosIndexList.clear();
-                                allPosIndexList.addAll(tmpPosIndexList);
-                                tmpPosIndexList.clear();
-                            }
-
-                        }
-                    };
-                    serv.submit(parsTaskArray);
-                    runningThread++;
-                    sectionID++;
-                }
-                threadID++;
-            }
-
-            for (int s = 0; s < runningThread; s++) {
-                Future<String> task = serv.take();
-                String infor = task.get();
-                //  System.out.println(infor);
-            }
-            exec.shutdown();
-
-            int size = allVcfDataList.size();
-
-            Inflater inflater = new Inflater();
-            byte[] buffer = new byte[1024];
-            try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-                for (int i = 0; i < size; i++) {
-                    currentLine = allVcfDataList.get(allPosIndexList.get(i)[1]);
-                    if (compress) {
-                        inflater.setInput(currentLine);
-                        while (!inflater.finished()) {
-                            int count = inflater.inflate(buffer);
-                            outputStream.write(buffer, 0, count);
-                        }
-                        currentLine = outputStream.toByteArray();
-                        inflater.reset();
-                        outputStream.reset();
-                    }
-                    /*
-                    for (int s = 0; s < currentLine.length; s++) {
-                    if (currentLine[s] == '|') {
-                    currentLine[s] = '/';
-                    }
-                    }
-                     */
-                    bw.write(currentLine);
-                    bw.write("\n".getBytes());
-                }
-            }
-            allVcfDataList.clear();
-            allPosIndexList.clear();
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-
-    }
-
-    //time comsuming
-    public byte[] compress(byte[] data) throws IOException {
-        Deflater deflater = new Deflater();
-        deflater.setInput(data);
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream(data.length);
-        deflater.finish();
-        byte[] buffer = new byte[1024];
-        while (!deflater.finished()) {
-            int count = deflater.deflate(buffer); // returns the generated code... index  
-            outputStream.write(buffer, 0, count);
-        }
-        outputStream.close();
-        byte[] output = outputStream.toByteArray();
-        // LOG.debug("Original: " + data.length / 1024 + " Kb");
-        // LOG.debug("Compressed: " + output.length / 1024 + " Kb");
-        return output;
-    }
-
-    public byte[] decompress(byte[] data) throws IOException, DataFormatException {
-        Inflater inflater = new Inflater();
-        inflater.setInput(data);
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream(data.length);
-        byte[] buffer = new byte[1024];
-        while (!inflater.finished()) {
-            int count = inflater.inflate(buffer);
-            outputStream.write(buffer, 0, count);
-        }
-        outputStream.close();
-        byte[] output = outputStream.toByteArray();
-        // LOG.debug("Original: " + data.length);
-        // LOG.debug("Compressed: " + output.length);
-        return output;
-    }
-
-    private List<String[]> makemRNAVariantsTableList(boolean outAltAf) throws Exception {
-        int mRNASocreNum = geneScoreLabels.size();
-        int mRNAfeatureNum = geneFeatureLabels.size();
-        int altAfColumn = 0;
-
-        int varSocre1Num = variantScore1Labels.size();
-        int varSocre2Num = variantScore2Labels.size();
-        int varFeatureNum = variantFeatureLabels.size();
-
-        if (outAltAf) {
-            altAfColumn = 1;
-        }
-
-        int colNum = 5 + mRNASocreNum + mRNAfeatureNum + 4 + altAfColumn + varSocre1Num + varSocre2Num + varFeatureNum;
-        String[] titleNames = new String[colNum];
-        int avaiblemRNAColNum = 5 + mRNASocreNum;
-        int totailmRNAColumn = 5 + mRNASocreNum + mRNAfeatureNum;
-        titleNames[0] = "mRNAID";
-        titleNames[1] = "GeneSymbol";
-        titleNames[2] = "Chromosome";
-        titleNames[3] = "mRNAStartPosition";
-        titleNames[4] = "mRNAEndPosition";
-
-        for (int i = 0; i < mRNASocreNum; i++) {
-            titleNames[i + 5] = geneScoreLabels.get(i);
-        }
-        for (int i = 0; i < mRNAfeatureNum; i++) {
-            titleNames[i + 5 + mRNASocreNum] = geneFeatureLabels.get(i);
-        }
-
-        titleNames[totailmRNAColumn] = "VarStartPosition";
-        titleNames[totailmRNAColumn + 1] = "ReferenceAlternativeAllele";
-        titleNames[totailmRNAColumn + 2] = "GeneFeatures";
-        titleNames[totailmRNAColumn + 3] = "GeneFeature";
-        if (outAltAf) {
-            titleNames[totailmRNAColumn + 4] = "MaxDBAltAF";
-        }
-
-        for (int i = 0; i < varSocre1Num; i++) {
-            titleNames[totailmRNAColumn + i + 4 + altAfColumn] = variantScore1Labels.get(i);
-        }
-        for (int i = 0; i < varSocre2Num; i++) {
-            titleNames[totailmRNAColumn + varSocre1Num + i + 4 + altAfColumn] = variantScore2Labels.get(i);
-        }
-        for (int i = 0; i < varFeatureNum; i++) {
-            titleNames[totailmRNAColumn + i + 4 + altAfColumn + varSocre1Num + varSocre2Num] = variantFeatureLabels.get(i);
-        }
-
-        int avaibleColNum = 0;
-        int index = 0;
-        StringBuilder sb = new StringBuilder();
-        List<String[]> contens = new ArrayList<String[]>();
-        contens.add(titleNames);
-        for (int chromIndex = 0; chromIndex < STAND_CHROM_NAMES.length; chromIndex++) {
-            if (chromosomes[chromIndex] == null) {
-                continue;
-            }
-            for (mRNA mrna : chromosomes[chromIndex].mRNAList) {
-                String[] cells = new String[colNum];
-                //format:  chr1 1158531 A/C/G/T rs
-                cells[0] = mrna.refID;
-                cells[1] = mrna.geneSymb;
-                cells[2] = chromosomes[chromIndex].getName();
-                cells[3] = String.valueOf(mrna.start);
-                cells[4] = String.valueOf(mrna.end);
-
-                avaiblemRNAColNum = 5;
-                if (mrna.testValues != null) {
-                    for (double sc : mrna.testValues) {
-                        cells[avaiblemRNAColNum] = (String.valueOf(sc));
-                        avaiblemRNAColNum++;
-                    }
-                }
-                avaiblemRNAColNum = 5 + mRNASocreNum;
-                if (mrna.featureValues != null) {
-                    for (String val : mrna.featureValues) {
-                        cells[avaiblemRNAColNum] = (val);
-                        avaiblemRNAColNum++;
-                    }
-
-                }
-
-                Variant[] vars = lookupVariants(chromosomes[chromIndex].getName(), mrna.start, mrna.end);
-                if (vars == null) {
-                    contens.add(cells);
-                    continue;
-                }
-                for (int i = 0; i < vars.length; i++) {
-                    Variant var = vars[i];
-                    if (i > 0) {
-                        cells = new String[colNum];
-                        cells[1] = mrna.geneSymb;
-                    }
-                    //format:  chr1 1158631 A/C/G/T rs 
-                    cells[totailmRNAColumn] = String.valueOf(var.refStartPosition);
-
-                    sb.append(var.getRefAllele());
-                    for (String alle : var.getAltAlleles()) {
-                        sb.append('/');
-                        sb.append(alle);
-                    }
-                    cells[totailmRNAColumn + 1] = sb.toString();
-                    // if (mrna.geneSymb==null||!mrna.geneSymb.startsWith("HLA")) continue;
-
-                    sb.delete(0, sb.length());
-                    cells[totailmRNAColumn + 2] = var.getLabel();
-                    cells[totailmRNAColumn + 3] = org.cobi.kggseq.Constants.VAR_FEATURE_NAMES[var.smallestFeatureID];
-
-                    if (outAltAf) {
-                        if (var.altAF == -1) {
-                            cells[totailmRNAColumn + 4] = "N";
-                        } else if (Float.isNaN(var.altAF)) {
-                            cells[totailmRNAColumn + 4] = ".";
-                        } else {
-                            cells[totailmRNAColumn + 4] = String.valueOf(var.altAF);
-                        }
-                    }
-                    avaibleColNum = totailmRNAColumn + 4 + altAfColumn;
-                    if (var.scores1 != null) {
-                        for (double sc : var.scores1) {
-                            cells[avaibleColNum] = (String.valueOf(sc));
-                            avaibleColNum++;
-                        }
-                    }
-                    avaibleColNum = totailmRNAColumn + 4 + altAfColumn + varSocre1Num;
-
-                    if (var.scores2 != null) {
-                        for (double sc : var.scores2) {
-                            cells[avaibleColNum] = (String.valueOf(sc));
-                            avaibleColNum++;
-                        }
-                    }
-                    avaibleColNum = totailmRNAColumn + 4 + altAfColumn + varSocre1Num + varSocre2Num;
-                    if (var.featureValues != null) {
-                        for (String val : var.featureValues) {
-                            cells[avaibleColNum] = (val);
-                            avaibleColNum++;
-                        }
-                    }
-                    contens.add(cells);
-                }
-
-            }
-        }
-
-        return contens;
-    }
-
-    public void export2ExelFile(String exportPath, boolean altAf) throws Exception {
-        List<String[]> contens = null;
-        if (geneNum > 0 && varNum > 0) {
-            contens = makemRNAVariantsTableList(altAf);
-            LocalExcelFile.writeArray2XLSXFile(exportPath, contens, true, -1, 1);
-            // LocalExcelFile.writeArray2ExcelFile(exportPath, contens, true, 1);
-        } else if (varNum > 0) {
-            contens = makeVariantTableList(altAf);
-            LocalExcelFile.writeArray2XLSXFile(exportPath, contens, true, -1, 4);
-            // LocalExcelFile.writeArray2ExcelFile(exportPath, contens, true, 1);
-        } else if (geneNum > 0) {
-            contens = makemRNATableList();
-
-        }
-    }
-
-    public void export2FlatText(String exportPath, boolean altAf) throws Exception {
-        List<String[]> contens = null;
-        if (geneNum > 0 && varNum > 0) {
-            contens = makemRNAVariantsTableList(altAf);
-            LocalFile.writeData(exportPath, contens, "\t", false);
-        } else if (varNum > 0) {
-            contens = makeVariantTableList(altAf);
-            LocalFile.writeData(exportPath, contens, "\t", false);
-        } else if (geneNum > 0) {
-            contens = makemRNATableList();
-            LocalFile.writeData(exportPath, contens, "\t", false);
-        } else {
-            String info = "No sequence variant(s) or gene(s) left!";
-            System.out.println(info);
-        }
-    }
-
-    public void export2FlatText(BufferedWriter bw, int chromID, boolean needHead, boolean altAf) throws Exception {
->>>>>>> origin/master
         List<String[]> contens = null;
         if (!chromosomes[chromID].mRNAList.isEmpty() && !chromosomes[chromID].variantList.isEmpty()) {
             contens = makemRNAVariantsTableList(altAf);
@@ -3700,7 +2939,7 @@ public class Genome implements Constants {
      kggseq.fam      (first six columns of mydata.ped) 
      kggseq.kim      (extended MAP file: two extra cols = allele names) 
      */
-    public void exportKGGSeqBinaryGty(Chromosome chromosome, OpenLongObjectHashMap wahBit, BufferedOutputStream fileChannelKed, BufferedWriter bwMap, int[] savedVar) throws Exception {
+    public void exportKGGSeqBinaryGty(Chromosome chromosome, BufferedOutputStream fileChannelKed, BufferedWriter bwMap, int[] savedVar) throws Exception {
         if (chromosome == null) {
             return;
         }
@@ -3709,18 +2948,11 @@ public class Genome implements Constants {
         byte[] result = null;
 
         long startIndex, index1;
-<<<<<<< HEAD
 
         int byteIndex1, byteIndex2, len;
         int arrayLen = 0;
         int t = 0, j = 0;
 
-=======
-
-        int byteIndex1, byteIndex2, len;
-        int arrayLen = 0;
-        int t = 0;
->>>>>>> origin/master
         for (Variant var : chromosome.variantList) {
             bwMap.write(xx);
             bwMap.write("\t");
@@ -3747,7 +2979,6 @@ public class Genome implements Constants {
 
             savedVar[0]++;
 
-<<<<<<< HEAD
             if (var.compressedGtyLabel > 0) {
                 //use 3 bytes to denote the non-zero 
                 arrayLen = var.compressedGtyLabel * 3;
@@ -3767,30 +2998,6 @@ public class Genome implements Constants {
                 bwMap.write("\t" + result.length);
             } else if (var.compressedGtyLabel == 0) {
                 bwMap.write("\t0");
-=======
-            if (var.compressedGty) {
-                len = (int) (var.encodedGtyIndex[1] - var.encodedGtyIndex[0]);
-                arrayLen = len / 8;
-                if (len % 8 != 0) {
-                    arrayLen++;
-                }
-                if (result == null) {
-                    result = new byte[arrayLen];
-                } else if (result.length != arrayLen) {
-                    result = new byte[arrayLen];
-                }
-
-                Arrays.fill(result, (byte) 0);
-                startIndex = var.encodedGtyIndex[0];
-                for (t = 0; t < len; t++) {
-                    if (wahBit.containsKey(startIndex + t)) {
-                        byteIndex1 = t / 8;
-                        byteIndex2 = t % 8;
-                        result[byteIndex1] = (byte) (result[byteIndex1] | GlobalManager.byteOpers[byteIndex2]);
-                    }
-                }
-                fileChannelKed.write(result);
->>>>>>> origin/master
             } else {
                 fileChannelKed.write(var.encodedGty);
                 //Warning the writ int function only write a byte acuallaly
@@ -3807,19 +3014,15 @@ public class Genome implements Constants {
                     }
                     System.out.println();
                  */
-<<<<<<< HEAD
                 bwMap.write("\t-1");
             }
             bwMap.write("\n");
-=======
-            }
->>>>>>> origin/master
             // System.out.println();
         }
 
     }
 
-    public void export2FlatTextPlink(Chromosome chromosome, OpenLongObjectHashMap wahBit, List<Individual> subjectList, int[] pedEncodeGytIDMap, BufferedWriter bwMap, String exportPath, int[] savedPedVar, boolean outGZ) throws Exception {
+    public void export2FlatTextPlink(Chromosome chromosome, List<Individual> subjectList, int[] pedEncodeGytIDMap, BufferedWriter bwMap, String exportPath, int[] savedPedVar, boolean outGZ) throws Exception {
         String chrName = chromosome.getName();
         BufferedWriter bwPed = null;
         if (chromosome == null) {
@@ -3854,7 +3057,6 @@ public class Genome implements Constants {
         int alleleNum, base = 2;
         int subID = -1;
         int gtyID = 0;
-<<<<<<< HEAD
         int startIndex;
         boolean[] bits = new boolean[32];
         for (Individual indiv : subjectList) {
@@ -4001,9 +3203,6 @@ public class Genome implements Constants {
         int subID = -1;
         int gtyID = 0;
         int startIndex;
-=======
-        long startIndex;
->>>>>>> origin/master
         boolean[] bits = new boolean[32];
         for (Individual indiv : subjectList) {
             if (indiv == null) {
@@ -4153,7 +3352,6 @@ public class Genome implements Constants {
 
                 if (isPhasedGty) {
                     base = GlobalManager.phasedAlleleBitMap.get(alleleNum);
-<<<<<<< HEAD
                     if (var.compressedGtyLabel >= 0) {
                         startIndex = gtyID;
                         if (var.compressedGtyLabel > 0) {
@@ -4177,22 +3375,10 @@ public class Genome implements Constants {
                         gtys = BinaryGtyProcessor.getPhasedGtyBool(bits, alleleNum, base, gtyID);
                     } else {
                         gtys = BinaryGtyProcessor.getPhasedGtyAt(var.encodedGty, alleleNum, base, gtyID, pedEncodeGytIDMap1.length);
-=======
-                    if (var.compressedGty) {
-                        startIndex = var.encodedGtyIndex[0] + gtyID;
-                        for (int i = 0; i < base; i++) {
-                            bits[i] = wahBit.containsKey(startIndex);
-                            startIndex += pedEncodeGytIDMap.length;
-                        }
-                        gtys = BinaryGtyProcessor.getPhasedGtyBool(bits, alleleNum, base, gtyID);
-                    } else {
-                        gtys = BinaryGtyProcessor.getPhasedGtyAt(var.encodedGty, alleleNum, base, gtyID, pedEncodeGytIDMap.length);
->>>>>>> origin/master
                     }
 
                 } else {
                     base = GlobalManager.unphasedAlleleBitMap.get(alleleNum);
-<<<<<<< HEAD
                     if (var.compressedGtyLabel >= 0) {
                         startIndex = gtyID;
                         if (var.compressedGtyLabel > 0) {
@@ -4216,17 +3402,6 @@ public class Genome implements Constants {
                         gtys = BinaryGtyProcessor.getUnphasedGtyBool(bits, alleleNum, base, gtyID);
                     } else {
                         gtys = BinaryGtyProcessor.getUnphasedGtyAt(var.encodedGty, alleleNum, base, gtyID, pedEncodeGytIDMap1.length);
-=======
-                    if (var.compressedGty) {
-                        startIndex = var.encodedGtyIndex[0] + gtyID;
-                        for (int i = 0; i < base; i++) {
-                            bits[i] = wahBit.containsKey(startIndex);
-                            startIndex += pedEncodeGytIDMap.length;
-                        }
-                        gtys = BinaryGtyProcessor.getUnphasedGtyBool(bits, alleleNum, base, gtyID);
-                    } else {
-                        gtys = BinaryGtyProcessor.getUnphasedGtyAt(var.encodedGty, alleleNum, base, gtyID, pedEncodeGytIDMap.length);
->>>>>>> origin/master
                     }
                 }
 
@@ -4491,13 +3666,8 @@ public class Genome implements Constants {
 //Subject to debug. do not know why it is not correct
                 if (indivIndex != 4) {
                     //offset the missing so that the genotypes can start from the fist position 
-<<<<<<< HEAD
                     //for (int j=0;j<indivIndex;j++) byteInfo = (byte) (((byteInfo & 0xFF)>>> 2) & 0X3F);
                     byteInfo = (byte) ((byteInfo & 0xFF) >>> (indivIndex * 2));
-=======
-                    //for (int j=0;j<indivIndex;j++) byteInfo = (byte) ((byteInfo >>> 2) & 0X3F);
-                    byteInfo = (byte) (byteInfo >>> (indivIndex * 2));
->>>>>>> origin/master
                     // System.out.println(end + " : " + BitByteUtil.byteToBinaryString(byteInfo));
                     //end++; 
                     byteBuffer.put(byteInfo);
@@ -4964,12 +4134,8 @@ public class Genome implements Constants {
 
     }
 
-<<<<<<< HEAD
     public void exportPlinkBinaryGty(Chromosome chromosome, List<Individual> subjectList, int[] pedEncodeGytIDMap, Chromosome chromosome1, boolean isPhased1, List<Individual> subjectList1, int[] pedEncodeGytIDMap1,
             BufferedOutputStream fileChannel, BufferedWriter bwMap, int[] coutVar) throws Exception {
-=======
-    public void exportPlinkBinaryGty(Chromosome chromosome, OpenLongObjectHashMap wahBit, List<Individual> subjectList, int[] pedEncodeGytIDMap, BufferedOutputStream fileChannel, BufferedWriter bwMap, int[] coutVar) throws Exception {
->>>>>>> origin/master
         if (subjectList == null || subjectList.isEmpty()) {
             return;
         }
@@ -5041,11 +4207,7 @@ public class Genome implements Constants {
         int alleleNum;
         int indivI = 0;
         int subID;
-<<<<<<< HEAD
         int startIndex;
-=======
-        long startIndex;
->>>>>>> origin/master
         for (Variant var : chromosome.variantList) {
 //Important: ingnore the variants with more thant 2 alleles
             if (var.getAltAlleles().length > 1) {
@@ -5082,7 +4244,6 @@ public class Genome implements Constants {
                          Bits      	000  	001	010	011	100
                          Order	0	1	2	3	4        
                          */
-<<<<<<< HEAD
                         if (var.compressedGtyLabel >= 0) {
                             startIndex = subID;
                             if (var.compressedGtyLabel > 0) {
@@ -5102,13 +4263,6 @@ public class Genome implements Constants {
                                 }
                             } else if (var.compressedGtyLabel == 0) {
                                 Arrays.fill(bits, 0, 3, false);
-=======
-                        if (var.compressedGty) {
-                            startIndex = var.encodedGtyIndex[0] + subID;
-                            for (int i = 0; i < 3; i++) {
-                                bits[i] = wahBit.containsKey(startIndex);
-                                startIndex += indivSize;
->>>>>>> origin/master
                             }
                         } else {
                             BinaryGtyProcessor.getPhasedGtyAt1(var.encodedGty, 3, subID, bits, indivSize);
@@ -5144,7 +4298,6 @@ public class Genome implements Constants {
                          Bits    	00	01	10	11
                          Decimal	0	1	2	3                         
                          */
-<<<<<<< HEAD
                         if (var.compressedGtyLabel >= 0) {
                             startIndex = subID;
                             if (var.compressedGtyLabel > 0) {
@@ -5164,30 +4317,18 @@ public class Genome implements Constants {
                                 }
                             } else if (var.compressedGtyLabel == 0) {
                                 Arrays.fill(bits, 0, 2, false);
-=======
-                        if (var.compressedGty) {
-                            startIndex = var.encodedGtyIndex[0] + subID;
-                            for (int i = 0; i < 2; i++) {
-                                bits[i] = wahBit.containsKey(startIndex);
-                                startIndex += indivSize;
->>>>>>> origin/master
                             }
                         } else {
                             BinaryGtyProcessor.getUnphasedGtyAt1(var.encodedGty, 2, subID, bits, indivSize);
                         }
 
                         //due to over-flow problme we nee this
-<<<<<<< HEAD
                         byteInfo = (byte) (((byteInfo & 0xFF) >>> 2) & 0X3F);
-=======
-                        byteInfo = (byte) ((byteInfo >>> 2) & 0X3F);
->>>>>>> origin/master
                         // String s1 = String.format("%8s", Integer.toBinaryString(byteInfo & 0xFF)).replace(' ', '0');
                         //System.out.println(s1);
                         //Homozygote
                         if (!bits[0] && !bits[1]) {
                         } else if (bits[0] && !bits[1]) {
-<<<<<<< HEAD
                             //Homozygote                          
                             byteInfo = (byte) (byteInfo | 0XC0);
                         } else if (!bits[0] && bits[1]) {
@@ -5319,10 +4460,6 @@ public class Genome implements Constants {
                         } else if (bits[0] && !bits[1]) {
                             //Homozygote                          
                             byteInfo = (byte) (byteInfo | 0XC0);
-=======
-                            //Homozygote                          
-                            byteInfo = (byte) (byteInfo | 0XC0);
->>>>>>> origin/master
                         } else if (!bits[0] && bits[1]) {
                             //Heterozygote
                             //annoyed!!! The plink binary annotation is different from plink excutable tool for the 01 10 definition
@@ -5357,13 +4494,8 @@ public class Genome implements Constants {
 //Subject to debug. do not know why it is not correct
             if (indivIndex != 4) {
                 //offset the missing so that the genotypes can start from the fist position 
-<<<<<<< HEAD
                 //for (int j=0;j<indivIndex;j++) byteInfo = (byte) (((byteInfo & 0xFF)>>> 2) & 0X3F);
                 byteInfo = (byte) ((byteInfo & 0xFF) >>> (indivIndex * 2));
-=======
-                //for (int j=0;j<indivIndex;j++) byteInfo = (byte) ((byteInfo >>> 2) & 0X3F);
-                byteInfo = (byte) (byteInfo >>> (indivIndex * 2));
->>>>>>> origin/master
                 // System.out.println(end + " : " + BitByteUtil.byteToBinaryString(byteInfo));
                 //end++; 
                 byteBuffer[fillPos] = byteInfo;

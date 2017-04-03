@@ -21,7 +21,7 @@ import static org.cobi.util.text.BGZFInputStream.BUF_SIZE;
 public class BZPartReader   {
 
     int spiderID;
-    int intFormat;
+    int intFormat=0;
     long longRemainSize = -1;
     long longEnd = -1;
     InputStream inputStream;
@@ -313,7 +313,13 @@ public class BZPartReader   {
 //            cis.skip(longDict);
 
         if (intFormat == 0) {
+//            inputStream.close();
+//            InputStream inputStream2=new GZIPInputStream(cis);
+//            inputStream.close();
+
             inputStream = new GZIPInputStream(cis);
+//            inputStream=inputStream2;
+//            inputStream2.close();
         } else {
             inputStream = cis;
         }

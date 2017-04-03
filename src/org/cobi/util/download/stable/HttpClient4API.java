@@ -26,20 +26,10 @@ import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpHead;
-<<<<<<< HEAD
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
-=======
-import org.apache.http.impl.client.AbstractHttpClient;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.impl.client.DefaultHttpRequestRetryHandler;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
-import org.cobi.util.file.Zipper;
->>>>>>> origin/master
 
 /**
  *
@@ -210,48 +200,5 @@ public class HttpClient4API {
         }
         httpclient.close();
 
-    }
-
-    public static void simpleRetrieverHttps(String strURL, String outPath) throws Exception {
-
-        CloseableHttpClient httpclient = HttpClients.createDefault();
-        HttpGet httpget = new HttpGet(strURL);
-        HttpResponse response = httpclient.execute(httpget);
-        //System.out.println(response.getStatusLine());
-        HttpEntity entity = response.getEntity();
-        File fleOutput = new File(outPath);
-        if (!fleOutput.getParentFile().exists()) {
-            fleOutput.getParentFile().mkdirs();
-        }
-        long longSize = entity.getContentLength();
-        long longAdd = 0;
-        if (entity != null) {
-            try (InputStream in = entity.getContent()) {
-                BufferedInputStream bis = new BufferedInputStream(in);
-                BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(fleOutput));
-                int intCount;
-                //                    NumberFormat nf=NumberFormat.getPercentInstance();
-                //                    nf.setMinimumFractionDigits(2);
-                //                    nf.setMaximumIntegerDigits(3);
-                //                    System.out.println();
-                byte[] buffer = new byte[10 * 1024];
-                while ((intCount = bis.read(buffer)) != -1) {
-                    //                        for(int i=0;i<7;i++)    System.out.print("\b");
-                    //                        Thread.sleep(100);
-                    //                        System.out.print("\r");
-                    bos.write(buffer, 0, intCount);
-                    longAdd++;
-                    //                        double dbl=longAdd/longSize;
-                    //                        System.out.print(nf.format(dbl));
-                }
-                bis.close();
-                bos.close();
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            } catch (RuntimeException ex) {
-                httpget.abort();
-            }
-            httpclient.close();
-        }
     }
 }

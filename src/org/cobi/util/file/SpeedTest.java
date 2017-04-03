@@ -27,10 +27,6 @@ import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.zip.GZIPInputStream;
 import org.cobi.util.text.BGZFInputStream;
-<<<<<<< HEAD
-=======
-import static umontreal.iro.lecuyer.util.PrintfFormat.d;
->>>>>>> origin/master
 
 /**
  *
@@ -135,15 +131,9 @@ public class SpeedTest {
             SpeedTest st = new SpeedTest();
             Long startTime = System.nanoTime();
             //readWriteByIo();
-<<<<<<< HEAD
             String inFilePath = "D:\\kgg3d5\\resources\\LD\\v5\\all\\ALL.chr1.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz";
             String outFilePath = "D:\\kgg3d5\\resources\\LD\\v5\\all\\ALL.chr1.unphase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz";
             st.convertPhased2Unphased(inFilePath, outFilePath);
-=======
-            String filePath = "D:\\kgg3d5\\resources\\LD\\v5\\all\\ALL.chr22.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz";
-            File file = new File(filePath);
-            st.convertPhased2Unphased(file.getCanonicalPath(), file.getName());
->>>>>>> origin/master
             /*
             st.parsingSpeed(filePath);
             Long endTime = System.nanoTime();

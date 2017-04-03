@@ -27,11 +27,7 @@ public class Variant implements Serializable {
     public float[] scores1;
     //for non-coding variants
     public float[] scores2;
-<<<<<<< HEAD
     public String geneSymb = null;
-=======
-    public String geneSymb;
->>>>>>> origin/master
     public boolean isIndel = false;
     //-1 denotes this SNP does not exist in db; NA means db has this variant but no frequency information
     public float altAF = -1;
@@ -40,11 +36,7 @@ public class Variant implements Serializable {
     public boolean isIBS = false;
     public byte smallestFeatureID = 17;//by default
 
-<<<<<<< HEAD
     private int affectedRefHomGtyNum = 0;
-=======
-    private int affectedRefHomGtyNum = 0;   
->>>>>>> origin/master
     private int affectedHetGtyNum = 0;
     private int affectedAltHomGtyNum = 0;
     private int unaffectedRefHomGtyNum = 0;
@@ -52,7 +44,6 @@ public class Variant implements Serializable {
     private int unaffectedAltHomGtyNum = 0;
     private int missingtyNum = 0;
 
-<<<<<<< HEAD
    // public boolean compressedGty = false;
     public int compressedGtyLabel = -1;
     public int[] compressedGty = null;
@@ -62,14 +53,6 @@ public class Variant implements Serializable {
     public byte chrID = -1;
     public boolean hasBeenAcced = false;
     public boolean consecutiveVar = false;
-=======
-    public boolean compressedGty = false;
-    public byte[] encodedGty = null;
-    public long[] encodedGtyIndex = null;
-    public char[] readInfor = null;
-    public byte chrID = -1;
-    public boolean hasBeenAcced=false;
->>>>>>> origin/master
 
     public void releaseMem() {
         featureValues = null;
@@ -80,7 +63,6 @@ public class Variant implements Serializable {
         gEncodeAnnot = null;
         knownGeneAnnot = null;
         ensemblGeneAnnot = null;
-<<<<<<< HEAD
         customizedGeneAnnot=null;
     }
 
@@ -90,8 +72,6 @@ public class Variant implements Serializable {
 
     public void setCustomizedGeneAnnot(String customizedGeneAnnot) {
         this.customizedGeneAnnot = customizedGeneAnnot;
-=======
->>>>>>> origin/master
     }
 
     public int getAffectedAltHomGtyNum() {
@@ -106,12 +86,6 @@ public class Variant implements Serializable {
         this.missingtyNum = missingtyNum;
     }
 
-<<<<<<< HEAD
-=======
-    
-
-
->>>>>>> origin/master
     public void setAffectedAltHomGtyNum(int affectedAltHomGtyNum) {
         this.affectedAltHomGtyNum = affectedAltHomGtyNum;
     }

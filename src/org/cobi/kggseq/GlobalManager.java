@@ -66,7 +66,6 @@ public class GlobalManager implements Constants {
                 if (index1 >= 0) {
                     int index2 = pathName.lastIndexOf('/');
                     pathName = pathName.substring(index1 + 6, index2);
-
                     path = new File(pathName);
                     if (path.exists()) {
                         LOCAL_FOLDER = pathName;

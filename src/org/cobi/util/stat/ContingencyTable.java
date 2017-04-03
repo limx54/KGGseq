@@ -388,15 +388,9 @@ public class ContingencyTable {
     /**
      * Fill in the count1 and count2 arrays.
      */
-<<<<<<< HEAD
     public static final double fisherExact22(long[][] contigencyTable22, int rowNum, int colNum, int tails) {
         //  int rowNum = contigencyTable22.length;
         // int colNum = contigencyTable22[0].length;
-=======
-    public static final double fisherExact22(long[][] contigencyTable22,int rowNum,int colNum, int tails) {
-      //  int rowNum = contigencyTable22.length;
-       // int colNum = contigencyTable22[0].length;
->>>>>>> origin/master
         int[] Rs = new int[rowNum];
         int[] Cs = new int[colNum];
         int totalAccount = 0;

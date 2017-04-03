@@ -54,7 +54,6 @@ public class GeneAnnotator {
     private static final Logger LOG = Logger.getLogger(GeneAnnotator.class);
 
     public void readZebrafishPhenotype(Map<String, String> xebraP2Phe) throws Exception {
-<<<<<<< HEAD
         File geneSymbols1 = new File(GlobalManager.RESOURCE_PATH + "/HgncGene.txt");
         BufferedReader br = new BufferedReader(new FileReader(geneSymbols1));
         String strLine;
@@ -141,7 +140,7 @@ public class GeneAnnotator {
         }
         varAnnoTask.dbNSFPAnnotSimple(positions, alleleList, scoreList, regions);
         varAnnoTask.markByANNOVARefFormatSimpleVar(positions, alleleList, frequnceList);
-
+//should define the format of alleles and frequencies
         File mapfFile = new File(mafPath);
         final BGZFInputStream bfMAF = new BGZFInputStream(mapfFile.getCanonicalPath(), 1, true);
         bfMAF.adjustPos(pos[0], pos[1]);
@@ -151,7 +150,7 @@ public class GeneAnnotator {
 
     }
 
-    public void geneScoreSimulation(Map<String, String[]> geneScores, String chromName, Map<String, RefGene> mergedGeneExonMap, String dbNSFPFilePath, String alleFreqFilePath, int actualThreadNum, int[] scoreIndexes) {
+    public void geneScoreSimulation(Map<String, double[]> geneScores, String chromName, Map<String, RefGene> mergedGeneExonMap, String dbNSFPFilePath, String alleFreqFilePath, int actualThreadNum, int[] scoreIndexes) {
         try {
             File rsFile = new File(dbNSFPFilePath);
             BGZFInputStream bfScoreIndexes = new BGZFInputStream(rsFile.getCanonicalPath(), actualThreadNum, true);
@@ -169,55 +168,17 @@ public class GeneAnnotator {
             }
             bfMAFIndexes.readIndex(false, chromName);
 
-            for (Map.Entry<String, String[]> item : geneScores.entrySet()) {
+            for (Map.Entry<String, double[]> item : geneScores.entrySet()) {
                 String geneSymbDis = item.getKey();
                 RefGene mgeneExons = mergedGeneExonMap.get(geneSymbDis);
-                //retrieveVariants(mgeneExons, dbNSFPFilePath, bfIndexes, actualThreadNum, scoreIndexes);
+                
+                retrieveVariants(mgeneExons, dbNSFPFilePath, bfScoreIndexes, alleFreqFilePath, bfMAFIndexes, actualThreadNum, scoreIndexes);
+//                sss
             }
         } catch (Exception ex) {
 
         }
 
-=======
-                 File geneSymbols1 = new File(GlobalManager.RESOURCE_PATH + "/HgncGene.txt");
-
-                BufferedReader br = new BufferedReader(new FileReader(geneSymbols1));
-                String strLine;
-               Map<String,String> geneEtrIDSymbMap = new HashMap<String, String>();
-//                    int i=1;
-                while ((strLine = br.readLine()) != null) {
-//                        System.out.println(i++);
-                    String[] strItems = strLine.split("\t", -1);
-                    if (strItems[9] != null) {
-                        strItems[9] = strItems[9].trim();
-                        if (strItems[9].length() > 0) {
-                            geneEtrIDSymbMap.put(strItems[9], strItems[1]);
-                        }
-                    }
-                }
-                br.close();
-
-                File fisher = new File(GlobalManager.RESOURCE_PATH + "/pheno_fish.txt.gz");
-                br = LocalFileFunc.getBufferedReader(fisher.getCanonicalPath());
-                //skip the headline
-                br.readLine();
-                br.readLine();
-                
-                while ((strLine = br.readLine()) != null) {
-                    String[] strItems = strLine.split("\t", -1);
-                    String geneSymb = geneEtrIDSymbMap.get(strItems[2]);
-                    if (geneSymb == null) {
-                        continue;
-                    }
-                    String pheno = strItems[9];
-                    if (strItems[18] != null && strItems[18].length() > 0) {
-                        pheno += (";" + strItems[18]);
-                    }
-                    xebraP2Phe.put(geneSymb, pheno);
-                }
-                geneEtrIDSymbMap = null;
-                br.close();
->>>>>>> origin/master
     }
 
     public void readMousePhenotype(Map<String, String[]> g2MP) throws Exception {
@@ -227,63 +188,59 @@ public class GeneAnnotator {
 
         BufferedReader br = new BufferedReader(new FileReader(fleMouse2));
         String strLine;
-        Map<String, String> mp2Phe = new HashMap<String, String>();
+        Map<String, String> mp2Phe1 = new HashMap<String, String>();
 //                    int i=1;
         while ((strLine = br.readLine()) != null) {
 //                        System.out.println(i++);
             String[] strItems = strLine.split("\t", -1);
             if (strItems.length > 2) {
                 if (strItems[2] != null && strItems[2].length() > 0) {
-                    mp2Phe.put(strItems[0], strItems[1] + "->" + strItems[2]);
+                    mp2Phe1.put(strItems[0], strItems[1] + "->" + strItems[2]);
                 } else {
-                    mp2Phe.put(strItems[0], strItems[1]);
+                    mp2Phe1.put(strItems[0], strItems[1]);
                 }
             } else {
-                mp2Phe.put(strItems[0], strItems[1]);
+                mp2Phe1.put(strItems[0], strItems[1]);
             }
         }
         br.close();
 
+        String strPhe1 = null;
+
         br = new BufferedReader(new FileReader(fleMouse1));
-        String strPhe = null;
         while ((strLine = br.readLine()) != null) {
-            String[] strItems = strLine.split("\t");
-            if (strItems.length < 6 || strItems[5] == null || strItems[5].trim().length() == 0) {
+            String[] strItems = strLine.split("\t", -1);
+            if (strItems.length < 7 || strItems[6] == null || strItems[6].trim().length() == 0) {
                 continue;
             }
 
-            strPhe = ".";
-            String[] strMP = strItems[5].trim().split(" ");
+            strPhe1 = ".";
+            String[] strMP = strItems[6].trim().split(" ");
             for (String temp : strMP) {
-                if (strPhe.length() == 0) {
-                    strPhe += mp2Phe.get(temp);
-                } else {
-                    strPhe += ("||" + mp2Phe.get(temp));
+                if (mp2Phe1.containsKey(temp)) {
+                    if (strPhe1.length() == 1) {
+                        strPhe1 = mp2Phe1.get(temp);
+                    } else {
+                        strPhe1 += ("||" + mp2Phe1.get(temp));
+                    }
                 }
             }
-            if (strPhe == null) {
-                continue;
-            }
-            g2MP.put(strItems[0], new String[]{strPhe, "."});
+            g2MP.put(strItems[0], new String[]{strPhe1, "."});
         }
-        mp2Phe = null;
         br.close();
 
         br = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(fleMouse3))));
-
+        String geneSymb = null;
         while ((strLine = br.readLine()) != null) {
             // String[] strItems = strLine.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)", -1);
             String[] strItems = strLine.split("\t", -1);
-            strPhe = strItems[1].toUpperCase().trim();
-            String[] values = g2MP.get(strPhe);
+            geneSymb = strItems[1].toUpperCase().trim();
+            String[] values = g2MP.get(geneSymb);
+
             if (values == null) {
-                g2MP.put(strPhe, new String[]{".", strItems[20].replace("\"", "") + "," + strItems[22].replace("\"", "")});
+                g2MP.put(geneSymb, new String[]{".", strItems[20].replace("\"", "") + "," + strItems[22].replace("\"", "")});
             } else {
                 values[1] = strItems[20].replace("\"", "") + "," + strItems[22].replace("\"", "");
-<<<<<<< HEAD
-                g2MP.put(strPhe, values);//??????
-=======
->>>>>>> origin/master
             }
         }
         br.close();
@@ -553,11 +510,7 @@ public class GeneAnnotator {
         List<DoubleArrayList> pvalueLists = new ArrayList<DoubleArrayList>();
         List<String> nameList = new ArrayList<String>();
         pvalueLists.add(geneSetPValuesForQQPlot);
-<<<<<<< HEAD
         PValuePainter pvPainter = new PValuePainter(450, 450);
-=======
-        PValuePainter pvPainter = new PValuePainter(800, 600);
->>>>>>> origin/master
         File plotFile = new File(geneSumOutFile.substring(0, geneSumOutFile.length() - 5) + "qq.png");
         nameList.add("WilcoxonP");
         pvPainter.drawMultipleQQPlot(pvalueLists, nameList, null, plotFile.getCanonicalPath(), 1E-10);
@@ -992,11 +945,7 @@ public class GeneAnnotator {
             List<DoubleArrayList> pvalueLists = new ArrayList<DoubleArrayList>();
             List<String> nameList = new ArrayList<String>();
             pvalueLists.add(genePValuesForQQPlot);
-<<<<<<< HEAD
             PValuePainter pvPainter = new PValuePainter(450, 450);
-=======
-            PValuePainter pvPainter = new PValuePainter(800, 600);
->>>>>>> origin/master
             File plotFile = new File(geneSumOutFile.substring(0, geneSumOutFile.length() - 5) + "gene.qq.png");
             nameList.add("Somat");
             pvPainter.drawMultipleQQPlot(pvalueLists, nameList, null, plotFile.getCanonicalPath(), 1E-10);

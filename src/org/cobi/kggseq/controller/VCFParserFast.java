@@ -66,11 +66,7 @@ public class VCFParserFast implements Constants {
             double gtyQualityThrehsold, int minSeqDepth, double altAlleleFracRefHomThrehsold, double altAlleleFractHetThrehsold,
             double altAlleleFractAltHomThrehsold, Set<String> vcfLableInSet, int minOBS, double sampleMafOver, double sampleMafLess, boolean considerSNP, boolean considerIndel,
             int minSecondPL, double minBestGP, boolean needProgressionIndicator, boolean needGty, boolean needReadsInfor, boolean needGtyQual, boolean needVCFHead, boolean noGtyVCF,
-<<<<<<< HEAD
             boolean forced2Unphased,List<Individual> subjectList, IntArrayList effectIndivID, final int[] caseSetID, final int[] controlSetID, int[][] regionsIn, int[][] regionsOut) throws Exception {
-=======
-            List<Individual> subjectList, IntArrayList effectIndivID, final int[] caseSetID, final int[] controlSetID, int[][] regionsIn, int[][] regionsOut) throws Exception {
->>>>>>> origin/master
         Genome genome = new Genome("UniuqeVariantGenome", tempFolder);
 
         genome.removeTempFileFromDisk();
@@ -116,11 +112,7 @@ public class VCFParserFast implements Constants {
                 acceptVarNum += readVariantsInFileOnlyFastToken(threadNum, orgGenome, dataFile, genome, avgSeqQualityThrehsold, minMappingQual, maxStrandBias, maxFisherStrandBias, maxAlleleNum, gtyQualityThrehsold, minSeqDepth,
                         altAlleleFracRefHomThrehsold, altAlleleFractHetThrehsold, altAlleleFractAltHomThrehsold, vcfLableInSet,
                         minOBS, sampleMafOver, sampleMafLess, considerSNP, considerIndel, minSecondPL, minBestGP, needProgressionIndicator,
-<<<<<<< HEAD
                         needGty, needReadsInfor, needGtyQual, needVCFHead, noGtyVCF,forced2Unphased, subjectList, effectIndivID, caseSetID, controlSetID, regionsIn, regionsOut);
-=======
-                        needGty, needReadsInfor, needGtyQual, needVCFHead, noGtyVCF, subjectList, effectIndivID, caseSetID, controlSetID, regionsIn, regionsOut);
->>>>>>> origin/master
 
             }
         } else if (vAFile.indexOf('[') >= 0 && vAFile.indexOf(']') > 0) {
@@ -143,11 +135,7 @@ public class VCFParserFast implements Constants {
                 acceptVarNum += readVariantsInFileOnlyFastToken(threadNum, orgGenome, dataFile, genome, avgSeqQualityThrehsold, minMappingQual, maxStrandBias, maxFisherStrandBias, maxAlleleNum, gtyQualityThrehsold, minSeqDepth,
                         altAlleleFracRefHomThrehsold, altAlleleFractHetThrehsold, altAlleleFractAltHomThrehsold, vcfLableInSet,
                         minOBS, sampleMafOver, sampleMafLess, considerSNP, considerIndel, minSecondPL, minBestGP,
-<<<<<<< HEAD
                         needProgressionIndicator, needGty, needReadsInfor, needGtyQual, needVCFHead, noGtyVCF,forced2Unphased, subjectList, effectIndivID, caseSetID, controlSetID, regionsIn, regionsOut);
-=======
-                        needProgressionIndicator, needGty, needReadsInfor, needGtyQual, needVCFHead, noGtyVCF, subjectList, effectIndivID, caseSetID, controlSetID, regionsIn, regionsOut);
->>>>>>> origin/master
             }
         } else {
             File dataFile = new File(vAFile);
@@ -155,11 +143,7 @@ public class VCFParserFast implements Constants {
             acceptVarNum = readVariantsInFileOnlyFastToken(threadNum, orgGenome, dataFile, genome, avgSeqQualityThrehsold, minMappingQual, maxStrandBias, maxFisherStrandBias, maxAlleleNum, gtyQualityThrehsold, minSeqDepth,
                     altAlleleFracRefHomThrehsold, altAlleleFractHetThrehsold, altAlleleFractAltHomThrehsold, vcfLableInSet,
                     minOBS, sampleMafOver, sampleMafLess, considerSNP, considerIndel, minSecondPL, minBestGP,
-<<<<<<< HEAD
                     needProgressionIndicator, needGty, needReadsInfor, needGtyQual, needVCFHead, noGtyVCF,forced2Unphased, subjectList, effectIndivID, caseSetID, controlSetID, regionsIn, regionsOut);
-=======
-                    needProgressionIndicator, needGty, needReadsInfor, needGtyQual, needVCFHead, noGtyVCF, subjectList, effectIndivID, caseSetID, controlSetID, regionsIn, regionsOut);
->>>>>>> origin/master
         }
 
         // genome.setVarNum(acceptVarNum);
@@ -170,11 +154,7 @@ public class VCFParserFast implements Constants {
             double avgSeqQualityThrehsold, double minMappingQual, double maxStrandBias, double maxFisherStrandBias, int maxAlleleNum, double gtyQualityThrehsold, int minGtySeqDepth,
             double altAlleleFracRefHomThrehsold, double altAlleleFractHetThrehsold, double altAlleleFractAltHomThrehsold, Set<String> vcLlabelInSet,
             int minOBS, double sampleMafOver, double sampleMafLess, boolean considerSNP, boolean considerIndel, int minSecondPL, double minBestGP, boolean needProgressionIndicator,
-<<<<<<< HEAD
             boolean needGty, boolean needReadInfo, boolean needGtyQual, boolean needVCFHead, boolean noGtyVCF, boolean forced2Unphased,final List<Individual> masterSubjectList, IntArrayList effectIndivID,
-=======
-            boolean needGty, boolean needReadInfo, boolean needGtyQual, boolean needVCFHead, boolean noGtyVCF, final List<Individual> masterSubjectList, IntArrayList effectIndivID,
->>>>>>> origin/master
             final int[] caseSetID, final int[] controlSetID, final int[][] regionsIn, final int[][] regionsOut) throws Exception {
         int indexCHROM = -1;
         int indexPOS = -1;
@@ -259,11 +239,7 @@ public class VCFParserFast implements Constants {
                     String info = null;
                     String fileName = dataFile.getCanonicalPath();
                     if (fileName.endsWith(".gz")) {
-<<<<<<< HEAD
                         info = "The file is gzip-format, not bgzip-format! You can create a file with Blocked GNU Zip Format by \'zcat " + fileName + " | bgzip > " + fileName.substring(0, fileName.lastIndexOf(".")) + ".b.gz\', See more  http://www.htslib.org/doc/tabix.html";
-=======
-                        info = "The file is gzip-format, not bgzip-format! You can create a file with Blocked GNU Zip Format by \'zcat " + fileName + "| bgzip > " + fileName.substring(0, fileName.lastIndexOf(".")) + ".b.gz\', See more  http://www.htslib.org/doc/tabix.html";
->>>>>>> origin/master
                     } else {
                         info = "You can create a file with Blocked GNU Zip Format by \'bgzip " + fileName + "\', See more  http://www.htslib.org/doc/tabix.html";
                     }
@@ -476,13 +452,8 @@ public class VCFParserFast implements Constants {
 
             pedEncodeGytIDMap = new int[totalPedSubjectNum];
             Arrays.fill(pedEncodeGytIDMap, -1);
-<<<<<<< HEAD
             int t = 0;
             for (int index = 0; index < totalPedSubjectNum; index++) {
-=======
-           int t = 0;
-            for (int index = 0; index < totalPedSubjectNum; index++) { 
->>>>>>> origin/master
                 pedEncodeGytIDMap[index] = t;
                 t++;
             }
