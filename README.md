@@ -6,4 +6,4 @@ Important new features of KGGSeq v1.0+ you may be interested in:
 3. Statistic tests for mutation rate and association at genes
 4. All in all, it is a comprehensive unified framework for high-throughput sequencing study of human traits, from quality control, filtering, annotation and statistic test.
 
-For detailed information of KGGSeq, please visit the official website http://grass.cgs.hku.hk/limx/kggseq/index.php .
+For detailed information of KGGSeq, please visit the official website http://pmglab.top/kggseq/ .
